@@ -583,6 +583,125 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
 
 })();
 </script>
+<!-- ========== BEGIN 图片功能（不改变你原有功能） ========== -->
+
+<style>
+/* 缩略图样式（独立命名空间，不影响原样式） */
+.ns-thumb {
+    width: 90px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: zoom-in;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+}
+/* 大图 Modal */
+.ns-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 99999;
+}
+.ns-modal.show { display: flex; }
+.ns-modal img {
+    max-width: 95%;
+    max-height: 95%;
+    border-radius: 8px;
+}
+.ns-img-btn {
+    padding: 6px 12px;
+    border: 1px solid #aaa;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 6px;
+}
+</style>
+
+<!-- 图片放大 modal -->
+<div id="nsImgModal" class="ns-modal" onclick="this.classList.remove('show')">
+    <img id="nsImgModalImg">
+</div>
+
+<script>
+// ⭐ 这里设置你的 GitHub 图片文件根路径（已帮你填好）
+const NS_GITHUB_BASE = "https://raw.githubusercontent.com/li995913596-beep/tile-images/main/";
+
+/* 生成图片 URL（按编号） */
+function nsMakeImageURL(code) {
+    const id = String(code).trim();
+    return [
+        NS_GITHUB_BASE + encodeURIComponent(id) + ".jpg",
+        NS_GITHUB_BASE + encodeURIComponent(id) + ".jpeg",
+        NS_GITHUB_BASE + encodeURIComponent(id) + ".png"
+    ];
+}
+
+/* 核心：往单元格插入缩略图 */
+function nsInsertThumb(td, code){
+    if (!td) return;
+    if (td.querySelector(".ns-thumb")) return;
+
+    let img = document.createElement("img");
+    img.className = "ns-thumb";
+    img.alt = code;
+    td.appendChild(img);
+
+    // 点击查看大图
+    img.onclick = () => {
+        const modal = document.getElementById("nsImgModal");
+        document.getElementById("nsImgModalImg").src = img.dataset.full || img.src;
+        modal.classList.add("show");
+    };
+
+    const urls = nsMakeImageURL(code);
+    let index = 0;
+    function tryLoad(){
+        if (index >= urls.length) { img.src = ""; return; }
+        const url = urls[index++];
+        img.onload = ()=> img.dataset.full = url;
+        img.onerror = tryLoad;
+        img.src = url;
+    }
+    tryLoad();
+}
+
+/* 自动扫描表格，寻找第一列“编号”并插入缩略图 */
+function nsAutoAddImages(){
+    let count = 0;
+
+    document.querySelectorAll("table tbody tr").forEach(tr=>{
+        let tds = tr.querySelectorAll("td");
+        if (tds.length < 1) return;
+
+        let code = tds[0].innerText.trim(); // 默认第一列是编号
+        if (!code) return;
+
+        let imgTd = document.createElement("td");
+        tr.prepend(imgTd);
+        nsInsertThumb(imgTd, code);
+        count++;
+    });
+
+    alert("已为 " + count + " 条记录加载图片（按编号匹配）");
+}
+
+/* 自动在顶部加入按钮（不影响原按钮） */
+function nsAddButton(){
+    const bar = document.querySelector(".topbar") || document.body;
+    const btn = document.createElement("button");
+    btn.innerText = "加载图片";
+    btn.className = "ns-img-btn";
+    btn.onclick = nsAutoAddImages;
+    bar.appendChild(btn);
+}
+document.addEventListener("DOMContentLoaded", nsAddButton);
+</script>
+
+<!-- ========== END 图片功能 ========== -->
 
 </body>
 </html>
