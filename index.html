@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>瓷砖库存管理系统 - 最终版 v2</title>
+<title>瓷砖库存管理系统 - 图片功能已集成（无按钮）</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
@@ -84,7 +84,7 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
 .modal .card{width:92%;max-width:420px}
 .footer-note{color:#666;text-align:center;padding:18px 0;font-size:13px}
 @media(max-width:600px){body{padding:92px 12px 20px} .nav-tabs button{padding:6px 8px;font-size:14px} th,td{padding:8px;font-size:13px}}
-/* small: image cell style */
+/* image cell style */
 .img-cell { width:110px; padding:6px; }
 .img-cell img { width:80px; height:56px; object-fit:cover; border-radius:6px; box-shadow:0 1px 6px rgba(0,0,0,0.06); cursor:zoom-in; }
 </style>
@@ -115,7 +115,7 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
     <div id="lastInfo" style="margin-top:8px;color:#666;font-size:13px">库存最后更新时间：加载中...</div>
     <div class="table-wrap">
       <table id="mainTable" style="display:none">
-        <thead><tr><th>图片</th><th>编号</th><th>色号</th><th>数量(箱)</th><th>仓库</th></tr></thead>
+        <thead><tr><th>图片</th><th>编号</th><th>色号</th><th>数量(箱)</th><th>仓库</th></thead>
         <tbody id="mainTbody"></tbody>
       </table>
       <div id="mainMsg" style="padding:12px;color:#888">请输入编号并点击查询</div>
@@ -154,9 +154,6 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
     <pre id="hy_result" style="margin-top:10px">（请先填写表单）</pre>
   </div>
 
-  <!-- 管理员区域（底部小按钮触发） -->
-  <div id="admin_placeholder" style="height:18px"></div>
-
   <div class="footer-note">仅限内部使用 | Designed by Kyson Li</div>
 </div>
 
@@ -190,6 +187,11 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
 
 <div class="toast" id="toast"></div>
 
+<!-- 图片放大 modal (used by nsAttachImg) -->
+<div id="nsTempModal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:99999" onclick="this.style.display='none'">
+  <img id="nsTempModalImg" style="max-width:92%;max-height:92%;border-radius:8px">
+</div>
+
 <script>
 (function(){
   // Tabs
@@ -199,8 +201,6 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
       tabButtons.forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
       document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
-      const id = 'tab-' + b.dataset.tab?.split?.('-')?.pop?.() || b.dataset.tab;
-      // mapping: use dataset tab value directly (we set data-tab to tab-search etc.)
       const target = b.dataset.tab;
       document.getElementById(target).style.display='block';
       window.scrollTo({top:0,behavior:'smooth'});
@@ -230,22 +230,12 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
     return `<span class="qty-badge qty-green">${n}</span>`;
   }
 
-  /* ------------------ 新增：图片附加兼容函数（不破坏原逻辑） ------------------ */
-  // 优先使用注入的非侵入模块；若未就绪，则直接从 GitHub raw 加载
+  /* ------------------ 图片功能（无按钮、只在渲染时自动添加） ------------------ */
   const NS_GITHUB_BASE = "https://raw.githubusercontent.com/li995913596-beep/tile-images/main/";
   function nsAttachImg(td, code){
     if(!td) return;
-    // if image already present, skip
+    // already present?
     if(td.querySelector('img')) return;
-    // If the non-invasive module is available, use it
-    try{
-      if(window.nsTileImages && typeof window.nsTileImages.attachImgToCell === 'function'){
-        // that function expects (td, identifier)
-        window.nsTileImages.attachImgToCell(td, code);
-        return;
-      }
-    }catch(e){}
-    // fallback simple implementation
     const img = document.createElement('img');
     img.alt = code || 'tile';
     img.style.width='80px';
@@ -253,34 +243,24 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
     img.style.objectFit='cover';
     img.style.borderRadius='6px';
     img.style.cursor='zoom-in';
+    // try jpg -> jpeg -> png
     img.src = NS_GITHUB_BASE + encodeURIComponent(String(code)) + '.jpg';
     img.onerror = function(){
-      this.onerror = null;
-      this.src = NS_GITHUB_BASE + encodeURIComponent(String(code)) + '.jpeg';
-      this.onerror = function(){ this.onerror=null; this.src = NS_GITHUB_BASE + encodeURIComponent(String(code)) + '.png'; }
+      if(this._tried === undefined){ this._tried = 1; this.src = NS_GITHUB_BASE + encodeURIComponent(String(code)) + '.jpeg'; }
+      else if(this._tried === 1){ this._tried = 2; this.src = NS_GITHUB_BASE + encodeURIComponent(String(code)) + '.png'; }
+      else { this._tried = 3; this.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="100%" height="100%" fill="#f7f7f7"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">No image</text></svg>'); }
     };
     img.addEventListener('click', function(e){
       e.stopPropagation();
-      // show simple modal
-      let modal = document.getElementById('nsTileImageModal');
-      if(modal){
-        const mimg = document.getElementById('nsTileImageModalImg');
-        mimg.src = img.src;
-        modal.classList.add('show');
-      } else {
-        // create temporary modal
-        let m = document.createElement('div');
-        m.style.position='fixed'; m.style.inset='0'; m.style.background='rgba(0,0,0,0.6)'; m.style.display='flex';
-        m.style.alignItems='center'; m.style.justifyContent='center'; m.style.zIndex='99999';
-        let im = document.createElement('img'); im.src = img.src; im.style.maxWidth='90%'; im.style.maxHeight='90%'; im.style.borderRadius='8px';
-        m.appendChild(im);
-        m.addEventListener('click', ()=>document.body.removeChild(m));
-        document.body.appendChild(m);
-      }
+      // show modal image
+      const modal = document.getElementById('nsTempModal');
+      const mimg = document.getElementById('nsTempModalImg');
+      mimg.src = img.src;
+      modal.style.display = 'flex';
     });
     td.appendChild(img);
   }
-  /* ------------------ end 新增 ------------------ */
+  /* ------------------ end 图片功能 ------------------ */
 
   // main search
   document.getElementById('searchBtn').addEventListener('click', ()=>{
@@ -352,7 +332,7 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
       const color = el.querySelector('.ch-color').value;
       const spec = el.querySelector('.ch-spec').value;
       const qty = el.querySelector('.ch-qty').value;
-      text += `${idx+1}.ကုဒ်နိပတ်/编号：${code}\nအရောင်ကုဒ်色号：${color}\nအလျားအနံ/规格：${spec}\nအရေအัพท์/数量：${qty}\n\n`;
+      text += `${idx+1}.编号：${code}\n色号：${color}\n规格：${spec}\n数量：${qty}\n\n`;
     });
     document.getElementById('ch_result').textContent = text.trim();
     showToast('已生成出货计划');
@@ -364,10 +344,10 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
   function addHyItem(v={}) {
     const el = document.createElement('div'); el.className='item';
     el.innerHTML = `
-      <label>ကုဒ်နိပတ်/编号</label><input class="hy-code">
-      <label>规格/အလျားအနံ</label><input class="hy-spec">
-      <label>色号/အရောင်ကုဒ်</label><input class="hy-color">
-      <label>数量/အရေအłość</label><input class="hy-qty">`;
+      <label>编号</label><input class="hy-code">
+      <label>规格</label><input class="hy-spec">
+      <label>色号</label><input class="hy-color">
+      <label>数量</label><input class="hy-qty">`;
     hyList.appendChild(el);
     if(v.code) el.querySelector('.hy-code').value = v.code;
     if(v.spec) el.querySelector('.hy-spec').value = v.spec;
@@ -386,7 +366,7 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
       const spec = el.querySelector('.hy-spec').value;
       const color = el.querySelector('.hy-color').value;
       const qty = el.querySelector('.hy-qty').value;
-      text += `${idx+1}.ကုဒ်နိပတ်/编号：${code}\nအလျားအနံ/规格：${spec}\nအရောင်ကုဒ်色号：${color}\nအရေအาสตร์/数量：${qty}\n\n`;
+      text += `${idx+1}.编号：${code}\n规格：${spec}\n色号：${color}\n数量：${qty}\n\n`;
     });
     document.getElementById('hy_result').textContent = text.trim();
     showToast('已生成海运入库');
@@ -476,238 +456,6 @@ th{background:var(--primary);color:#fff;position:sticky;top:0}
 
 })();
 </script>
-
-<!-- BEGIN NON-INVASIVE TILE IMAGE FEATURE (ADDED) -->
-<style>
-/* Non-invasive thumbnail styles, namespaced to avoid collisions */
-.ns-tile-thumb { width:80px; height:56px; object-fit:cover; border-radius:6px; box-shadow:0 1px 6px rgba(0,0,0,0.06); cursor:zoom-in; }
-.ns-tile-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:99999; padding:20px; }
-.ns-tile-modal.show { display:flex; } .ns-tile-modal img { max-width:96%; max-height:96%; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
-.ns-image-loader-btn { margin-left:8px; padding:6px 10px; border-radius:6px; border:1px solid #bbb; background:#fff; cursor:pointer; font-size:13px; }
-.ns-image-insert-note { font-size:12px; color:#666; margin-left:8px; }
-</style>
-
-<!-- Modal -->
-<div id="nsTileImageModal" class="ns-tile-modal" onclick="document.getElementById('nsTileImageModal').classList.remove('show')">
-  <img id="nsTileImageModalImg" src="" alt="Tile preview">
-</div>
-
-<script>
-(function(){
-  // Configuration: prefilled base from your GitHub (keeps original unchanged)
-  const GITHUB_RAW_BASE_NS = "https://raw.githubusercontent.com/li995913596-beep/tile-images/main/"; // already configured
-
-  const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
-    '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"200\">' +
-    '<rect width=\"100%\" height=\"100%\" fill=\"#f7f7f7\"/>' +
-    '<text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#bbb\" font-size=\"16\">No image</text>' +
-    '</svg>'
-  );
-
-  function makeCandidates(id){
-    if(!id) return [];
-    const clean = String(id).trim();
-    return [
-      GITHUB_RAW_BASE_NS + encodeURIComponent(clean) + ".jpg",
-      GITHUB_RAW_BASE_NS + encodeURIComponent(clean) + ".jpeg",
-      GITHUB_RAW_BASE_NS + encodeURIComponent(clean) + ".png"
-    ];
-  }
-
-  function attachImgToCell(td, identifier){
-    if(!td) return;
-    // if already has our img, skip
-    if(td.querySelector('.ns-tile-thumb')) return;
-    const img = document.createElement('img');
-    img.className = 'ns-tile-thumb';
-    img.loading = 'lazy';
-    img.alt = identifier || 'tile';
-    img.style.background = '#fff';
-    img.addEventListener('click', function(e){
-      e.stopPropagation();
-      const modal = document.getElementById('nsTileImageModal');
-      const modalImg = document.getElementById('nsTileImageModalImg');
-      modalImg.src = img.dataset.fullsrc || img.src || PLACEHOLDER;
-      modal.classList.add('show');
-    });
-    td.appendChild(img);
-
-    const candidates = makeCandidates(identifier);
-    if(candidates.length === 0){ img.src = PLACEHOLDER; return; }
-    let i=0;
-    function tryNext(){
-      if(i>=candidates.length){ img.src = PLACEHOLDER; return; }
-      const url = candidates[i++];
-      img.crossOrigin = "anonymous";
-      img.onload = function(){ img.dataset.fullsrc = url; };
-      img.onerror = function(){ tryNext(); };
-      img.src = url;
-    }
-    tryNext();
-  }
-
-  // Heuristic to detect a "code" in cell text: letters/numbers and at least one digit, length 2-30
-  function looksLikeCode(text){
-    if(!text) return false;
-    text = text.trim();
-    if(text.length < 2 || text.length > 40) return false;
-    // must contain a letter or digit, and at least one digit
-    if(!/[0-9]/.test(text)) return false;
-    // avoid purely numeric long numbers (allow though), accept letters/digits/-_
-    return /^[\u0020-\u007E\u4E00-\u9FFF][\w\-\s\u4E00-\u9FFF]*$/.test(text);
-  }
-
-  // Auto-scan table rows and insert thumbnail td at start
-  function autoAttachThumbnails(){
-    // Find table rows or list items
-    const tables = Array.from(document.querySelectorAll('table'));
-    let attached = 0;
-    if(tables.length){
-      tables.forEach(table=>{
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        if(rows.length === 0){
-          // try all tr
-          rows.push(...Array.from(table.querySelectorAll('tr')));
-        }
-        rows.forEach(tr=>{
-          try{
-            // skip if we've already inserted
-            if(tr.querySelector('.ns-tile-thumb')) return;
-            const tds = Array.from(tr.children).filter(n=>n.tagName.toLowerCase()==='td' || n.tagName.toLowerCase()==='th');
-            // find first td that looks like code
-            let codeCellIndex = -1;
-            for(let i=0;i<tds.length;i++){
-              const txt = tds[i].textContent || '';
-              if(looksLikeCode(txt) && txt.trim().length <= 40){
-                codeCellIndex = i;
-                break;
-              }
-            }
-            if(codeCellIndex === -1) return;
-            const codeText = (tds[codeCellIndex].textContent||'').trim().split(/\s+/)[0];
-            // insert a new td at beginning for thumbnail
-            const imgTd = document.createElement('td');
-            imgTd.style.padding = '6px';
-            // For tables with fixed columns, try not to break layout: if first child is th, insert after it
-            tr.insertBefore(imgTd, tr.firstChild);
-            attachImgToCell(imgTd, codeText);
-            attached++;
-          }catch(e){ /* ignore */ }
-        });
-      });
-    }
-    // Also try list-like rows (divs)
-    const rows = Array.from(document.querySelectorAll('div'));
-    rows.forEach(div=>{
-      try{
-        if(div.querySelector('.ns-tile-thumb')) return;
-        // if this div likely a result card containing code text
-        const txt = (div.textContent||'').trim();
-        if(looksLikeCode(txt) && txt.length < 200 && txt.split(/\s+/).length <= 6){
-          // create img and prepend
-          const imgWrap = document.createElement('div');
-          imgWrap.style.display = 'inline-block';
-          imgWrap.style.marginRight = '8px';
-          attachImgToCell(imgWrap, txt.split(/\s+/)[0]);
-          div.insertBefore(imgWrap, div.firstChild);
-          attached++;
-        }
-      }catch(e){}
-    });
-    return attached;
-  }
-
-  // Manual mode: user clicks one cell to indicate code column
-  function enableManualColumnSelect(){
-    alert('请点击任一搜索结果中显示“编号”的单元格（点击后会自动为整列添加图片），按 Esc 取消。');
-    function clickHandler(e){
-      e.preventDefault(); e.stopPropagation();
-      const target = e.target;
-      // find nearest tr
-      const tr = target.closest('tr');
-      if(!tr){
-        document.removeEventListener('click', clickHandler, true);
-        return;
-      }
-      // determine index of clicked cell among its siblings
-      const cells = Array.from(tr.children).filter(n=>n.tagName.toLowerCase()==='td' || n.tagName.toLowerCase()==='th');
-      let idx = -1;
-      for(let i=0;i<cells.length;i++){
-        if(cells[i] === target || cells[i].contains(target)){
-          idx = i; break;
-        }
-      }
-      if(idx === -1){
-        document.removeEventListener('click', clickHandler, true);
-        return;
-      }
-      // For each row in same table, get cell at idx and insert thumbnail cell before that row's first child
-      const table = tr.closest('table');
-      if(!table){ document.removeEventListener('click', clickHandler, true); return; }
-      const allRows = Array.from(table.querySelectorAll('tr'));
-      let count = 0;
-      allRows.forEach(r=>{
-        const cellsR = Array.from(r.children).filter(n=>n.tagName.toLowerCase()==='td' || n.tagName.toLowerCase()==='th');
-        if(cellsR.length > idx){
-          const codeText = (cellsR[idx].textContent||'').trim().split(/\s+/)[0];
-          const imgTd = document.createElement('td');
-          imgTd.style.padding = '6px';
-          r.insertBefore(imgTd, r.firstChild);
-          attachImgToCell(imgTd, codeText);
-          count++;
-        }
-      });
-      document.removeEventListener('click', clickHandler, true);
-      alert('已为表格中的 ' + count + ' 行尝试添加图片列（如可用）。');
-    }
-    document.addEventListener('click', clickHandler, true);
-    // Esc cancels
-    function escHandler(e){ if(e.key === 'Escape'){ document.removeEventListener('click', clickHandler, true); document.removeEventListener('keydown', escHandler, true); alert('已取消'); } }
-    document.addEventListener('keydown', escHandler, true);
-  }
-
-  // Insert UI buttons non-invasively into first .topbar or body start
-  function insertControlButtons(){
-    const container = document.querySelector('.topbar') || document.body;
-    if(!container) return;
-    // prevent duplicate
-    if(document.getElementById('nsLoadImagesBtn')) return;
-    const btnAuto = document.createElement('button');
-    btnAuto.id = 'nsLoadImagesBtn';
-    btnAuto.className = 'ns-image-loader-btn';
-    btnAuto.textContent = '加载图片（自动）';
-    btnAuto.title = '尝试自动在表格/列表中找到编号并附上图片（不会改变原逻辑）';
-    btnAuto.addEventListener('click', function(){ const added = autoAttachThumbnails(); alert('已尝试为页面添加 ' + added + ' 个缩略图（如可用）。'); });
-
-    const btnManual = document.createElement('button');
-    btnManual.id = 'nsLoadImagesManualBtn';
-    btnManual.className = 'ns-image-loader-btn';
-    btnManual.textContent = '加载图片（手动列）';
-    btnManual.title = '手动选择显示编号的列（点击某个编号单元格）';
-    btnManual.addEventListener('click', function(){ enableManualColumnSelect(); });
-
-    const note = document.createElement('span');
-    note.className = 'ns-image-insert-note';
-    note.textContent = '（图片按编号匹配，编号相同时显示同一张图片）';
-
-    // append
-    container.appendChild(btnAuto);
-    container.appendChild(btnManual);
-    container.appendChild(note);
-  }
-
-  // run on DOMContentLoaded
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', insertControlButtons);
-  } else {
-    insertControlButtons();
-  }
-
-  // expose functions for advanced use (non-enumerable)
-  Object.defineProperty(window, 'nsTileImages', { value: { autoAttachThumbnails, enableManualColumnSelect, attachImgToCell }, writable:false, configurable:true });
-})();
-</script>
-<!-- END NON-INVASIVE TILE IMAGE FEATURE -->
 
 </body>
 </html>
