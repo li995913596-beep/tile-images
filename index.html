@@ -2,32 +2,90 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>瓷砖库存管理系统</title>
-<link rel="stylesheet" href="css/style.css">
+<title>瓷砖库存查询系统</title>
+
+<style>
+body{
+  font-family: Arial;
+  margin:0;
+  background:#f5f5f5;
+}
+
+nav{
+  background:#1976d2;
+  padding:12px 20px;
+  color:white;
+  font-size:18px;
+}
+
+nav a{
+  color:white;
+  text-decoration:none;
+  margin-left:20px;
+  font-size:14px;
+}
+
+.container{
+  padding:20px;
+}
+
+.search-box{
+  margin-bottom:20px;
+}
+
+input{
+  padding:8px;
+  width:250px;
+}
+
+button{
+  padding:8px 14px;
+  margin-left:5px;
+  cursor:pointer;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.stock-low{
+  color:red;
+  font-weight:bold;
+}
+
+.stock-ok{
+  color:green;
+  font-weight:bold;
+}
+</style>
+
 </head>
 <body>
 
-<div class="navbar">
-  <div class="logo">瓷砖库存管理系统</div>
-  <div class="nav-links">
-    <a class="active">库存查询</a>
-    <a href="admin.html">管理后台</a>
-  </div>
-</div>
+<nav>
+  瓷砖库存查询系统
+  <a href="admin.html">管理员后台</a>
+</nav>
 
 <div class="container">
 
-  <div class="search-box">
-    <input id="searchInput" placeholder="输入瓷砖编号（支持模糊搜索）">
-    <button id="btnSearch">查询库存</button>
-    <button id="btnRefresh">刷新数据</button>
-  </div>
+<h2>库存查询</h2>
 
-  <div id="inventoryList"></div>
-  <div id="pagination" class="pagination"></div>
+<div class="search-box">
+  <input id="searchInput" placeholder="输入编号或色号">
+  <button id="btnSearch">查询</button>
+  <button onclick="location.reload()">刷新</button>
+</div>
+
+<div id="result"></div>
 
 </div>
 
-<script type="module" src="js/query.js"></script>
+<script type="module" src="js/index.js"></script>
+
 </body>
 </html>
