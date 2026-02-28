@@ -4,105 +4,104 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const btnSearch = document.getElementById("btnSearch");
-const btnRefresh = document.getElementById("btnRefresh");
-const resultDiv = document.getElementById("result");
-const searchInput = document.getElementById("searchInput");
+const btnSearch=document.getElementById("btnSearch");
+const btnRefresh=document.getElementById("btnRefresh");
+const resultDiv=document.getElementById("result");
+const searchInput=document.getElementById("searchInput");
 
-async function searchData() {
+let currentData=[];
+let sortField="stock";
+let sortAsc=false;
 
-  const keyword = searchInput.value.trim().toLowerCase();
-  resultDiv.innerHTML = "";
+btnSearch.onclick=searchData;
+btnRefresh.onclick=()=>{
+  searchInput.value="";
+  resultDiv.innerHTML="";
+};
 
-  if (!keyword) {
-    resultDiv.innerHTML = `<div class="empty">请输入编号或色号</div>`;
-    return;
-  }
+async function searchData(){
+  const keyword=searchInput.value.trim().toLowerCase();
+  resultDiv.innerHTML="";
+  currentData=[];
 
-  const snap = await getDocs(collection(db, "inventory"));
-  let found = false;
+  const snap=await getDocs(collection(db,"inventory"));
 
-  snap.forEach(docSnap => {
+  snap.forEach(doc=>{
+    const item=doc.data();
+    const code=(item.code||"").toLowerCase();
+    const color=(item.color||"").toLowerCase();
 
-    const item = docSnap.data();
-    const code = String(item.code || "").toLowerCase();
-    const color = String(item.color || "").toLowerCase();
+    if(code.includes(keyword)||color.includes(keyword)){
+      const reserved=Array.isArray(item.reservedList)
+        ?item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
+        :0;
 
-    if (code.includes(keyword) || color.includes(keyword)) {
-
-      found = true;
-
-      const stock = Number(item.stock || 0);
-
-      const reserved = Array.isArray(item.reservedList)
-        ? item.reservedList.reduce(
-            (sum, r) => sum + Number(r.qty || 0),
-            0
-          )
-        : 0;
-
-      const imageUrl =
-        `${window.location.origin}/tile-images/images/${item.code}.jpg`;
-
-      let updateText = "";
-
-      if (item.lastUpdate && item.lastUpdate.toDate) {
-        const date = item.lastUpdate.toDate();
-        updateText = `
-          <div class="update-time">
-            最近操作时间：${date.toLocaleString()}
-          </div>
-        `;
-      }
-
-      resultDiv.innerHTML += `
-        <div class="card">
-          <div class="card-row">
-
-            <div class="img-box" onclick="openModal('${imageUrl}')">
-              <img
-                src="${imageUrl}"
-                loading="lazy"
-                onerror="this.style.display='none'"
-              />
-            </div>
-
-            <div class="info">
-              <div class="title">${item.code}</div>
-              <div class="sub">
-                规格：${item.spec || "-"}　
-                色号：${item.color || "-"}
-              </div>
-              ${updateText}
-            </div>
-
-            <div class="right">
-              <div class="qty ${stock > 10 ? "green" : "red"}">
-                ${stock}
-              </div>
-              <div class="sub">
-                仓库：${item.warehouse || "-"}
-              </div>
-              <div class="sub">
-                留货：${reserved}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      `;
+      currentData.push({
+        ...item,
+        stock:Number(item.stock||0),
+        reserved
+      });
     }
-
   });
 
-  if (!found) {
-    resultDiv.innerHTML = `<div class="empty">未找到库存</div>`;
-  }
+  renderTable();
 }
 
-btnSearch.onclick = searchData;
+function renderTable(){
 
-btnRefresh.onclick = () => {
-  searchInput.value = "";
-  resultDiv.innerHTML = `<div class="empty">请输入编号或色号</div>`;
+  currentData.sort((a,b)=>{
+    if(sortAsc) return a[sortField]-b[sortField];
+    else return b[sortField]-a[sortField];
+  });
+
+  resultDiv.innerHTML=`
+    <div class="table-header">
+      <div class="col img-col">图片</div>
+      <div class="col">编号</div>
+      <div class="col">规格</div>
+      <div class="col">色号</div>
+      <div class="col" onclick="sortBy('stock')">数量</div>
+      <div class="col">仓库</div>
+      <div class="col">留货</div>
+    </div>
+  `;
+
+  currentData.forEach(item=>{
+
+    const imageUrl=
+      `${window.location.origin}/tile-images/images/${item.code}.jpg`;
+
+    resultDiv.innerHTML+=`
+      <div class="table-row">
+
+        <div class="col img-col"
+          onclick="openModal('${imageUrl}')">
+          <img src="${imageUrl}"
+          loading="lazy"
+          onerror="this.style.display='none'">
+        </div>
+
+        <div class="col">${item.code}</div>
+        <div class="col">${item.spec||"-"}</div>
+        <div class="col">${item.color||"-"}</div>
+
+        <div class="col ${item.stock<10?'low-stock':''}">
+          ${item.stock}
+        </div>
+
+        <div class="col">${item.warehouse||"-"}</div>
+        <div class="col">${item.reserved}</div>
+
+      </div>
+    `;
+  });
+}
+
+window.sortBy=function(field){
+  if(sortField===field) sortAsc=!sortAsc;
+  else{
+    sortField=field;
+    sortAsc=false;
+  }
+  renderTable();
 };
