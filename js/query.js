@@ -8,7 +8,6 @@ const btnSearch = document.getElementById("btnSearch");
 const btnRefresh = document.getElementById("btnRefresh");
 const resultDiv = document.getElementById("result");
 const searchInput = document.getElementById("searchInput");
-const updateTime = document.getElementById("updateTime");
 
 async function searchData() {
 
@@ -17,7 +16,7 @@ async function searchData() {
 
   if (!keyword) {
     resultDiv.innerHTML =
-      "<div style='padding:20px;color:#999'>请输入编号或色号</div>";
+      `<div class="empty">请输入编号或色号</div>`;
     return;
   }
 
@@ -41,40 +40,64 @@ async function searchData() {
             (sum, r) => sum + Number(r.qty || 0),
             0
           )
-        : Number(item.reserved || 0);
+        : 0;
 
       const imageUrl = `${window.location.origin}/tile-images/images/${item.code}.jpg`;
 
+      let updateText = "";
+
+      if (item.lastUpdate && item.lastUpdate.toDate) {
+        const date = item.lastUpdate.toDate();
+        updateText = `
+          <div class="update-time">
+            最近操作时间：${date.toLocaleString()}
+          </div>
+        `;
+      }
+
       resultDiv.innerHTML += `
-        <div class="row">
-          <div class="img-box">
-            <img 
-              src="${imageUrl}"
-              loading="lazy"
-              onerror="this.style.display='none'"
-            >
-          </div>
-          <div>${item.code}</div>
-          <div>${item.color}</div>
-          <div>
-            <div class="qty ${stock > 10 ? "green" : "red"}">
-              ${stock}
+        <div class="card">
+          <div class="card-row">
+
+            <div class="img-box">
+              <img 
+                src="${imageUrl}"
+                loading="lazy"
+                onerror="this.style.display='none'"
+              >
             </div>
+
+            <div class="info">
+              <div class="title">${item.code}</div>
+              <div class="sub">
+                规格：${item.spec || "-"}　
+                色号：${item.color || "-"}
+              </div>
+              ${updateText}
+            </div>
+
+            <div class="right">
+              <div class="qty ${stock > 10 ? "green" : "red"}">
+                ${stock}
+              </div>
+              <div class="warehouse">
+                ${item.warehouse || ""}
+              </div>
+              <div class="reserved">
+                留货：${reserved}
+              </div>
+            </div>
+
           </div>
-          <div>${item.warehouse || ""}</div>
-          <div>${reserved}</div>
         </div>
       `;
     }
-
   });
 
   if (!found) {
     resultDiv.innerHTML =
-      "<div style='padding:20px;color:#999'>未找到库存</div>";
+      `<div class="empty">未找到库存</div>`;
   }
-
-  updateTime.innerText = "查询时间：" + new Date().toLocaleString();
 }
 
 btnSearch.onclick = searchData;
@@ -82,5 +105,5 @@ btnSearch.onclick = searchData;
 btnRefresh.onclick = () => {
   searchInput.value = "";
   resultDiv.innerHTML =
-    "<div style='padding:20px;color:#999'>请输入编号或色号</div>";
+    `<div class="empty">请输入编号或色号</div>`;
 };
