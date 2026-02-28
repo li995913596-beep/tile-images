@@ -16,6 +16,7 @@
 
 <div class="container">
 
+<!-- 登录 -->
 <div id="loginSection">
   <h2>管理员登录</h2>
   <input id="email" placeholder="邮箱">
@@ -23,6 +24,7 @@
   <button id="btnLogin">登录</button>
 </div>
 
+<!-- 后台 -->
 <div id="adminSection" style="display:none;">
 
 <h2>后台管理</h2>
@@ -42,15 +44,27 @@
 <input id="operateQty" type="number" placeholder="数量">
 <input id="operateCustomer" placeholder="客户（出库时填写）">
 
-<label>
-<input type="checkbox" id="operatePaid">
-已付款
-</label>
+<select id="operatePaid">
+  <option value="">选择付款状态</option>
+  <option value="已付款">已付款</option>
+  <option value="未付款">未付款</option>
+</select>
 
 <br><br>
 
 <button id="btnIn">入库</button>
 <button id="btnOut">出库</button>
+
+<hr>
+<h3>新增库存</h3>
+
+<input id="new_code" placeholder="编号">
+<input id="new_spec" placeholder="规格">
+<input id="new_color" placeholder="色号">
+<input id="new_warehouse" placeholder="仓库">
+<input id="new_qty" type="number" placeholder="初始数量">
+
+<button id="btnCreate">确认新增</button>
 
 <hr>
 <h3>操作日志</h3>
