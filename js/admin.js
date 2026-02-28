@@ -17,8 +17,7 @@ import {
 
 import { importExcel } from "./excel.js";
 
-/* ================= DOM ================= */
-
+/* DOM */
 const loginSection = document.getElementById("loginSection");
 const adminSection = document.getElementById("adminSection");
 
@@ -44,12 +43,16 @@ const new_warehouse = document.getElementById("new_warehouse");
 const new_qty = document.getElementById("new_qty");
 const btnCreate = document.getElementById("btnCreate");
 
+const reserveCustomer = document.getElementById("reserveCustomer");
+const reserveQty = document.getElementById("reserveQty");
+const btnReserve = document.getElementById("btnReserve");
+const reserveListDiv = document.getElementById("reserveList");
+
 const excelFile = document.getElementById("excelFile");
 
 let selectedItem = null;
 
-/* ================= 登录 ================= */
-
+/* 登录 */
 btnLogin.onclick = () => {
   signInWithEmailAndPassword(
     auth,
@@ -66,34 +69,23 @@ onAuthStateChanged(auth, user => {
   if (user) {
     loginSection.style.display = "none";
     adminSection.style.display = "block";
+    loadReserveList();
   } else {
     loginSection.style.display = "block";
     adminSection.style.display = "none";
   }
 });
 
-/* ================= Excel 导入 ================= */
+/* Excel 导入 */
+excelFile.addEventListener("change", async (e) => {
+  if (!confirm("确定导入库存？")) return;
+  await importExcel(e.target.files[0]);
+});
 
-if (excelFile) {
-  excelFile.addEventListener("change", async (e) => {
-
-    if (!confirm("确定导入库存？")) return;
-
-    try {
-      await importExcel(e.target.files[0]);
-    } catch (err) {
-      alert("导入失败：" + err.message);
-    }
-  });
-}
-
-/* ================= 搜索 ================= */
-
+/* 搜索 */
 btnSearch.onclick = async () => {
 
   const keyword = searchCode.value.trim().toLowerCase();
-  if (!keyword) return;
-
   const snap = await getDocs(collection(db, "inventory"));
 
   const list = snap.docs
@@ -103,27 +95,21 @@ btnSearch.onclick = async () => {
       i.color.toLowerCase().includes(keyword)
     );
 
-  if (list.length === 0) {
-    alert("未找到库存");
-    searchResult.innerHTML = "";
-    return;
-  }
-
   searchResult.innerHTML = "";
 
   list.forEach(item => {
 
-    const available = item.stock - item.reserved;
+    const reservedTotal = item.reservedList
+      ? item.reservedList.reduce((s,r)=>s+r.qty,0)
+      : 0;
 
     searchResult.innerHTML += `
-      <div style="border:1px solid #ccc;padding:10px;margin:5px;">
+      <div style="border:1px solid #ccc;margin:5px;padding:8px;">
         编号:${item.code} |
-        规格:${item.spec} |
         色号:${item.color} |
         仓库:${item.warehouse} |
-        总库存:${item.stock} |
-        留货:${item.reserved} |
-        可用:${available}
+        库存:${item.stock} |
+        留货:${reservedTotal}
         <button onclick="selectItem('${item.id}')">选择</button>
       </div>
     `;
@@ -136,78 +122,52 @@ btnSearch.onclick = async () => {
   };
 };
 
-/* ================= 入库 ================= */
-
+/* 入库 */
 btnIn.onclick = async () => {
-
-  if (!selectedItem) {
-    alert("请先选择库存");
-    return;
-  }
-
+  if (!selectedItem) return alert("请选择库存");
   const qty = Number(operateQty.value);
   if (!qty) return;
 
   const ref = doc(db, "inventory", selectedItem.id);
   const snap = await getDoc(ref);
-  const latest = snap.data();
+  const data = snap.data();
 
-  await updateDoc(ref, {
-    stock: latest.stock + qty
-  });
-
+  await updateDoc(ref, { stock: data.stock + qty });
   alert("入库成功");
 };
 
-/* ================= 出库 ================= */
-
+/* 出库 */
 btnOut.onclick = async () => {
-
-  if (!selectedItem) {
-    alert("请先选择库存");
-    return;
-  }
-
+  if (!selectedItem) return alert("请选择库存");
   const qty = Number(operateQty.value);
   const customer = operateCustomer.value.trim();
   const paid = operatePaid.value;
 
-  if (!qty || !customer || !paid) {
-    alert("填写完整信息");
-    return;
-  }
+  if (!qty || !customer || !paid) return alert("填写完整信息");
 
   const ref = doc(db, "inventory", selectedItem.id);
   const snap = await getDoc(ref);
-  const latest = snap.data();
+  const data = snap.data();
 
-  const available = latest.stock - latest.reserved;
+  if (qty > data.stock) return alert("库存不足");
 
-  if (qty > available) {
-    alert("库存不足，可用：" + available);
-    return;
-  }
-
-  await updateDoc(ref, {
-    stock: latest.stock - qty
-  });
+  await updateDoc(ref, { stock: data.stock - qty });
 
   await addDoc(collection(db, "logs"), {
-    type: "out",
-    code: latest.code,
-    color: latest.color,
-    warehouse: latest.warehouse,
+    type:"out",
+    code:data.code,
+    color:data.color,
+    warehouse:data.warehouse,
     qty,
     customer,
     paid,
-    date: new Date()
+    date:new Date()
   });
 
   alert("出库成功");
 };
 
-/* ================= 新增库存 ================= */
-
+/* 新增库存 */
 btnCreate.onclick = async () => {
 
   const code = new_code.value.trim();
@@ -216,36 +176,88 @@ btnCreate.onclick = async () => {
   const warehouse = new_warehouse.value.trim();
   const qty = Number(new_qty.value);
 
-  if (!code || !spec || !color || !warehouse || !qty) {
-    alert("填写完整信息");
-    return;
-  }
+  if (!code || !spec || !color || !warehouse || !qty)
+    return alert("填写完整信息");
 
-  const docId = `${code}_${color}_${warehouse}`;
-  const ref = doc(db, "inventory", docId);
+  const docId = `${code.replace(/\//g,"_")}_${color}_${warehouse}`;
+  const ref = doc(db,"inventory",docId);
   const snap = await getDoc(ref);
 
   if (snap.exists()) {
-
-    const old = snap.data();
-
-    await updateDoc(ref, {
-      stock: old.stock + qty
-    });
-
-    alert("库存已存在，已自动累加");
-
+    const data = snap.data();
+    await updateDoc(ref,{ stock:data.stock + qty });
   } else {
-
-    await setDoc(ref, {
+    await setDoc(ref,{
       code,
       spec,
       color,
       warehouse,
-      stock: qty,
-      reserved: 0
+      stock:qty,
+      reservedList:[]
     });
-
-    alert("新增成功");
   }
+
+  alert("新增成功");
 };
+
+/* 留货 */
+btnReserve.onclick = async () => {
+
+  if (!selectedItem) return alert("请选择库存");
+
+  const qty = Number(reserveQty.value);
+  const customer = reserveCustomer.value.trim();
+
+  if (!qty || !customer) return alert("填写完整信息");
+
+  const ref = doc(db,"inventory",selectedItem.id);
+  const snap = await getDoc(ref);
+  const data = snap.data();
+
+  if (qty > data.stock) return alert("库存不足");
+
+  const newReserve = {
+    id:Date.now().toString(),
+    customer,
+    qty,
+    date:new Date()
+  };
+
+  const list = data.reservedList || [];
+
+  await updateDoc(ref,{
+    stock:data.stock - qty,
+    reservedList:[...list,newReserve]
+  });
+
+  alert("留货成功");
+  loadReserveList();
+};
+
+/* 全局留货清单 */
+async function loadReserveList(){
+
+  const snap = await getDocs(collection(db,"inventory"));
+  let html = "";
+
+  snap.docs.forEach(d=>{
+
+    const item = d.data();
+
+    if(item.reservedList && item.reservedList.length>0){
+
+      item.reservedList.forEach(r=>{
+
+        html += `
+          <div style="border:1px solid #ccc;margin:5px;padding:6px;">
+            ${item.code} | ${item.color} | ${item.warehouse}
+            | 客户:${r.customer}
+            | 数量:${r.qty}
+          </div>
+        `;
+      });
+    }
+  });
+
+  reserveListDiv.innerHTML = html;
+}
