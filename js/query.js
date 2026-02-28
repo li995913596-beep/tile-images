@@ -5,8 +5,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const btnSearch = document.getElementById("btnSearch");
-const searchInput = document.getElementById("searchInput");
 const resultDiv = document.getElementById("result");
+const searchInput = document.getElementById("searchInput");
 
 btnSearch.addEventListener("click", async () => {
 
@@ -14,17 +14,16 @@ btnSearch.addEventListener("click", async () => {
   resultDiv.innerHTML = "";
 
   if (!keyword) {
-    resultDiv.innerHTML = "<p style='color:red;'>请输入编号</p>";
+    resultDiv.innerHTML = "<p style='color:red'>请输入编号或色号</p>";
     return;
   }
 
   try {
 
-    const snapshot = await getDocs(collection(db, "inventory"));
-
+    const snap = await getDocs(collection(db, "inventory"));
     let found = false;
 
-    snapshot.forEach(doc => {
+    snap.forEach(doc => {
 
       const item = doc.data();
 
@@ -37,12 +36,8 @@ btnSearch.addEventListener("click", async () => {
 
         const stock = Number(item.stock || 0);
 
-        const reservedTotal = Array.isArray(item.reservedList)
-          ? item.reservedList.reduce(
-              (sum, r) => sum + Number(r.qty || 0),
-              0
-            )
-          : 0;
+        const reservedTotal = (item.reservedList || [])
+          .reduce((sum, r) => sum + Number(r.qty), 0);
 
         const imageUrl = `images/${item.code}.jpg`;
 
@@ -50,23 +45,23 @@ btnSearch.addEventListener("click", async () => {
           <div style="
             background:#fff;
             padding:15px;
-            margin:10px 0;
-            border-radius:8px;
+            margin:15px 0;
+            border-radius:10px;
             display:flex;
-            gap:15px;
+            gap:20px;
             align-items:center;
+            box-shadow:0 2px 8px rgba(0,0,0,0.1);
           ">
-            
-            <!-- 固定图片区域 -->
+
             <div style="
-              width:120px;
-              height:120px;
+              width:130px;
+              height:130px;
               background:#f2f2f2;
+              border-radius:8px;
+              overflow:hidden;
               display:flex;
               align-items:center;
               justify-content:center;
-              border-radius:6px;
-              overflow:hidden;
             ">
               <img 
                 src="${imageUrl}"
@@ -75,14 +70,15 @@ btnSearch.addEventListener("click", async () => {
               />
             </div>
 
-            <!-- 文字区域 -->
             <div>
-              <b>${item.code} (${item.warehouse})</b><br>
-              规格: ${item.spec} | 色号: ${item.color}<br>
-              剩余库存:
-              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
+              <h3>${item.code} (${item.warehouse})</h3>
+              规格: ${item.spec}<br>
+              色号: ${item.color}<br>
+              剩余库存: 
+              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold;">
                 ${stock}
-              </span><br>
+              </span>
+              <br>
               留货: ${reservedTotal}
             </div>
 
@@ -93,12 +89,12 @@ btnSearch.addEventListener("click", async () => {
     });
 
     if (!found) {
-      resultDiv.innerHTML = "<p style='color:red;'>未找到库存</p>";
+      resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
     }
 
-  } catch (err) {
-    console.error(err);
-    resultDiv.innerHTML = "<p style='color:red;'>查询失败</p>";
+  } catch (e) {
+    console.error(e);
+    resultDiv.innerHTML = "<p style='color:red'>查询失败</p>";
   }
 
 });
