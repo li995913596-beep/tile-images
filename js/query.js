@@ -13,10 +13,9 @@ const updateTime = document.getElementById("updateTime");
 async function searchData() {
 
   const keyword = searchInput.value.trim().toLowerCase();
-
   resultDiv.innerHTML = "";
 
-  if (keyword === "") {
+  if (!keyword) {
     resultDiv.innerHTML =
       "<div style='padding:20px;color:#999'>请输入编号或色号</div>";
     return;
@@ -30,33 +29,31 @@ async function searchData() {
 
     const item = doc.data();
 
-    const code = (item.code || "").toString().toLowerCase();
-    const color = (item.color || "").toString().toLowerCase();
+    const code = String(item.code || "").toLowerCase();
+    const color = String(item.color || "").toLowerCase();
 
-    if (
-      code.includes(keyword) ||
-      color.includes(keyword)
-    ) {
+    if (code.includes(keyword) || color.includes(keyword)) {
 
       found = true;
 
       const stock = Number(item.stock || 0);
-
       const reserved = Array.isArray(item.reservedList)
         ? item.reservedList.reduce((s, r) => s + Number(r.qty || 0), 0)
         : Number(item.reserved || 0);
 
+      const imageUrl = `images/${item.code}.jpg`;
+
       resultDiv.innerHTML += `
         <div class="row">
           <div>
-            < img src="images/${item.code}.jpg"
+            < img src="${imageUrl}"
                  loading="lazy"
                  onerror="this.style.display='none'">
           </div>
           <div>${item.code}</div>
           <div>${item.color}</div>
           <div>
-            <div class="qty ${stock > 10 ? 'green' : 'red'}">
+            <div class="qty ${stock > 10 ? "green" : "red"}">
               ${stock}
             </div>
           </div>
@@ -64,6 +61,7 @@ async function searchData() {
           <div>${reserved}</div>
         </div>
       `;
+
     }
 
   });
