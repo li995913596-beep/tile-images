@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>瓷砖库存查询系统</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<title>瓷砖库存查询系统</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
 <header>
@@ -31,20 +32,25 @@
 </div>
 
 <!-- 图片放大 -->
-<div id="imgModal" class="modal" onclick="closeModal()">
+<div id="imgModal" class="modal">
   < img id="modalImg">
 </div>
 
+<script type="module" src="js/query.js"></script>
+
 <script>
-function openModal(src){
-  document.getElementById("modalImg").src = src;
-  document.getElementById("imgModal").style.display = "flex";
-}
-function closeModal(){
-  document.getElementById("imgModal").style.display = "none";
-}
+const modal=document.getElementById("imgModal");
+const modalImg=document.getElementById("modalImg");
+
+window.openModal=function(src){
+  modal.style.display="flex";
+  modalImg.src=src;
+};
+
+modal.onclick=function(){
+  modal.style.display="none";
+};
 </script>
 
-<script type="module" src="js/query.js"></script>
 </body>
 </html>
