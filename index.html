@@ -2,29 +2,47 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>瓷砖库存查询系统</title>
+  <title>瓷砖库存管理系统</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
 
 <div class="top-bar">
-  <h2>瓷砖库存查询系统</h2>
-  <button class="admin-btn" onclick="location.href='admin.html'">⚙</button>
+  <div class="title">瓷砖库存管理系统</div>
 </div>
 
-<div class="search-section">
-  <input id="searchInput" placeholder="输入编号或色号">
-  <button id="btnSearch">查询</button>
-  <button id="btnRefresh">刷新</button>
+<div class="main-card">
+
+  <h2>📊 库存查询</h2>
+
+  <input id="searchInput" placeholder="请输入编号或色号">
+
+  <div class="btn-group">
+    <button id="btnSearch" class="primary">查询库存</button>
+    <button id="btnRefresh" class="secondary">刷新数据</button>
+  </div>
+
+  <div class="update-time">
+    库存最后更新时间：<span id="updateTime">--</span>
+  </div>
+
+  <div class="table-head">
+    <div>图片</div>
+    <div>编号</div>
+    <div>色号</div>
+    <div>数量</div>
+    <div>仓库</div>
+    <div>留货</div>
+  </div>
+
+  <div id="result"></div>
+
 </div>
 
-<div class="update-time" id="updateTime"></div>
-
-<hr>
-
-<div id="result"></div>
+<button class="admin-btn" onclick="location.href='admin.html'">
+  ⚙ 管理员
+</button>
 
 <script type="module" src="js/query.js"></script>
 
