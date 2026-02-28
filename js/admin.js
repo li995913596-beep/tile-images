@@ -11,7 +11,8 @@ import {
   setDoc,
   updateDoc,
   collection,
-  addDoc
+  addDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { importExcel } from "./excel.js";
@@ -43,6 +44,9 @@ const out_customer = document.getElementById("out_customer");
 const out_paid = document.getElementById("out_paid");
 const btnOut = document.getElementById("btnOut");
 
+/* 日志区 */
+const logList = document.getElementById("logList");
+
 /* ===== 登录 ===== */
 btnLogin.onclick = () => {
   signInWithEmailAndPassword(auth, email.value, password.value)
@@ -50,33 +54,27 @@ btnLogin.onclick = () => {
     .catch(err => alert("登录失败: " + err.message));
 };
 
-/* ===== 退出 ===== */
 btnLogout.onclick = () => signOut(auth);
 
-/* ===== 登录状态监听 ===== */
 onAuthStateChanged(auth, user => {
   if (user) {
     loginSection.style.display = "none";
     adminSection.style.display = "block";
+    loadLogs();
   } else {
     loginSection.style.display = "block";
     adminSection.style.display = "none";
   }
 });
 
-/* ===== Excel 导入 ===== */
+/* ===== Excel ===== */
 excelFile.addEventListener("change", async (e) => {
   if (!confirm("确定覆盖库存？")) return;
-
-  try {
-    await importExcel(e.target.files[0]);
-    alert("导入成功");
-  } catch (err) {
-    alert("导入失败: " + err);
-  }
+  await importExcel(e.target.files[0]);
+  alert("导入成功");
 });
 
-/* ===== 入库 ===== */
+/* ===== 入库（严格规则） ===== */
 btnIn.onclick = async () => {
 
   const code = in_code.value.trim();
@@ -95,17 +93,22 @@ btnIn.onclick = async () => {
   const snap = await getDoc(ref);
 
   if (snap.exists()) {
+
     const data = snap.data();
-    await updateDoc(ref, {
-      stock: data.stock + qty
-    });
+
+    if (data.warehouse === warehouse) {
+      await updateDoc(ref, {
+        stock: data.stock + qty
+      });
+    }
+
   } else {
 
     const spec = in_spec.value.trim();
     const color = in_color.value.trim();
 
     if (!spec || !color) {
-      alert("新建库存必须填写规格和色号");
+      alert("新入库必须填写规格和色号");
       return;
     }
 
@@ -129,9 +132,7 @@ btnIn.onclick = async () => {
   });
 
   alert("入库成功");
-
-  in_code.value = "";
-  in_qty.value = "";
+  loadLogs();
 };
 
 /* ===== 出库 ===== */
@@ -183,8 +184,58 @@ btnOut.onclick = async () => {
   });
 
   alert("出库成功");
+  loadLogs();
+};
 
-  out_code.value = "";
-  out_qty.value = "";
-  out_customer.value = "";
+/* ===== 加载日志 ===== */
+async function loadLogs() {
+
+  const snap = await getDocs(collection(db, "logs"));
+  logList.innerHTML = "";
+
+  snap.docs.forEach(docItem => {
+
+    const data = docItem.data();
+    const id = docItem.id;
+
+    logList.innerHTML += `
+      <div>
+        ${data.type} | ${data.code} | ${data.qty}
+        ${data.reverted ? "(已撤销)" : ""}
+        ${!data.reverted ? `<button onclick="revertLog('${id}')">撤销</button>` : ""}
+      </div>
+    `;
+  });
+}
+
+/* ===== 撤销 ===== */
+window.revertLog = async function(id) {
+
+  const logRef = doc(db, "logs", id);
+  const snap = await getDoc(logRef);
+  const log = snap.data();
+
+  if (log.reverted) return;
+
+  const safeCode = log.code.replaceAll("/", "-");
+  const invRef = doc(db, "inventory", `${safeCode}_${log.warehouse}`);
+  const invSnap = await getDoc(invRef);
+  const inv = invSnap.data();
+
+  if (log.type === "in") {
+    await updateDoc(invRef, {
+      stock: inv.stock - log.qty
+    });
+  }
+
+  if (log.type === "out") {
+    await updateDoc(invRef, {
+      stock: inv.stock + log.qty
+    });
+  }
+
+  await updateDoc(logRef, { reverted: true });
+
+  alert("已撤销");
+  loadLogs();
 };
