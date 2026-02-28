@@ -16,16 +16,15 @@ export async function importExcel(file) {
     const worksheet = workbook.Sheets[sheetName];
     const json = XLSX.utils.sheet_to_json(worksheet);
 
-    const warehouse = sheetName.trim(); // sheet名就是仓库名
-
     for (let row of json) {
 
-      const code = String(row["编号"]).trim();
-      const spec = String(row["规格"]).trim();
-      const color = String(row["色号"]).trim();
-      const qty = Number(row["数量"]);
+      const code = String(row["编号"] || "").trim();
+      const spec = String(row["规格"] || "").trim();
+      const color = String(row["色号"] || "").trim();
+      const warehouse = String(row["仓库"] || "").trim();
+      const qty = Number(row["数量"] || 0);
 
-      if (!code || !spec || !color || !qty) continue;
+      if (!code || !spec || !color || !warehouse) continue;
 
       const docId = `${code}_${color}_${warehouse}`;
       const ref = doc(db, "inventory", docId);
