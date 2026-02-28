@@ -13,45 +13,53 @@ btnSearch.addEventListener("click", async () => {
   const keyword = searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML = "";
 
-  const snapshot = await getDocs(collection(db, "inventory"));
+  try {
 
-  let found = false;
+    const snapshot = await getDocs(collection(db, "inventory"));
 
-  snapshot.forEach(doc => {
+    let found = false;
 
-    const item = doc.data();
+    snapshot.forEach(doc => {
 
-    if (
-      item.code?.toLowerCase().includes(keyword) ||
-      item.color?.toLowerCase().includes(keyword)
-    ) {
+      const item = doc.data();
 
-      found = true;
+      if (
+        item.code?.toLowerCase().includes(keyword) ||
+        item.color?.toLowerCase().includes(keyword)
+      ) {
 
-      const stock = Number(item.stock || 0);
+        found = true;
 
-      const reservedTotal = Array.isArray(item.reservedList)
-        ? item.reservedList.reduce(
-            (sum, r) => sum + Number(r.qty || 0),
-            0
-          )
-        : 0;
+        const stock = Number(item.stock || 0);
 
-      resultDiv.innerHTML += `
-        <div style="background:#fff;padding:15px;margin:10px 0;border-radius:8px;">
-          <b>${item.code} (${item.warehouse})</b><br>
-          规格: ${item.spec} | 色号: ${item.color}<br>
-          剩余库存: <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
-            ${stock}
-          </span><br>
-          留货: ${reservedTotal}
-        </div>
-      `;
+        const reservedTotal = Array.isArray(item.reservedList)
+          ? item.reservedList.reduce(
+              (sum, r) => sum + Number(r.qty || 0),
+              0
+            )
+          : 0;
+
+        resultDiv.innerHTML += `
+          <div style="background:#fff;padding:15px;margin:10px 0;border-radius:8px;">
+            <b>${item.code} (${item.warehouse})</b><br>
+            规格: ${item.spec} | 色号: ${item.color}<br>
+            剩余库存: 
+              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
+                ${stock}
+              </span><br>
+            留货: ${reservedTotal}
+          </div>
+        `;
+      }
+    });
+
+    if (!found) {
+      resultDiv.innerHTML = "<p style='color:red;'>未找到库存</p>";
     }
-  });
 
-  if (!found) {
-    resultDiv.innerHTML = "<p style='color:red;'>未找到库存</p>";
+  } catch (err) {
+    console.error(err);
+    resultDiv.innerHTML = "<p style='color:red;'>查询失败</p>";
   }
 
 });
