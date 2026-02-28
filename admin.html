@@ -1,80 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>库存后台</title>
-<style>
-nav{
-  background:#1976d2;
-  padding:10px;
-}
-nav a{
-  color:white;
-  margin-right:15px;
-  text-decoration:none;
-}
-.card{
-  border:1px solid #ccc;
-  padding:10px;
-  margin:5px;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>管理员后台</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
+
 <body>
 
-<nav>
-  <a href="index.html">返回首页</a>
-  <a href="#">库存后台</a>
-</nav>
-
-<h2>管理员登录</h2>
 <div id="loginSection">
-  <input id="email" placeholder="邮箱">
+  <h2>管理员登录</h2>
+  <input id="username" placeholder="用户名">
   <input id="password" type="password" placeholder="密码">
   <button id="btnLogin">登录</button>
 </div>
 
 <div id="adminSection" style="display:none;">
 
-<h3>Excel 导入库存</h3>
-<input type="file" id="excelFile">
+  <h2>库存管理后台</h2>
 
-<hr>
+  <div>
+    <button onclick="showTab('in')">入库</button>
+    <button onclick="showTab('out')">出库</button>
+    <button onclick="showTab('reserve')">留货</button>
+    <button onclick="showTab('log')">日志</button>
+    <button onclick="location.reload()">退出</button>
+  </div>
 
-<h3>搜索库存</h3>
-<input id="searchCode" placeholder="编号或色号">
-<button id="btnSearch">搜索</button>
-<div id="searchResult"></div>
+  <hr>
 
-<hr>
+  <!-- 入库 -->
+  <div id="tab_in" class="tab">
+    <h3>入库</h3>
+    <input id="in_search" placeholder="搜索编号或色号">
+    <button onclick="searchInventory('in')">搜索</button>
+    <div id="in_result"></div>
 
-<h3>入库 / 出库</h3>
-<div id="selectedInfo" style="color:green;"></div>
-<input id="operateQty" type="number" placeholder="数量">
-<input id="operateCustomer" placeholder="客户">
-<select id="operatePaid">
-<option value="">付款状态</option>
-<option value="已付款">已付款</option>
-<option value="未付款">未付款</option>
-</select>
-<button id="btnIn">入库</button>
-<button id="btnOut">出库</button>
+    <h4>新增库存（如不存在）</h4>
+    编号<input id="new_code">
+    规格<input id="new_spec">
+    色号<input id="new_color">
+    仓库<input id="new_warehouse">
+    数量<input id="new_qty">
+    <button onclick="addNewStock()">新增</button>
+  </div>
 
-<hr>
+  <!-- 出库 -->
+  <div id="tab_out" class="tab" style="display:none;">
+    <h3>出库</h3>
+    <input id="out_search" placeholder="搜索编号或色号">
+    <button onclick="searchInventory('out')">搜索</button>
+    <div id="out_result"></div>
+  </div>
 
-<h3>留货</h3>
-<input id="reserveCustomer" placeholder="客户">
-<input id="reserveQty" type="number" placeholder="数量">
-<button id="btnReserve">确认留货</button>
+  <!-- 留货 -->
+  <div id="tab_reserve" class="tab" style="display:none;">
+    <h3>留货</h3>
+    <input id="reserve_search" placeholder="搜索编号或色号">
+    <button onclick="searchInventory('reserve')">搜索</button>
+    <div id="reserve_result"></div>
 
-<hr>
+    <h4>全局留货清单</h4>
+    <div id="reserveList"></div>
+  </div>
 
-<h3>全局留货清单</h3>
-<div id="reserveList"></div>
+  <!-- 日志 -->
+  <div id="tab_log" class="tab" style="display:none;">
+    <h3>日志</h3>
+    <button onclick="downloadLogs()">下载CSV</button>
+    <div id="logList"></div>
+  </div>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script type="module" src="js/admin.js"></script>
 </body>
 </html>
