@@ -1,73 +1,57 @@
 import { db } from "./firebase.js";
-import { collection, getDocs } from
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const inventoryRef = collection(db, "inventory");
+const btnSearch = document.getElementById("btnSearch");
+const searchInput = document.getElementById("searchInput");
+const resultDiv = document.getElementById("result");
 
-let inventoryData = [];
-let currentPage = 1;
-const pageSize = 10;
+btnSearch.addEventListener("click", async () => {
 
-async function loadData() {
-  const snap = await getDocs(inventoryRef);
-  inventoryData = snap.docs.map(d => d.data());
-}
+  const keyword = searchInput.value.trim().toLowerCase();
+  resultDiv.innerHTML = "";
 
-function render() {
-  const keyword = searchInput.value.toLowerCase();
-  const filtered = inventoryData.filter(item =>
-    item.code.toLowerCase().includes(keyword)
-  );
+  const snapshot = await getDocs(collection(db, "inventory"));
 
-  const start = (currentPage - 1) * pageSize;
-  const pageData = filtered.slice(start, start + pageSize);
+  let found = false;
 
-  inventoryList.innerHTML = "";
+  snapshot.forEach(doc => {
 
-  pageData.forEach(item => {
-    const remaining = item.stock - item.reserved;
+    const item = doc.data();
 
-    let stockClass = "stock-green";
-    if (remaining < 10) stockClass = "stock-red";
-    else if (remaining < 100) stockClass = "stock-orange";
+    if (
+      item.code?.toLowerCase().includes(keyword) ||
+      item.color?.toLowerCase().includes(keyword)
+    ) {
 
-    inventoryList.innerHTML += `
-      <div class="card">
-        <img src="images/${item.code}.jpg"
-             onerror="this.src='images/default.jpg'">
-        <div class="card-content">
-          <div><b>${item.code}</b> (${item.warehouse})</div>
-          <div>规格: ${item.spec} | 色号: ${item.color}</div>
-          <div>剩余库存: <span class="${stockClass}">${remaining}</span></div>
-          <div>留货: ${item.reserved}</div>
+      found = true;
+
+      const stock = Number(item.stock || 0);
+
+      const reservedTotal = Array.isArray(item.reservedList)
+        ? item.reservedList.reduce(
+            (sum, r) => sum + Number(r.qty || 0),
+            0
+          )
+        : 0;
+
+      resultDiv.innerHTML += `
+        <div style="background:#fff;padding:15px;margin:10px 0;border-radius:8px;">
+          <b>${item.code} (${item.warehouse})</b><br>
+          规格: ${item.spec} | 色号: ${item.color}<br>
+          剩余库存: <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
+            ${stock}
+          </span><br>
+          留货: ${reservedTotal}
         </div>
-      </div>
-    `;
+      `;
+    }
   });
 
-  renderPagination(filtered.length);
-}
-
-function renderPagination(total) {
-  const totalPages = Math.ceil(total / pageSize);
-  pagination.innerHTML = "";
-
-  for (let i = 1; i <= totalPages; i++) {
-    pagination.innerHTML +=
-      `<button onclick="goPage(${i})">${i}</button>`;
+  if (!found) {
+    resultDiv.innerHTML = "<p style='color:red;'>未找到库存</p>";
   }
-}
 
-window.goPage = function(page) {
-  currentPage = page;
-  render();
-};
-
-btnSearch.onclick = render;
-btnRefresh.onclick = async () => {
-  await loadData();
-  render();
-};
-
-await loadData();
-render();
+});
