@@ -14,142 +14,213 @@ import {
 
 import { importExcel } from "./excel.js";
 
-let selectedItem=null;
+/* ===== DOM ===== */
 
-/* 登录 */
-btnLogin.onclick=()=>{
-  signInWithEmailAndPassword(auth,email.value,password.value)
-  .then(()=>alert("登录成功"))
-  .catch(e=>alert(e.message));
+const loginSection = document.getElementById("loginSection");
+const adminSection = document.getElementById("adminSection");
+
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const btnLogin = document.getElementById("btnLogin");
+
+const excelFile = document.getElementById("excelFile");
+
+const searchCode = document.getElementById("searchCode");
+const btnSearch = document.getElementById("btnSearch");
+const searchResult = document.getElementById("searchResult");
+const selectedInfo = document.getElementById("selectedInfo");
+
+const operateQty = document.getElementById("operateQty");
+const operateCustomer = document.getElementById("operateCustomer");
+const operatePaid = document.getElementById("operatePaid");
+const btnIn = document.getElementById("btnIn");
+const btnOut = document.getElementById("btnOut");
+
+const reserveCustomer = document.getElementById("reserveCustomer");
+const reserveQty = document.getElementById("reserveQty");
+const btnReserve = document.getElementById("btnReserve");
+const reserveListDiv = document.getElementById("reserveList");
+
+let selectedItemId = null;
+
+/* ===== 登录 ===== */
+
+btnLogin.onclick = () => {
+  signInWithEmailAndPassword(auth, email.value, password.value)
+    .then(() => alert("登录成功"))
+    .catch(e => alert(e.message));
 };
 
-onAuthStateChanged(auth,user=>{
-  if(user){
-    loginSection.style.display="none";
-    adminSection.style.display="block";
+onAuthStateChanged(auth, user => {
+  if (user) {
+    loginSection.style.display = "none";
+    adminSection.style.display = "block";
     loadReserveList();
   }
 });
 
-/* Excel */
-excelFile.onchange=e=>importExcel(e.target.files[0]);
+/* ===== Excel 导入 ===== */
 
-/* 搜索 */
-btnSearch.onclick=async()=>{
-  const key=searchCode.value.trim().toLowerCase();
-  const snap=await getDocs(collection(db,"inventory"));
+excelFile.onchange = async e => {
+  await importExcel(e.target.files[0]);
+  alert("库存导入完成");
+};
 
-  searchResult.innerHTML="";
+/* ===== 搜索库存 ===== */
 
-  snap.docs.forEach(d=>{
-    const item=d.data();
-    if(item.code.toLowerCase().includes(key) || item.color.toLowerCase().includes(key)){
+btnSearch.onclick = async () => {
 
-      const reservedTotal=(item.reservedList||[])
-      .reduce((s,r)=>s+Number(r.qty||0),0);
+  const key = searchCode.value.trim().toLowerCase();
+  const snap = await getDocs(collection(db, "inventory"));
 
-      searchResult.innerHTML+=`
-      <div class="card">
-      ${item.code}|${item.color}|${item.warehouse}
-      库存:${item.stock}
-      留货:${reservedTotal}
-      <button onclick="selectItem('${d.id}')">选择</button>
-      </div>`;
+  searchResult.innerHTML = "";
+  selectedItemId = null;
+  selectedInfo.innerText = "";
+
+  snap.docs.forEach(d => {
+
+    const item = d.data();
+
+    if (
+      item.code?.toLowerCase().includes(key) ||
+      item.color?.toLowerCase().includes(key)
+    ) {
+
+      const stock = Number(item.stock || 0);
+
+      const reservedList = Array.isArray(item.reservedList)
+        ? item.reservedList
+        : [];
+
+      const reservedTotal = reservedList.reduce(
+        (sum, r) => sum + Number(r.qty || 0),
+        0
+      );
+
+      searchResult.innerHTML += `
+        <div style="border:1px solid #ccc;margin:8px;padding:10px;border-radius:6px;">
+          <b>${item.code} (${item.warehouse})</b><br>
+          规格: ${item.spec} | 色号: ${item.color}<br>
+          剩余库存: ${stock}<br>
+          留货: ${reservedTotal}<br>
+          <button onclick="window.selectItem('${d.id}')">选择</button>
+        </div>
+      `;
     }
   });
 
-  window.selectItem=id=>{
-    selectedItem=id;
-    selectedInfo.innerText="已选择:"+id;
+  window.selectItem = id => {
+    selectedItemId = id;
+    selectedInfo.innerText = "已选择: " + id;
   };
 };
 
-/* 留货 */
-btnReserve.onclick=async()=>{
-  if(!selectedItem) return alert("请选择库存");
+/* ===== 入库 ===== */
 
-  const qty=Number(reserveQty.value);
-  const customer=reserveCustomer.value.trim();
+btnIn.onclick = async () => {
+  if (!selectedItemId) return alert("请选择库存");
 
-  const ref=doc(db,"inventory",selectedItem);
-  const snap=await getDoc(ref);
-  const data=snap.data();
+  const qty = Number(operateQty.value);
+  if (!qty) return alert("请输入数量");
 
-  if(qty>data.stock) return alert("库存不足");
+  const ref = doc(db, "inventory", selectedItemId);
+  const snap = await getDoc(ref);
+  const data = snap.data();
 
-  const list=data.reservedList||[];
+  await updateDoc(ref, {
+    stock: Number(data.stock || 0) + qty
+  });
+
+  alert("入库成功");
+};
+
+/* ===== 出库 ===== */
+
+btnOut.onclick = async () => {
+  if (!selectedItemId) return alert("请选择库存");
+
+  const qty = Number(operateQty.value);
+  if (!qty) return alert("请输入数量");
+
+  const ref = doc(db, "inventory", selectedItemId);
+  const snap = await getDoc(ref);
+  const data = snap.data();
+
+  if (qty > Number(data.stock || 0)) {
+    return alert("库存不足");
+  }
+
+  await updateDoc(ref, {
+    stock: Number(data.stock || 0) - qty
+  });
+
+  alert("出库成功");
+};
+
+/* ===== 留货 ===== */
+
+btnReserve.onclick = async () => {
+
+  if (!selectedItemId) return alert("请选择库存");
+
+  const qty = Number(reserveQty.value);
+  const customer = reserveCustomer.value.trim();
+
+  if (!qty || !customer) return alert("填写完整信息");
+
+  const ref = doc(db, "inventory", selectedItemId);
+  const snap = await getDoc(ref);
+  const data = snap.data();
+
+  if (qty > Number(data.stock || 0)) {
+    return alert("库存不足");
+  }
+
+  const list = Array.isArray(data.reservedList)
+    ? data.reservedList
+    : [];
 
   list.push({
-    id:Date.now().toString(),
+    id: Date.now().toString(),
     customer,
     qty,
-    date:new Date()
+    date: new Date()
   });
 
-  await updateDoc(ref,{
-    stock:data.stock-qty,
-    reservedList:list
+  await updateDoc(ref, {
+    stock: Number(data.stock || 0) - qty,
+    reservedList: list
   });
+
+  reserveQty.value = "";
+  reserveCustomer.value = "";
 
   loadReserveList();
 };
 
-/* 全局留货清单 + 编辑 */
-async function loadReserveList(){
+/* ===== 全局留货清单 ===== */
 
-  const snap=await getDocs(collection(db,"inventory"));
-  reserveList.innerHTML="";
+async function loadReserveList() {
 
-  snap.docs.forEach(d=>{
-    const item=d.data();
+  const snap = await getDocs(collection(db, "inventory"));
+  reserveListDiv.innerHTML = "";
 
-    (item.reservedList||[]).forEach(r=>{
+  snap.docs.forEach(d => {
 
-      reserveList.innerHTML+=`
-      <div class="card">
-      ${item.code}|${item.color}|${item.warehouse}
-      客户:${r.customer}
-      数量:<input type="number" value="${r.qty}" 
-      onchange="editReserve('${d.id}','${r.id}',this.value)">
-      <button onclick="deleteReserve('${d.id}','${r.id}',${r.qty})">
-      删除</button>
-      </div>`;
+    const item = d.data();
+    const list = Array.isArray(item.reservedList)
+      ? item.reservedList
+      : [];
+
+    list.forEach(r => {
+
+      reserveListDiv.innerHTML += `
+        <div style="border:1px solid #ccc;margin:5px;padding:8px;">
+          ${item.code} | ${item.color} | ${item.warehouse}<br>
+          客户: ${r.customer}<br>
+          数量: ${r.qty}
+        </div>
+      `;
     });
   });
 }
-
-/* 编辑 */
-window.editReserve=async(invId,resId,newQty)=>{
-  const ref=doc(db,"inventory",invId);
-  const snap=await getDoc(ref);
-  const data=snap.data();
-
-  const list=data.reservedList;
-  const item=list.find(i=>i.id===resId);
-
-  const diff=newQty-item.qty;
-  item.qty=Number(newQty);
-
-  await updateDoc(ref,{
-    stock:data.stock-diff,
-    reservedList:list
-  });
-
-  loadReserveList();
-};
-
-/* 删除 */
-window.deleteReserve=async(invId,resId,qty)=>{
-  const ref=doc(db,"inventory",invId);
-  const snap=await getDoc(ref);
-  const data=snap.data();
-
-  const list=data.reservedList.filter(i=>i.id!==resId);
-
-  await updateDoc(ref,{
-    stock:data.stock+qty,
-    reservedList:list
-  });
-
-  loadReserveList();
-};
