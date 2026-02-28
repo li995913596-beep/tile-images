@@ -9,22 +9,25 @@
 
 <div class="navbar">
   <div class="logo">瓷砖库存管理系统</div>
-  <div>
-    <a href="index.html">库存查询</a>
-    <a href="admin.html">管理员</a>
+  <div class="nav-links">
+    <a class="active">库存查询</a>
+    <a href="admin.html">管理后台</a>
   </div>
 </div>
 
 <div class="container">
-  <h2>库存查询</h2>
 
-  <input id="searchInput" placeholder="输入瓷砖编号">
-  <button id="btnSearch">查询库存</button>
+  <div class="search-box">
+    <input id="searchInput" placeholder="输入瓷砖编号（支持模糊搜索）">
+    <button id="btnSearch">查询库存</button>
+    <button id="btnRefresh">刷新数据</button>
+  </div>
 
   <div id="inventoryList"></div>
-  <div id="pagination"></div>
+  <div id="pagination" class="pagination"></div>
+
 </div>
 
-<script type="module" src="js/inventory.js"></script>
+<script type="module" src="js/query.js"></script>
 </body>
 </html>
