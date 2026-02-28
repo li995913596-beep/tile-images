@@ -74,7 +74,7 @@ async function searchData(){
 
         <div class="img-col"
           onclick="openModal('${imageUrl}')">
-          < img src="${imageUrl}"
+          <img src="${imageUrl}"
             loading="lazy"
             onerror="this.style.display='none'">
         </div>
