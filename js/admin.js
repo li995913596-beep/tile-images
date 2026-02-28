@@ -16,7 +16,7 @@ import {
 
 import { importExcel } from "./excel.js";
 
-/* ===== 获取 DOM ===== */
+/* ===== DOM ===== */
 const btnLogin = document.getElementById("btnLogin");
 const btnLogout = document.getElementById("btnLogout");
 const email = document.getElementById("email");
@@ -27,6 +27,7 @@ const adminSection = document.getElementById("adminSection");
 
 const excelFile = document.getElementById("excelFile");
 
+/* 入库 */
 const in_code = document.getElementById("in_code");
 const in_warehouse = document.getElementById("in_warehouse");
 const in_qty = document.getElementById("in_qty");
@@ -34,23 +35,25 @@ const in_spec = document.getElementById("in_spec");
 const in_color = document.getElementById("in_color");
 const btnIn = document.getElementById("btnIn");
 
+/* 出库 */
+const out_code = document.getElementById("out_code");
+const out_warehouse = document.getElementById("out_warehouse");
+const out_qty = document.getElementById("out_qty");
+const out_customer = document.getElementById("out_customer");
+const out_paid = document.getElementById("out_paid");
+const btnOut = document.getElementById("btnOut");
+
 /* ===== 登录 ===== */
 btnLogin.onclick = () => {
   signInWithEmailAndPassword(auth, email.value, password.value)
-    .then(() => {
-      alert("登录成功");
-    })
-    .catch(err => {
-      alert("登录失败: " + err.message);
-    });
+    .then(() => alert("登录成功"))
+    .catch(err => alert("登录失败: " + err.message));
 };
 
 /* ===== 退出 ===== */
-btnLogout.onclick = () => {
-  signOut(auth);
-};
+btnLogout.onclick = () => signOut(auth);
 
-/* ===== 监听登录状态 ===== */
+/* ===== 登录状态监听 ===== */
 onAuthStateChanged(auth, user => {
   if (user) {
     loginSection.style.display = "none";
@@ -73,7 +76,7 @@ excelFile.addEventListener("change", async (e) => {
   }
 });
 
-/* ===== 入库功能 ===== */
+/* ===== 入库 ===== */
 btnIn.onclick = async () => {
 
   const code = in_code.value.trim();
@@ -129,4 +132,59 @@ btnIn.onclick = async () => {
 
   in_code.value = "";
   in_qty.value = "";
+};
+
+/* ===== 出库 ===== */
+btnOut.onclick = async () => {
+
+  const code = out_code.value.trim();
+  const warehouse = out_warehouse.value.trim();
+  const qty = Number(out_qty.value);
+  const customer = out_customer.value.trim();
+  const paid = out_paid.checked;
+
+  if (!code || !warehouse || !qty || !customer) {
+    alert("请填写完整信息");
+    return;
+  }
+
+  const safeCode = code.replaceAll("/", "-");
+  const docId = `${safeCode}_${warehouse}`;
+  const ref = doc(db, "inventory", docId);
+
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    alert("库存不存在");
+    return;
+  }
+
+  const data = snap.data();
+  const available = data.stock - data.reserved;
+
+  if (qty > available) {
+    alert("库存不足，可用库存：" + available);
+    return;
+  }
+
+  await updateDoc(ref, {
+    stock: data.stock - qty
+  });
+
+  await addDoc(collection(db, "logs"), {
+    type: "out",
+    code,
+    warehouse,
+    qty,
+    customer,
+    paid,
+    date: new Date(),
+    reverted: false
+  });
+
+  alert("出库成功");
+
+  out_code.value = "";
+  out_qty.value = "";
+  out_customer.value = "";
 };
