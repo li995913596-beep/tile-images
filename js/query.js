@@ -9,9 +9,6 @@ const btnRefresh=document.getElementById("btnRefresh");
 const resultDiv=document.getElementById("result");
 const searchInput=document.getElementById("searchInput");
 
-let dataList=[];
-let sortAsc=false;
-
 btnSearch.onclick=searchData;
 btnRefresh.onclick=()=>{
   searchInput.value="";
@@ -22,9 +19,10 @@ async function searchData(){
 
   const keyword=searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML="";
-  dataList=[];
 
   const snap=await getDocs(collection(db,"inventory"));
+
+  let list=[];
 
   snap.forEach(doc=>{
     const item=doc.data();
@@ -36,36 +34,28 @@ async function searchData(){
         ?item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
         :0;
 
-      dataList.push({
-        ...item,
-        stock:Number(item.stock||0),
-        reserved
-      });
+      list.push({...item,reserved});
     }
   });
 
-  renderTable();
-}
-
-function renderTable(){
-
-  dataList.sort((a,b)=>{
-    return sortAsc?a.stock-b.stock:b.stock-a.stock;
-  });
+  if(list.length===0){
+    resultDiv.innerHTML="未找到库存";
+    return;
+  }
 
   resultDiv.innerHTML=`
     <div class="table-header">
-      <div class="col img-col">图片</div>
-      <div class="col">编号</div>
-      <div class="col">规格</div>
-      <div class="col">色号</div>
-      <div class="col" onclick="toggleSort()">数量</div>
-      <div class="col">仓库</div>
-      <div class="col">留货</div>
+      <div>图片</div>
+      <div>编号</div>
+      <div>规格</div>
+      <div>色号</div>
+      <div>数量</div>
+      <div>仓库</div>
+      <div>留货</div>
     </div>
   `;
 
-  dataList.forEach(item=>{
+  list.forEach(item=>{
 
     const imageUrl=
       window.location.origin+
@@ -74,30 +64,25 @@ function renderTable(){
     resultDiv.innerHTML+=`
       <div class="table-row">
 
-        <div class="col img-col"
+        <div class="img-col"
           onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
-          loading="lazy"
-          onerror="this.style.display='none'">
+            loading="lazy"
+            onerror="this.style.display='none'">
         </div>
 
-        <div class="col">${item.code}</div>
-        <div class="col">${item.spec||"-"}</div>
-        <div class="col">${item.color||"-"}</div>
+        <div><b>编号：</b>${item.code}</div>
+        <div><b>规格：</b>${item.spec||"-"}</div>
+        <div><b>色号：</b>${item.color||"-"}</div>
 
-        <div class="col ${item.stock<10?'low-stock':''}">
-          ${item.stock}
+        <div class="${item.stock<10?'low-stock':''}">
+          <b>数量：</b>${item.stock}
         </div>
 
-        <div class="col">${item.warehouse||"-"}</div>
-        <div class="col">${item.reserved}</div>
+        <div><b>仓库：</b>${item.warehouse||"-"}</div>
+        <div><b>留货：</b>${item.reserved}</div>
 
       </div>
     `;
   });
 }
-
-window.toggleSort=function(){
-  sortAsc=!sortAsc;
-  renderTable();
-};
