@@ -17,9 +17,7 @@ import {
 
 import { importExcel } from "./excel.js";
 
-/* ========================
-   DOM 获取
-======================== */
+/* ================= DOM ================= */
 
 const loginSection = document.getElementById("loginSection");
 const adminSection = document.getElementById("adminSection");
@@ -50,9 +48,7 @@ const excelFile = document.getElementById("excelFile");
 
 let selectedItem = null;
 
-/* ========================
-   登录
-======================== */
+/* ================= 登录 ================= */
 
 btnLogin.onclick = () => {
   signInWithEmailAndPassword(
@@ -76,9 +72,7 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* ========================
-   Excel 导入监听
-======================== */
+/* ================= Excel 导入 ================= */
 
 if (excelFile) {
   excelFile.addEventListener("change", async (e) => {
@@ -93,9 +87,7 @@ if (excelFile) {
   });
 }
 
-/* ========================
-   搜索库存
-======================== */
+/* ================= 搜索 ================= */
 
 btnSearch.onclick = async () => {
 
@@ -144,9 +136,7 @@ btnSearch.onclick = async () => {
   };
 };
 
-/* ========================
-   入库
-======================== */
+/* ================= 入库 ================= */
 
 btnIn.onclick = async () => {
 
@@ -167,12 +157,9 @@ btnIn.onclick = async () => {
   });
 
   alert("入库成功");
-  operateQty.value = "";
 };
 
-/* ========================
-   出库
-======================== */
+/* ================= 出库 ================= */
 
 btnOut.onclick = async () => {
 
@@ -217,12 +204,9 @@ btnOut.onclick = async () => {
   });
 
   alert("出库成功");
-  operateQty.value = "";
 };
 
-/* ========================
-   新增库存（支持自动累加）
-======================== */
+/* ================= 新增库存 ================= */
 
 btnCreate.onclick = async () => {
 
@@ -264,10 +248,4 @@ btnCreate.onclick = async () => {
 
     alert("新增成功");
   }
-
-  new_code.value = "";
-  new_spec.value = "";
-  new_color.value = "";
-  new_warehouse.value = "";
-  new_qty.value = "";
 };
