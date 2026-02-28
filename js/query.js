@@ -18,72 +18,58 @@ btnSearch.addEventListener("click", async () => {
     return;
   }
 
-  try {
+  const snap = await getDocs(collection(db, "inventory"));
+  let found = false;
 
-    const snap = await getDocs(collection(db, "inventory"));
-    let found = false;
+  resultDiv.innerHTML = `
+    <div class="table-header">
+      <div class="col-img"></div>
+      <div>编号</div>
+      <div>规格</div>
+      <div>色号</div>
+      <div>数量</div>
+      <div>仓库</div>
+      <div>留货</div>
+    </div>
+  `;
 
-    // 表头
-    resultDiv.innerHTML = `
-      <div class="table-header">
-        <div class="col-img"></div>
-        <div>编号</div>
-        <div>规格</div>
-        <div>色号</div>
-        <div>数量</div>
-        <div>仓库</div>
-        <div>留货</div>
-      </div>
-    `;
+  snap.forEach(doc => {
 
-    snap.forEach(doc => {
+    const item = doc.data();
 
-      const item = doc.data();
+    if (
+      item.code?.toLowerCase().includes(keyword) ||
+      item.color?.toLowerCase().includes(keyword)
+    ) {
 
-      if (
-        item.code?.toLowerCase().includes(keyword) ||
-        item.color?.toLowerCase().includes(keyword)
-      ) {
+      found = true;
 
-        found = true;
+      const stock = Number(item.stock || 0);
+      const reservedTotal = (item.reservedList || [])
+        .reduce((sum, r) => sum + Number(r.qty), 0);
 
-        const stock = Number(item.stock || 0);
-        const reservedTotal = (item.reservedList || [])
-          .reduce((sum, r) => sum + Number(r.qty), 0);
+      const imageUrl = `images/${item.code}.jpg`;
 
-        const imageUrl = `images/${item.code}.jpg`;
-
-        resultDiv.innerHTML += `
-          <div class="table-row">
-
-            <img 
-              src="${imageUrl}"
-              class="row-image"
-              onerror="this.style.display='none'"
-            />
-
-            <div>${item.code}</div>
-            <div>${item.spec || ""}</div>
-            <div>${item.color}</div>
-            <div style="color:${stock<=10?'red':'green'};">
-              ${stock}
-            </div>
-            <div>${item.warehouse}</div>
-            <div>${reservedTotal}</div>
-
+      resultDiv.innerHTML += `
+        <div class="table-row">
+          <img src="${imageUrl}" class="row-image"
+               onerror="this.style.display='none'"/>
+          <div>${item.code}</div>
+          <div>${item.spec || ""}</div>
+          <div>${item.color}</div>
+          <div style="color:${stock<=10?'red':'green'};">
+            ${stock}
           </div>
-        `;
-      }
-
-    });
-
-    if (!found) {
-      resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
+          <div>${item.warehouse}</div>
+          <div>${reservedTotal}</div>
+        </div>
+      `;
     }
 
-  } catch (e) {
-    console.error(e);
-    resultDiv.innerHTML = "<p style='color:red'>查询失败</p>";
+  });
+
+  if (!found) {
+    resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
   }
 
 });
