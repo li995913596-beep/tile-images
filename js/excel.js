@@ -7,10 +7,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function safeId(text) {
-  return text
-    .replace(/\//g, "_")     // 替换 /
-    .replace(/\s+/g, "")     // 去空格
-    .replace(/#/g, "")       // 去 #
+  return String(text)
+    .replace(/\//g, "_")
+    .replace(/\s+/g, "")
+    .replace(/#/g, "");
 }
 
 export async function importExcel(file) {
@@ -28,8 +28,9 @@ export async function importExcel(file) {
       const code = String(row["编号"] || "").trim();
       const spec = String(row["规格"] || "").trim();
       const color = String(row["色号"] || "").trim();
-      const warehouse = String(row["仓库"] || "").trim();
       const qty = Number(row["数量"] || 0);
+      const warehouse = String(row["所在仓库"] || "").trim();
+      const reserved = Number(row["留货(库存已扣)"] || 0);
 
       if (!code || !spec || !color || !warehouse) continue;
 
@@ -44,10 +45,9 @@ export async function importExcel(file) {
 
       if (snap.exists()) {
 
-        const old = snap.data();
-
         await updateDoc(ref, {
-          stock: old.stock + qty
+          stock: qty,
+          reserved: reserved
         });
 
       } else {
@@ -58,7 +58,7 @@ export async function importExcel(file) {
           color,
           warehouse,
           stock: qty,
-          reserved: 0
+          reserved: reserved
         });
       }
     }
