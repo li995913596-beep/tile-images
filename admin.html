@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>库存后台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -20,11 +20,12 @@
 
   <h2>库存管理后台</h2>
 
-  <div>
+  <div class="nav-bar">
     <button onclick="showTab('in')">入库</button>
     <button onclick="showTab('out')">出库</button>
     <button onclick="showTab('reserve')">留货</button>
     <button onclick="showTab('log')">日志</button>
+    <button onclick="location.href='index.html'">返回首页</button>
     <button id="btnLogout">退出</button>
   </div>
 
