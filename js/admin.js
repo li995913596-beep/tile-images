@@ -9,45 +9,18 @@ import {
   getDocs,
   doc,
   getDoc,
-  updateDoc,
-  addDoc
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { importExcel } from "./excel.js";
 
-const loginSection = document.getElementById("loginSection");
-const adminSection = document.getElementById("adminSection");
-
-const btnLogin = document.getElementById("btnLogin");
-const excelFile = document.getElementById("excelFile");
-
-const searchCode = document.getElementById("searchCode");
-const btnSearch = document.getElementById("btnSearch");
-const searchResult = document.getElementById("searchResult");
-const selectedInfo = document.getElementById("selectedInfo");
-
-const operateQty = document.getElementById("operateQty");
-const operateCustomer = document.getElementById("operateCustomer");
-const operatePaid = document.getElementById("operatePaid");
-
-const btnIn = document.getElementById("btnIn");
-const btnOut = document.getElementById("btnOut");
-
-const reserveCustomer = document.getElementById("reserveCustomer");
-const reserveQty = document.getElementById("reserveQty");
-const btnReserve = document.getElementById("btnReserve");
-const reserveListDiv = document.getElementById("reserveList");
-
-let selectedItem = null;
+let selectedItem=null;
 
 /* 登录 */
-btnLogin.onclick = () => {
-  signInWithEmailAndPassword(
-    auth,
-    document.getElementById("email").value,
-    document.getElementById("password").value
-  ).then(()=>alert("登录成功"))
-   .catch(e=>alert(e.message));
+btnLogin.onclick=()=>{
+  signInWithEmailAndPassword(auth,email.value,password.value)
+  .then(()=>alert("登录成功"))
+  .catch(e=>alert(e.message));
 };
 
 onAuthStateChanged(auth,user=>{
@@ -58,121 +31,125 @@ onAuthStateChanged(auth,user=>{
   }
 });
 
-/* Excel 导入 */
-excelFile.addEventListener("change",async e=>{
-  await importExcel(e.target.files[0]);
-});
+/* Excel */
+excelFile.onchange=e=>importExcel(e.target.files[0]);
 
 /* 搜索 */
-btnSearch.onclick = async ()=>{
-
-  const keyword = searchCode.value.trim().toLowerCase();
-  const snap = await getDocs(collection(db,"inventory"));
-
-  const list = snap.docs
-    .map(d=>({id:d.id,...d.data()}))
-    .filter(i=>i.code.toLowerCase().includes(keyword)
-      || i.color.toLowerCase().includes(keyword));
+btnSearch.onclick=async()=>{
+  const key=searchCode.value.trim().toLowerCase();
+  const snap=await getDocs(collection(db,"inventory"));
 
   searchResult.innerHTML="";
 
-  list.forEach(item=>{
+  snap.docs.forEach(d=>{
+    const item=d.data();
+    if(item.code.toLowerCase().includes(key) || item.color.toLowerCase().includes(key)){
 
-    const reservedTotal = item.reservedList
-      ? item.reservedList.reduce((s,r)=>s+r.qty,0)
-      : 0;
+      const reservedTotal=(item.reservedList||[])
+      .reduce((s,r)=>s+Number(r.qty||0),0);
 
-    searchResult.innerHTML+=`
-      <div style="border:1px solid #ccc;margin:5px;padding:5px;">
-        ${item.code} | ${item.color} | ${item.warehouse}
-        | 库存:${item.stock}
-        | 留货:${reservedTotal}
-        <button onclick="selectItem('${item.id}')">选择</button>
-      </div>
-    `;
+      searchResult.innerHTML+=`
+      <div class="card">
+      ${item.code}|${item.color}|${item.warehouse}
+      库存:${item.stock}
+      留货:${reservedTotal}
+      <button onclick="selectItem('${d.id}')">选择</button>
+      </div>`;
+    }
   });
 
   window.selectItem=id=>{
-    selectedItem=list.find(i=>i.id===id);
-    selectedInfo.innerHTML=`已选: ${selectedItem.code}-${selectedItem.color}`;
+    selectedItem=id;
+    selectedInfo.innerText="已选择:"+id;
   };
-};
-
-/* 入库 */
-btnIn.onclick=async()=>{
-  if(!selectedItem) return alert("请选择库存");
-  const qty=Number(operateQty.value);
-  const ref=doc(db,"inventory",selectedItem.id);
-  const snap=await getDoc(ref);
-  await updateDoc(ref,{stock:snap.data().stock+qty});
-  alert("入库成功");
-};
-
-/* 出库 */
-btnOut.onclick=async()=>{
-  if(!selectedItem) return alert("请选择库存");
-  const qty=Number(operateQty.value);
-  const customer=operateCustomer.value.trim();
-  const paid=operatePaid.value;
-  const ref=doc(db,"inventory",selectedItem.id);
-  const snap=await getDoc(ref);
-  const data=snap.data();
-  if(qty>data.stock) return alert("库存不足");
-  await updateDoc(ref,{stock:data.stock-qty});
-  await addDoc(collection(db,"logs"),{
-    type:"out",
-    code:data.code,
-    color:data.color,
-    warehouse:data.warehouse,
-    qty,
-    customer,
-    paid,
-    date:new Date()
-  });
-  alert("出库成功");
 };
 
 /* 留货 */
 btnReserve.onclick=async()=>{
   if(!selectedItem) return alert("请选择库存");
+
   const qty=Number(reserveQty.value);
   const customer=reserveCustomer.value.trim();
-  const ref=doc(db,"inventory",selectedItem.id);
+
+  const ref=doc(db,"inventory",selectedItem);
   const snap=await getDoc(ref);
   const data=snap.data();
+
   if(qty>data.stock) return alert("库存不足");
-  const newReserve={
+
+  const list=data.reservedList||[];
+
+  list.push({
     id:Date.now().toString(),
     customer,
     qty,
     date:new Date()
-  };
-  const list=data.reservedList||[];
+  });
+
   await updateDoc(ref,{
     stock:data.stock-qty,
-    reservedList:[...list,newReserve]
+    reservedList:list
   });
-  alert("留货成功");
+
   loadReserveList();
 };
 
-/* 全局留货清单 */
+/* 全局留货清单 + 编辑 */
 async function loadReserveList(){
+
   const snap=await getDocs(collection(db,"inventory"));
-  let html="";
+  reserveList.innerHTML="";
+
   snap.docs.forEach(d=>{
     const item=d.data();
-    if(item.reservedList){
-      item.reservedList.forEach(r=>{
-        html+=`
-          <div style="border:1px solid #ccc;margin:4px;padding:4px;">
-            ${item.code}|${item.color}|${item.warehouse}
-            | 客户:${r.customer}
-            | 数量:${r.qty}
-          </div>
-        `;
-      });
-    }
+
+    (item.reservedList||[]).forEach(r=>{
+
+      reserveList.innerHTML+=`
+      <div class="card">
+      ${item.code}|${item.color}|${item.warehouse}
+      客户:${r.customer}
+      数量:<input type="number" value="${r.qty}" 
+      onchange="editReserve('${d.id}','${r.id}',this.value)">
+      <button onclick="deleteReserve('${d.id}','${r.id}',${r.qty})">
+      删除</button>
+      </div>`;
+    });
   });
-  reserveListDiv.innerHTML=html;
 }
+
+/* 编辑 */
+window.editReserve=async(invId,resId,newQty)=>{
+  const ref=doc(db,"inventory",invId);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+
+  const list=data.reservedList;
+  const item=list.find(i=>i.id===resId);
+
+  const diff=newQty-item.qty;
+  item.qty=Number(newQty);
+
+  await updateDoc(ref,{
+    stock:data.stock-diff,
+    reservedList:list
+  });
+
+  loadReserveList();
+};
+
+/* 删除 */
+window.deleteReserve=async(invId,resId,qty)=>{
+  const ref=doc(db,"inventory",invId);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+
+  const list=data.reservedList.filter(i=>i.id!==resId);
+
+  await updateDoc(ref,{
+    stock:data.stock+qty,
+    reservedList:list
+  });
+
+  loadReserveList();
+};
