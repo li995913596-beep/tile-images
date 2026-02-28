@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+import { db, auth } from "./firebase.js";
 import {
   collection,
   doc,
@@ -10,102 +10,108 @@ import {
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 登录 */
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-document.getElementById("btnLogin").onclick = () => {
-  const u = username.value;
-  const p = password.value;
-  if (u === "kyson" && p === "123456") {
-    loginSection.style.display = "none";
-    adminSection.style.display = "block";
-  } else {
-    alert("错误");
+/* ================= 登录 ================= */
+
+const loginSection = document.getElementById("loginSection");
+const adminSection = document.getElementById("adminSection");
+
+document.getElementById("btnLogin").onclick = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    alert("登录失败");
   }
 };
 
-/* 切换 */
+document.getElementById("btnLogout").onclick = async () => {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    loginSection.style.display = "none";
+    adminSection.style.display = "block";
+    initTabs();
+  } else {
+    loginSection.style.display = "block";
+    adminSection.style.display = "none";
+  }
+});
+
+/* ================= 页面切换 ================= */
 
 window.showTab = (name) => {
   document.querySelectorAll(".tab").forEach(t => t.style.display="none");
   document.getElementById("tab_"+name).style.display="block";
 };
 
-/* 搜索 */
+/* ================= 初始化页面 ================= */
 
-window.searchInventory = async (mode) => {
+function initTabs(){
+  buildInPage();
+  buildOutPage();
+  buildReservePage();
+  buildLogPage();
+}
 
-  const keyword =
-    document.getElementById(mode+"_search").value;
+/* ================= 入库 ================= */
 
-  const div =
-    document.getElementById(mode+"_result");
+function buildInPage(){
+  const div = document.getElementById("tab_in");
+  div.innerHTML = `
+    <h3>入库</h3>
+    <input id="in_search" placeholder="搜索编号">
+    <button onclick="searchIn()">搜索</button>
+    <div id="in_result"></div>
 
-  div.innerHTML = "";
+    <h4>新增库存</h4>
+    编号<input id="new_code">
+    规格<input id="new_spec">
+    色号<input id="new_color">
+    仓库<input id="new_warehouse">
+    数量<input id="new_qty">
+    <button onclick="addNewStock()">新增</button>
+  `;
+}
 
+window.searchIn = async ()=>{
+  const key = in_search.value;
   const snap = await getDocs(collection(db,"inventory"));
-
+  in_result.innerHTML="";
   snap.forEach(d=>{
-    const item = d.data();
-    if(
-      item.code.includes(keyword) ||
-      item.color.includes(keyword)
-    ){
-
-      if(mode==="in"){
-        div.innerHTML+=`
+    const i=d.data();
+    if(i.code.includes(key)){
+      in_result.innerHTML+=`
         <div>
-          ${item.code}|${item.color}|库存:${item.stock}
+          ${i.code}|${i.color}|库存:${i.stock}
           数量<input id="in_qty_${d.id}">
           <button onclick="inStock('${d.id}')">入库</button>
         </div>`;
-      }
-
-      if(mode==="out"){
-        div.innerHTML+=`
-        <div>
-          ${item.code}|${item.color}|库存:${item.stock}
-          客户<input id="out_c_${d.id}">
-          数量<input id="out_q_${d.id}">
-          <select id="out_p_${d.id}">
-            <option>已付款</option>
-            <option>未付款</option>
-          </select>
-          <button onclick="outStock('${d.id}')">出库</button>
-        </div>`;
-      }
-
-      if(mode==="reserve"){
-        div.innerHTML+=`
-        <div>
-          ${item.code}|${item.color}|库存:${item.stock}
-          客户<input id="re_c_${d.id}">
-          数量<input id="re_q_${d.id}">
-          <button onclick="reserveStock('${d.id}')">留货</button>
-        </div>`;
-      }
-
     }
   });
 };
 
-/* 入库 */
-
 window.inStock = async (id)=>{
-  const qty = Number(document.getElementById("in_qty_"+id).value);
-  const ref = doc(db,"inventory",id);
-  const snap = await getDoc(ref);
-  const data = snap.data();
-  await updateDoc(ref,{
-    stock:data.stock+qty
-  });
+  const qty=Number(document.getElementById("in_qty_"+id).value);
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  await updateDoc(ref,{stock:data.stock+qty});
   await log("入库",data,qty);
   alert("完成");
 };
 
-/* 新增 */
-
 window.addNewStock = async ()=>{
-  const id = `${new_code.value}_${new_color.value}_${new_warehouse.value}`;
+  const id=`${new_code.value}_${new_color.value}_${new_warehouse.value}`;
   await setDoc(doc(db,"inventory",id),{
     code:new_code.value,
     spec:new_spec.value,
@@ -117,80 +123,132 @@ window.addNewStock = async ()=>{
   alert("新增成功");
 };
 
-/* 出库 */
+/* ================= 出库 ================= */
 
-window.outStock = async (id)=>{
-  const ref = doc(db,"inventory",id);
-  const snap = await getDoc(ref);
-  const data = snap.data();
+function buildOutPage(){
+  const div=document.getElementById("tab_out");
+  div.innerHTML=`
+    <h3>出库</h3>
+    <input id="out_search" placeholder="搜索编号">
+    <button onclick="searchOut()">搜索</button>
+    <div id="out_result"></div>
+  `;
+}
 
-  const qty = Number(document.getElementById("out_q_"+id).value);
-  if(qty>data.stock) return alert("库存不足");
-
-  await updateDoc(ref,{
-    stock:data.stock-qty
+window.searchOut=async()=>{
+  const key=out_search.value;
+  const snap=await getDocs(collection(db,"inventory"));
+  out_result.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    if(i.code.includes(key)){
+      out_result.innerHTML+=`
+        <div>
+          ${i.code}|${i.color}|库存:${i.stock}
+          客户<input id="out_c_${d.id}">
+          数量<input id="out_q_${d.id}">
+          <select id="out_p_${d.id}">
+            <option>已付款</option>
+            <option>未付款</option>
+          </select>
+          <button onclick="outStock('${d.id}')">出库</button>
+        </div>`;
+    }
   });
+};
 
+window.outStock=async(id)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  const qty=Number(document.getElementById("out_q_"+id).value);
+  if(qty>data.stock)return alert("库存不足");
+  await updateDoc(ref,{stock:data.stock-qty});
   await log("出库",data,qty,
     document.getElementById("out_c_"+id).value,
-    document.getElementById("out_p_"+id).value
-  );
-
+    document.getElementById("out_p_"+id).value);
   alert("完成");
 };
 
-/* 留货 */
+/* ================= 留货 ================= */
 
-window.reserveStock = async (id)=>{
-  const ref = doc(db,"inventory",id);
-  const snap = await getDoc(ref);
-  const data = snap.data();
+function buildReservePage(){
+  const div=document.getElementById("tab_reserve");
+  div.innerHTML=`
+    <h3>留货</h3>
+    <input id="re_search" placeholder="搜索编号">
+    <button onclick="searchReserve()">搜索</button>
+    <div id="re_result"></div>
+    <h4>留货清单</h4>
+    <div id="reserveList"></div>
+  `;
+  loadReserve();
+}
 
-  const qty = Number(document.getElementById("re_q_"+id).value);
-  if(qty>data.stock) return alert("库存不足");
-
-  const list = data.reservedList||[];
-  list.push({
-    customer:document.getElementById("re_c_"+id).value,
-    qty
+window.searchReserve=async()=>{
+  const key=re_search.value;
+  const snap=await getDocs(collection(db,"inventory"));
+  re_result.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    if(i.code.includes(key)){
+      re_result.innerHTML+=`
+        <div>
+          ${i.code}|${i.color}|库存:${i.stock}
+          客户<input id="re_c_${d.id}">
+          数量<input id="re_q_${d.id}">
+          <button onclick="reserveStock('${d.id}')">留货</button>
+        </div>`;
+    }
   });
+};
 
-  await updateDoc(ref,{
-    stock:data.stock-qty,
-    reservedList:list
-  });
-
+window.reserveStock=async(id)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  const qty=Number(document.getElementById("re_q_"+id).value);
+  if(qty>data.stock)return alert("库存不足");
+  const list=data.reservedList||[];
+  list.push({customer:document.getElementById("re_c_"+id).value,qty});
+  await updateDoc(ref,{stock:data.stock-qty,reservedList:list});
   loadReserve();
 };
 
-/* 留货清单 */
-
 async function loadReserve(){
+  const snap=await getDocs(collection(db,"inventory"));
   reserveList.innerHTML="";
-  const snap = await getDocs(collection(db,"inventory"));
   snap.forEach(d=>{
-    const item = d.data();
-    (item.reservedList||[]).forEach((r,i)=>{
+    const i=d.data();
+    (i.reservedList||[]).forEach((r,index)=>{
       reserveList.innerHTML+=`
         <div>
-          ${item.code}|${r.customer}|${r.qty}
-          <button onclick="deleteReserve('${d.id}',${i})">删</button>
-        </div>
-      `;
+          ${i.code}|${r.customer}|${r.qty}
+          <button onclick="deleteReserve('${d.id}',${index})">删</button>
+        </div>`;
     });
   });
 }
 
-window.deleteReserve = async(id,index)=>{
-  const ref = doc(db,"inventory",id);
-  const snap = await getDoc(ref);
-  const data = snap.data();
+window.deleteReserve=async(id,index)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
   data.reservedList.splice(index,1);
   await updateDoc(ref,{reservedList:data.reservedList});
   loadReserve();
 };
 
-/* 日志 */
+/* ================= 日志 ================= */
+
+function buildLogPage(){
+  const div=document.getElementById("tab_log");
+  div.innerHTML=`
+    <h3>日志</h3>
+    <button onclick="downloadLogs()">下载CSV</button>
+    <div id="logList"></div>
+  `;
+}
 
 async function log(type,data,qty,customer="",paid=""){
   await addDoc(collection(db,"logs"),{
@@ -205,8 +263,8 @@ async function log(type,data,qty,customer="",paid=""){
   });
 }
 
-window.downloadLogs = async ()=>{
-  const snap = await getDocs(collection(db,"logs"));
+window.downloadLogs=async()=>{
+  const snap=await getDocs(collection(db,"logs"));
   let csv="日期,类型,编号,色号,仓库,数量,客户,付款\n";
   snap.forEach(d=>{
     const l=d.data();
@@ -218,5 +276,3 @@ window.downloadLogs = async ()=>{
   a.download="logs.csv";
   a.click();
 };
-
-loadReserve();
