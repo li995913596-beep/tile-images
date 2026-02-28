@@ -60,11 +60,11 @@ async function searchData() {
           <div class="card-row">
 
             <div class="img-box" onclick="openModal('${imageUrl}')">
-              <img 
+              <img
                 src="${imageUrl}"
                 loading="lazy"
                 onerror="this.style.display='none'"
-              >
+              />
             </div>
 
             <div class="info">
