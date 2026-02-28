@@ -16,7 +16,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-/* 登录 */
+/* ================= 登录 ================= */
 
 btnLogin.onclick = async () => {
   try {
@@ -42,14 +42,14 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* 页面切换 */
+/* ================= 页面切换 ================= */
 
 window.showTab = (name) => {
   document.querySelectorAll(".tab").forEach(t => t.style.display="none");
   document.getElementById("tab_"+name).style.display="block";
 };
 
-/* 初始化 */
+/* ================= 初始化 ================= */
 
 function initTabs(){
   buildInPage();
@@ -109,8 +109,6 @@ window.inStock = async (id)=>{
   await log("入库",data,qty);
   alert("完成");
 };
-
-/* 新增库存 */
 
 window.addNewStock = async ()=>{
   const id=`${new_code.value}_${new_color.value}_${new_warehouse.value}`;
@@ -174,10 +172,7 @@ window.outStock=async(id)=>{
     lastUpdate: serverTimestamp()
   });
 
-  await log(
-    "出库",
-    data,
-    qty,
+  await log("出库",data,qty,
     document.getElementById("out_c_"+id).value,
     document.getElementById("out_p_"+id).value
   );
@@ -185,7 +180,145 @@ window.outStock=async(id)=>{
   alert("完成");
 };
 
-/* ================= 日志（改为时间戳） ================= */
+/* ================= 留货 ================= */
+
+function buildReservePage(){
+  tab_reserve.innerHTML=`
+    <h3>留货</h3>
+    <input id="re_search" placeholder="搜索编号">
+    <button onclick="searchReserve()">搜索</button>
+    <div id="re_result"></div>
+    <h4>留货清单</h4>
+    <div id="reserveList"></div>
+  `;
+  loadReserve();
+}
+
+window.searchReserve=async()=>{
+  const snap=await getDocs(collection(db,"inventory"));
+  re_result.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    if(i.code.includes(re_search.value)){
+      re_result.innerHTML+=`
+        <div>
+          ${i.code}|${i.color}|库存:${i.stock}
+          客户<input id="re_c_${d.id}">
+          数量<input id="re_q_${d.id}">
+          <button onclick="reserveStock('${d.id}')">留货</button>
+        </div>`;
+    }
+  });
+};
+
+window.reserveStock=async(id)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  const qty=Number(document.getElementById("re_q_"+id).value);
+  const customer=document.getElementById("re_c_"+id).value;
+
+  if(qty>data.stock) return alert("库存不足");
+
+  const list=data.reservedList||[];
+  list.push({customer,qty});
+
+  await updateDoc(ref,{
+    stock:data.stock-qty,
+    reservedList:list,
+    lastUpdate: serverTimestamp()
+  });
+
+  await log("留货",data,qty,customer,"");
+  loadReserve();
+};
+
+async function loadReserve(){
+  const snap=await getDocs(collection(db,"inventory"));
+  reserveList.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    (i.reservedList||[]).forEach((r,index)=>{
+      reserveList.innerHTML+=`
+        <div>
+          ${i.code}|${r.customer}|${r.qty}
+          <button onclick="deleteReserve('${d.id}',${index})">删</button>
+        </div>`;
+    });
+  });
+}
+
+window.deleteReserve=async(id,index)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+
+  const removed=data.reservedList[index];
+  data.reservedList.splice(index,1);
+
+  await updateDoc(ref,{
+    reservedList:data.reservedList,
+    lastUpdate: serverTimestamp()
+  });
+
+  if(removed){
+    await log("取消留货",data,removed.qty,removed.customer,"");
+  }
+
+  loadReserve();
+};
+
+/* ================= 日志 ================= */
+
+function buildLogPage(){
+  tab_log.innerHTML=`
+    <h3>日志</h3>
+    <div id="logList"></div>
+  `;
+  loadLogs();
+}
+
+async function loadLogs(){
+  const snap=await getDocs(collection(db,"logs"));
+  logList.innerHTML="";
+  snap.forEach(d=>{
+    const l=d.data();
+    const time=l.timestamp ? l.timestamp.toDate().toLocaleString() : "";
+    logList.innerHTML+=`
+      <div style="padding:8px 0;border-bottom:1px solid #eee">
+        ${time} | ${l.type} | ${l.code} | ${l.qty}
+      </div>`;
+  });
+}
+
+/* ================= 统计 ================= */
+
+function buildStatsPage(){
+  tab_stats.innerHTML=`
+    <h3>数据统计</h3>
+    <div>今日出库数量：<span id="todayOut">计算中...</span></div>
+  `;
+  loadStats();
+}
+
+async function loadStats(){
+  const snap=await getDocs(collection(db,"logs"));
+  const today=new Date().toDateString();
+  let todayOut=0;
+
+  snap.forEach(doc=>{
+    const l=doc.data();
+    if(!l.timestamp) return;
+    const date=l.timestamp.toDate();
+    if(l.type==="出库" && date.toDateString()===today){
+      todayOut+=Number(l.qty||0);
+    }
+  });
+
+  document.getElementById("todayOut").innerText=todayOut;
+}
+
+/* ================= 日志写入 ================= */
 
 async function log(type,data,qty,customer="",paid=""){
   await addDoc(collection(db,"logs"),{
@@ -197,104 +330,5 @@ async function log(type,data,qty,customer="",paid=""){
     qty,
     customer,
     paid
-  });
-}
-
-/* ================= 统计 ================= */
-
-function buildStatsPage(){
-  tab_stats.innerHTML=`
-    <h3>数据统计</h3>
-    <div style="margin-bottom:20px;font-size:18px">
-      今日出库数量：<span id="todayOut">计算中...</span>
-    </div>
-    <canvas id="trendChart" height="100"></canvas>
-    <br>
-    <canvas id="monthlyChart" height="100"></canvas>
-  `;
-  loadStats();
-}
-
-async function loadStats(){
-
-  const snap=await getDocs(collection(db,"logs"));
-
-  const today=new Date();
-  const todayStr=today.toDateString();
-
-  let todayOut=0;
-  const dailyMap={};
-  const monthlyMap={};
-
-  snap.forEach(doc=>{
-    const l=doc.data();
-
-    let date;
-
-    if(l.timestamp){
-      date=l.timestamp.toDate();
-    }else if(l.date){
-      date=new Date(l.date);
-    }else{
-      return;
-    }
-
-    if(l.type==="出库" && date.toDateString()===todayStr){
-      todayOut+=Number(l.qty||0);
-    }
-
-    const dayKey=date.toISOString().slice(0,10);
-    if(!dailyMap[dayKey]){
-      dailyMap[dayKey]={in:0,out:0};
-    }
-
-    if(l.type==="入库"){
-      dailyMap[dayKey].in+=Number(l.qty||0);
-    }else{
-      dailyMap[dayKey].out+=Number(l.qty||0);
-    }
-
-    const monthKey=date.getFullYear()+"-"+(date.getMonth()+1);
-    if(!monthlyMap[monthKey]){
-      monthlyMap[monthKey]=0;
-    }
-
-    if(l.type==="入库"){
-      monthlyMap[monthKey]+=Number(l.qty||0);
-    }else{
-      monthlyMap[monthKey]-=Number(l.qty||0);
-    }
-  });
-
-  document.getElementById("todayOut").innerText=todayOut;
-
-  buildTrendChart(dailyMap);
-  buildMonthlyChart(monthlyMap);
-}
-
-function buildTrendChart(data){
-  const labels=Object.keys(data).sort();
-  new Chart(document.getElementById("trendChart"),{
-    type:"line",
-    data:{
-      labels,
-      datasets:[
-        {label:"入库",data:labels.map(d=>data[d].in),borderColor:"#2ecc71"},
-        {label:"出库",data:labels.map(d=>data[d].out),borderColor:"#e74c3c"}
-      ]
-    }
-  });
-}
-
-function buildMonthlyChart(data){
-  const labels=Object.keys(data).sort();
-  new Chart(document.getElementById("monthlyChart"),{
-    type:"bar",
-    data:{
-      labels,
-      datasets:[
-        {label:"月度库存净变化",data:labels.map(m=>data[m]),backgroundColor:"#3498db"}
-      ]
-    }
   });
 }
