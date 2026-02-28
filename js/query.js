@@ -1,27 +1,89 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>瓷砖库存查询系统</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="css/style.css">
-</head>
+import { db } from "./firebase.js";
+import {
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<body>
+const btnSearch = document.getElementById("btnSearch");
+const resultDiv = document.getElementById("result");
+const searchInput = document.getElementById("searchInput");
 
-<h2>库存查询</h2>
+btnSearch.addEventListener("click", async () => {
 
-<div class="search-bar">
-  <input id="searchInput" placeholder="输入编号或色号">
-  <button id="btnSearch">查询</button>
-  <button onclick="location.reload()">刷新</button>
-  <button onclick="location.href='admin.html'">管理员</button>
-</div>
+  const keyword = searchInput.value.trim().toLowerCase();
+  resultDiv.innerHTML = "";
 
-<hr>
+  if (!keyword) {
+    resultDiv.innerHTML = "<p style='color:red'>请输入编号或色号</p>";
+    return;
+  }
 
-<div id="result"></div>
+  try {
 
-<script type="module" src="js/query.js"></script>
-</body>
-</html>
+    const snap = await getDocs(collection(db, "inventory"));
+    let found = false;
+
+    // 表头
+    resultDiv.innerHTML = `
+      <div class="table-header">
+        <div class="col-img"></div>
+        <div>编号</div>
+        <div>规格</div>
+        <div>色号</div>
+        <div>数量</div>
+        <div>仓库</div>
+        <div>留货</div>
+      </div>
+    `;
+
+    snap.forEach(doc => {
+
+      const item = doc.data();
+
+      if (
+        item.code?.toLowerCase().includes(keyword) ||
+        item.color?.toLowerCase().includes(keyword)
+      ) {
+
+        found = true;
+
+        const stock = Number(item.stock || 0);
+        const reservedTotal = (item.reservedList || [])
+          .reduce((sum, r) => sum + Number(r.qty), 0);
+
+        const imageUrl = `images/${item.code}.jpg`;
+
+        resultDiv.innerHTML += `
+          <div class="table-row">
+
+            <img 
+              src="${imageUrl}"
+              class="row-image"
+              onerror="this.style.display='none'"
+            />
+
+            <div>${item.code}</div>
+            <div>${item.spec || ""}</div>
+            <div>${item.color}</div>
+            <div style="color:${stock<=10?'red':'green'};">
+              ${stock}
+            </div>
+            <div>${item.warehouse}</div>
+            <div>${reservedTotal}</div>
+
+          </div>
+        `;
+      }
+
+    });
+
+    if (!found) {
+      resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
+    }
+
+  } catch (e) {
+    console.error(e);
+    resultDiv.innerHTML = "<p style='color:red'>查询失败</p>";
+  }
+
+});
