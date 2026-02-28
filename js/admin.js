@@ -15,9 +15,15 @@ import {
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* DOM */
+import { importExcel } from "./excel.js";
+
+/* ========================
+   DOM 获取
+======================== */
+
 const loginSection = document.getElementById("loginSection");
 const adminSection = document.getElementById("adminSection");
+
 const btnLogin = document.getElementById("btnLogin");
 const btnLogout = document.getElementById("btnLogout");
 
@@ -40,16 +46,22 @@ const new_warehouse = document.getElementById("new_warehouse");
 const new_qty = document.getElementById("new_qty");
 const btnCreate = document.getElementById("btnCreate");
 
+const excelFile = document.getElementById("excelFile");
+
 let selectedItem = null;
 
-/* 登录 */
+/* ========================
+   登录
+======================== */
+
 btnLogin.onclick = () => {
   signInWithEmailAndPassword(
     auth,
     document.getElementById("email").value,
     document.getElementById("password").value
-  ).then(() => alert("登录成功"))
-   .catch(e => alert(e.message));
+  )
+    .then(() => alert("登录成功"))
+    .catch(e => alert(e.message));
 };
 
 btnLogout.onclick = () => signOut(auth);
@@ -64,7 +76,27 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* 🔍 搜索 */
+/* ========================
+   Excel 导入监听
+======================== */
+
+if (excelFile) {
+  excelFile.addEventListener("change", async (e) => {
+
+    if (!confirm("确定导入库存？")) return;
+
+    try {
+      await importExcel(e.target.files[0]);
+    } catch (err) {
+      alert("导入失败：" + err.message);
+    }
+  });
+}
+
+/* ========================
+   搜索库存
+======================== */
+
 btnSearch.onclick = async () => {
 
   const keyword = searchCode.value.trim().toLowerCase();
@@ -112,50 +144,10 @@ btnSearch.onclick = async () => {
   };
 };
 
-/* ➕ 新增库存（自动累加） */
-btnCreate.onclick = async () => {
+/* ========================
+   入库
+======================== */
 
-  const code = new_code.value.trim();
-  const spec = new_spec.value.trim();
-  const color = new_color.value.trim();
-  const warehouse = new_warehouse.value.trim();
-  const qty = Number(new_qty.value);
-
-  if (!code || !spec || !color || !warehouse || !qty) {
-    alert("填写完整信息");
-    return;
-  }
-
-  const docId = `${code}_${color}_${warehouse}`;
-  const ref = doc(db, "inventory", docId);
-  const snap = await getDoc(ref);
-
-  if (snap.exists()) {
-
-    const data = snap.data();
-
-    await updateDoc(ref, {
-      stock: data.stock + qty
-    });
-
-    alert("库存已存在，已自动累加");
-
-  } else {
-
-    await setDoc(ref, {
-      code,
-      spec,
-      color,
-      warehouse,
-      stock: qty,
-      reserved: 0
-    });
-
-    alert("新增成功");
-  }
-};
-
-/* ➕ 入库 */
 btnIn.onclick = async () => {
 
   if (!selectedItem) {
@@ -175,9 +167,13 @@ btnIn.onclick = async () => {
   });
 
   alert("入库成功");
+  operateQty.value = "";
 };
 
-/* ➖ 出库 */
+/* ========================
+   出库
+======================== */
+
 btnOut.onclick = async () => {
 
   if (!selectedItem) {
@@ -209,5 +205,69 @@ btnOut.onclick = async () => {
     stock: latest.stock - qty
   });
 
+  await addDoc(collection(db, "logs"), {
+    type: "out",
+    code: latest.code,
+    color: latest.color,
+    warehouse: latest.warehouse,
+    qty,
+    customer,
+    paid,
+    date: new Date()
+  });
+
   alert("出库成功");
+  operateQty.value = "";
+};
+
+/* ========================
+   新增库存（支持自动累加）
+======================== */
+
+btnCreate.onclick = async () => {
+
+  const code = new_code.value.trim();
+  const spec = new_spec.value.trim();
+  const color = new_color.value.trim();
+  const warehouse = new_warehouse.value.trim();
+  const qty = Number(new_qty.value);
+
+  if (!code || !spec || !color || !warehouse || !qty) {
+    alert("填写完整信息");
+    return;
+  }
+
+  const docId = `${code}_${color}_${warehouse}`;
+  const ref = doc(db, "inventory", docId);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+
+    const old = snap.data();
+
+    await updateDoc(ref, {
+      stock: old.stock + qty
+    });
+
+    alert("库存已存在，已自动累加");
+
+  } else {
+
+    await setDoc(ref, {
+      code,
+      spec,
+      color,
+      warehouse,
+      stock: qty,
+      reserved: 0
+    });
+
+    alert("新增成功");
+  }
+
+  new_code.value = "";
+  new_spec.value = "";
+  new_color.value = "";
+  new_warehouse.value = "";
+  new_qty.value = "";
 };
