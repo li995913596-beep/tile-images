@@ -1,50 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
+
 <head>
   <meta charset="UTF-8">
-  <title>瓷砖库存管理系统</title>
+  <title>瓷砖库存查询系统</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- 样式 -->
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
-<div class="top-bar">
-  <div class="title">瓷砖库存管理系统</div>
-</div>
-
-<div class="main-card">
-
-  <h2>📊 库存查询</h2>
-
-  <input id="searchInput" placeholder="请输入编号或色号">
-
-  <div class="btn-group">
-    <button id="btnSearch" class="primary">查询库存</button>
-    <button id="btnRefresh" class="secondary">刷新数据</button>
+  <!-- 顶部栏 -->
+  <div class="top-bar">
+    <div>瓷砖库存查询系统</div>
+    <div style="cursor:pointer" onclick="location.href='admin.html'">⚙</div>
   </div>
 
-  <div class="update-time">
-    库存最后更新时间：<span id="updateTime">--</span>
+  <!-- 主卡片 -->
+  <div class="main-card">
+
+    <h2 style="margin-top:0">库存查询</h2>
+
+    <!-- 搜索区域 -->
+    <div class="search-area">
+      <input id="searchInput" placeholder="请输入编号或色号">
+      <button id="btnSearch" class="btn-primary">查询</button>
+      <button id="btnRefresh" class="btn-secondary">刷新</button>
+    </div>
+
+    <!-- 更新时间 -->
+    <div class="update-time">
+      库存最后更新时间：
+      <span id="updateTime">--</span>
+    </div>
+
+    <!-- 表头 -->
+    <div class="table-head">
+      <div>图片</div>
+      <div>编号</div>
+      <div>色号</div>
+      <div>数量</div>
+      <div>仓库</div>
+      <div>留货</div>
+    </div>
+
+    <!-- 结果 -->
+    <div id="result"></div>
+
   </div>
 
-  <div class="table-head">
-    <div>图片</div>
-    <div>编号</div>
-    <div>色号</div>
-    <div>数量</div>
-    <div>仓库</div>
-    <div>留货</div>
-  </div>
+  <!-- 管理员悬浮按钮 -->
+  <button class="admin-btn" onclick="location.href='admin.html'">
+    管理员
+  </button>
 
-  <div id="result"></div>
-
-</div>
-
-<button class="admin-btn" onclick="location.href='admin.html'">
-  ⚙ 管理员
-</button>
-
-<script type="module" src="js/query.js"></script>
+  <!-- JS -->
+  <script type="module" src="js/query.js"></script>
 
 </body>
+
 </html>
