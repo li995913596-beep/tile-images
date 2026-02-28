@@ -18,83 +18,65 @@ btnSearch.addEventListener("click", async () => {
     return;
   }
 
-  try {
+  const snap = await getDocs(collection(db, "inventory"));
+  let found = false;
 
-    const snap = await getDocs(collection(db, "inventory"));
-    let found = false;
+  // 表头
+  resultDiv.innerHTML = `
+    <div class="table-header">
+      <div style="width:60px;"></div>
+      <div>编号</div>
+      <div>规格</div>
+      <div>色号</div>
+      <div>数量</div>
+      <div>仓库</div>
+      <div>留货</div>
+    </div>
+  `;
 
-    snap.forEach(doc => {
+  snap.forEach(doc => {
 
-      const item = doc.data();
+    const item = doc.data();
 
-      if (
-        item.code?.toLowerCase().includes(keyword) ||
-        item.color?.toLowerCase().includes(keyword)
-      ) {
+    if (
+      item.code?.toLowerCase().includes(keyword) ||
+      item.color?.toLowerCase().includes(keyword)
+    ) {
 
-        found = true;
+      found = true;
 
-        const stock = Number(item.stock || 0);
+      const stock = Number(item.stock || 0);
+      const reservedTotal = (item.reservedList || [])
+        .reduce((sum, r) => sum + Number(r.qty), 0);
 
-        const reservedTotal = (item.reservedList || [])
-          .reduce((sum, r) => sum + Number(r.qty), 0);
+      const imageUrl = `images/${item.code}.jpg`;
 
-        const imageUrl = `images/${item.code}.jpg`;
+      resultDiv.innerHTML += `
+        <div class="table-row">
 
-        resultDiv.innerHTML += `
-          <div style="
-            background:#fff;
-            padding:15px;
-            margin:15px 0;
-            border-radius:10px;
-            display:flex;
-            gap:20px;
-            align-items:center;
-            box-shadow:0 2px 8px rgba(0,0,0,0.1);
-          ">
+          <img 
+            src="${imageUrl}"
+            class="row-image"
+            onerror="this.style.display='none'"
+          />
 
-            <div style="
-              width:130px;
-              height:130px;
-              background:#f2f2f2;
-              border-radius:8px;
-              overflow:hidden;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-            ">
-              <img 
-                src="${imageUrl}"
-                style="width:100%;height:100%;object-fit:cover;"
-                onerror="this.style.display='none'"
-              />
-            </div>
-
-            <div>
-              <h3>${item.code} (${item.warehouse})</h3>
-              规格: ${item.spec}<br>
-              色号: ${item.color}<br>
-              剩余库存: 
-              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold;">
-                ${stock}
-              </span>
-              <br>
-              留货: ${reservedTotal}
-            </div>
-
+          <div>${item.code}</div>
+          <div>${item.spec || ""}</div>
+          <div>${item.color}</div>
+          <div style="color:${stock<=10?'red':'green'};">
+            ${stock}
           </div>
-        `;
-      }
+          <div>${item.warehouse}</div>
+          <div>${reservedTotal}</div>
 
-    });
-
-    if (!found) {
-      resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
+        </div>
+      `;
     }
 
-  } catch (e) {
-    console.error(e);
-    resultDiv.innerHTML = "<p style='color:red'>查询失败</p>";
+  });
+
+  if (!found) {
+    resultDiv.innerHTML = "<p style='color:red'>未找到库存</p>";
   }
 
 });
