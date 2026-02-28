@@ -1,9 +1,7 @@
 import { db } from "./firebase.js";
 import {
   doc,
-  getDoc,
-  setDoc,
-  updateDoc
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function safeId(text) {
@@ -34,33 +32,25 @@ export async function importExcel(file) {
 
       if (!code || !spec || !color || !warehouse) continue;
 
-      const safeCode = safeId(code);
-      const safeColor = safeId(color);
-      const safeWarehouse = safeId(warehouse);
+      const docId = `${safeId(code)}_${safeId(color)}_${safeId(warehouse)}`;
 
-      const docId = `${safeCode}_${safeColor}_${safeWarehouse}`;
+      const reservedList = reserved > 0 ? [
+        {
+          id: "imported",
+          customer: "历史留货",
+          qty: reserved,
+          date: new Date()
+        }
+      ] : [];
 
-      const ref = doc(db, "inventory", docId);
-      const snap = await getDoc(ref);
-
-      if (snap.exists()) {
-
-        await updateDoc(ref, {
-          stock: qty,
-          reserved: reserved
-        });
-
-      } else {
-
-        await setDoc(ref, {
-          code,
-          spec,
-          color,
-          warehouse,
-          stock: qty,
-          reserved: reserved
-        });
-      }
+      await setDoc(doc(db,"inventory",docId),{
+        code,
+        spec,
+        color,
+        warehouse,
+        stock: qty,
+        reservedList
+      });
     }
   }
 
