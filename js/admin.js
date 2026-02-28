@@ -6,7 +6,8 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  addDoc
+  addDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import {
@@ -96,21 +97,33 @@ window.inStock = async (id)=>{
   const snap=await getDoc(ref);
   const data=snap.data();
   const qty=Number(document.getElementById("in_qty_"+id).value);
-  await updateDoc(ref,{stock:data.stock+qty});
+
+  if(!qty || qty<=0) return alert("请输入正确数量");
+
+  await updateDoc(ref,{
+    stock:data.stock+qty,
+    lastUpdate: serverTimestamp()
+  });
+
   await log("入库",data,qty);
   alert("完成");
 };
 
+/* 新增库存 */
+
 window.addNewStock = async ()=>{
   const id=`${new_code.value}_${new_color.value}_${new_warehouse.value}`;
+
   await setDoc(doc(db,"inventory",id),{
     code:new_code.value,
     spec:new_spec.value,
     color:new_color.value,
     warehouse:new_warehouse.value,
     stock:Number(new_qty.value),
-    reservedList:[]
+    reservedList:[],
+    lastUpdate: serverTimestamp()
   });
+
   alert("新增成功");
 };
 
@@ -151,11 +164,23 @@ window.outStock=async(id)=>{
   const snap=await getDoc(ref);
   const data=snap.data();
   const qty=Number(document.getElementById("out_q_"+id).value);
-  if(qty>data.stock)return alert("库存不足");
-  await updateDoc(ref,{stock:data.stock-qty});
-  await log("出库",data,qty,
+
+  if(!qty || qty<=0) return alert("请输入正确数量");
+  if(qty>data.stock) return alert("库存不足");
+
+  await updateDoc(ref,{
+    stock:data.stock-qty,
+    lastUpdate: serverTimestamp()
+  });
+
+  await log(
+    "出库",
+    data,
+    qty,
     document.getElementById("out_c_"+id).value,
-    document.getElementById("out_p_"+id).value);
+    document.getElementById("out_p_"+id).value
+  );
+
   alert("完成");
 };
 
@@ -195,10 +220,21 @@ window.reserveStock=async(id)=>{
   const snap=await getDoc(ref);
   const data=snap.data();
   const qty=Number(document.getElementById("re_q_"+id).value);
-  if(qty>data.stock)return alert("库存不足");
+
+  if(qty>data.stock) return alert("库存不足");
+
   const list=data.reservedList||[];
-  list.push({customer:document.getElementById("re_c_"+id).value,qty});
-  await updateDoc(ref,{stock:data.stock-qty,reservedList:list});
+  list.push({
+    customer:document.getElementById("re_c_"+id).value,
+    qty
+  });
+
+  await updateDoc(ref,{
+    stock:data.stock-qty,
+    reservedList:list,
+    lastUpdate: serverTimestamp()
+  });
+
   loadReserve();
 };
 
@@ -221,8 +257,14 @@ window.deleteReserve=async(id,index)=>{
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
   const data=snap.data();
+
   data.reservedList.splice(index,1);
-  await updateDoc(ref,{reservedList:data.reservedList});
+
+  await updateDoc(ref,{
+    reservedList:data.reservedList,
+    lastUpdate: serverTimestamp()
+  });
+
   loadReserve();
 };
 
