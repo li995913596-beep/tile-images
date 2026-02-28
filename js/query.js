@@ -13,6 +13,7 @@ const updateTime = document.getElementById("updateTime");
 async function searchData() {
 
   const keyword = searchInput.value.trim().toLowerCase();
+
   resultDiv.innerHTML = "";
 
   if (!keyword) {
@@ -37,8 +38,12 @@ async function searchData() {
       found = true;
 
       const stock = Number(item.stock || 0);
+
       const reserved = Array.isArray(item.reservedList)
-        ? item.reservedList.reduce((s, r) => s + Number(r.qty || 0), 0)
+        ? item.reservedList.reduce(
+            (sum, r) => sum + Number(r.qty || 0),
+            0
+          )
         : Number(item.reserved || 0);
 
       const imageUrl = `images/${item.code}.jpg`;
@@ -46,9 +51,11 @@ async function searchData() {
       resultDiv.innerHTML += `
         <div class="row">
           <div>
-            < img src="${imageUrl}"
-                 loading="lazy"
-                 onerror="this.style.display='none'">
+            < img 
+              src="${imageUrl}"
+              loading="lazy"
+              onerror="this.style.display='none'"
+            >
           </div>
           <div>${item.code}</div>
           <div>${item.color}</div>
@@ -61,7 +68,6 @@ async function searchData() {
           <div>${reserved}</div>
         </div>
       `;
-
     }
 
   });
