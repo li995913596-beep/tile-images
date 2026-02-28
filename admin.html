@@ -16,7 +16,7 @@
 
 <div class="container">
 
-  <!-- ===== 登录区域 ===== -->
+  <!-- 登录区域 -->
   <div id="loginSection">
     <h2>管理员登录</h2>
     <input id="email" placeholder="邮箱">
@@ -24,18 +24,16 @@
     <button id="btnLogin">登录</button>
   </div>
 
-  <!-- ===== 管理区域（默认隐藏） ===== -->
+  <!-- 管理区域 -->
   <div id="adminSection" style="display:none;">
 
     <h2>后台管理</h2>
 
     <hr>
-
     <h3>Excel 导入（覆盖库存）</h3>
     <input type="file" id="excelFile">
 
     <hr>
-
     <h3>入库</h3>
     <input id="in_code" placeholder="编号">
     <input id="in_warehouse" placeholder="仓库（如 k38）">
@@ -46,7 +44,20 @@
     <button id="btnIn">确认入库</button>
 
     <hr>
+    <h3>出库</h3>
+    <input id="out_code" placeholder="编号">
+    <input id="out_warehouse" placeholder="仓库（如 k38）">
+    <input id="out_qty" type="number" placeholder="数量">
+    <input id="out_customer" placeholder="客户名称">
 
+    <label>
+      <input type="checkbox" id="out_paid">
+      已付款
+    </label>
+
+    <button id="btnOut">确认出库</button>
+
+    <hr>
     <button id="btnLogout">退出登录</button>
 
   </div>
