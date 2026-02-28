@@ -25,6 +25,7 @@
     <button onclick="showTab('out')">出库</button>
     <button onclick="showTab('reserve')">留货</button>
     <button onclick="showTab('log')">日志</button>
+    <button onclick="showTab('stats')">统计</button>
     <button onclick="location.href='index.html'">返回首页</button>
     <button id="btnLogout">退出</button>
   </div>
@@ -35,9 +36,11 @@
   <div id="tab_out" class="tab" style="display:none;"></div>
   <div id="tab_reserve" class="tab" style="display:none;"></div>
   <div id="tab_log" class="tab" style="display:none;"></div>
+  <div id="tab_stats" class="tab" style="display:none;"></div>
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module" src="js/admin.js"></script>
 </body>
 </html>
