@@ -14,7 +14,7 @@ btnSearch.addEventListener("click", async () => {
   resultDiv.innerHTML = "";
 
   if (!keyword) {
-    resultDiv.innerHTML = "<p style='color:red;'>请输入编号或色号</p>";
+    resultDiv.innerHTML = "<p style='color:red;'>请输入编号</p>";
     return;
   }
 
@@ -57,25 +57,39 @@ btnSearch.addEventListener("click", async () => {
             align-items:center;
           ">
             
-            <img 
-              src="${imageUrl}" 
-              style="width:120px;height:120px;object-fit:cover;border-radius:6px;"
-              onerror="this.src='https://li995913596-beep.github.io/tile-images/image/default.jpg'"
-            />
+            <!-- 固定图片区域 -->
+            <div style="
+              width:120px;
+              height:120px;
+              background:#f2f2f2;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              border-radius:6px;
+              overflow:hidden;
+            ">
+              <img 
+                src="${imageUrl}"
+                style="width:100%;height:100%;object-fit:cover;"
+                onerror="this.style.display='none'"
+              />
+            </div>
 
+            <!-- 文字区域 -->
             <div>
               <b>${item.code} (${item.warehouse})</b><br>
               规格: ${item.spec} | 色号: ${item.color}<br>
-              剩余库存: 
-                <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
-                  ${stock}
-                </span><br>
+              剩余库存:
+              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
+                ${stock}
+              </span><br>
               留货: ${reservedTotal}
             </div>
 
           </div>
         `;
       }
+
     });
 
     if (!found) {
@@ -84,7 +98,7 @@ btnSearch.addEventListener("click", async () => {
 
   } catch (err) {
     console.error(err);
-    resultDiv.innerHTML = "<p style='color:red;'>查询失败，请查看控制台</p>";
+    resultDiv.innerHTML = "<p style='color:red;'>查询失败</p>";
   }
 
 });
