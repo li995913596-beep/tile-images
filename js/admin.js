@@ -10,6 +10,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -17,6 +18,7 @@ import {
 /* DOM */
 const loginSection = document.getElementById("loginSection");
 const adminSection = document.getElementById("adminSection");
+
 const btnLogin = document.getElementById("btnLogin");
 const btnLogout = document.getElementById("btnLogout");
 
@@ -31,6 +33,14 @@ const operatePaid = document.getElementById("operatePaid");
 
 const btnIn = document.getElementById("btnIn");
 const btnOut = document.getElementById("btnOut");
+
+const new_code = document.getElementById("new_code");
+const new_spec = document.getElementById("new_spec");
+const new_color = document.getElementById("new_color");
+const new_warehouse = document.getElementById("new_warehouse");
+const new_qty = document.getElementById("new_qty");
+const btnCreate = document.getElementById("btnCreate");
+
 const logList = document.getElementById("logList");
 
 let selectedItem = null;
@@ -103,21 +113,22 @@ btnIn.onclick = async ()=>{
   if(!qty) return;
 
   const ref = doc(db,"inventory",selectedItem.id);
+  const snap = await getDoc(ref);
+  const latest = snap.data();
+
   await updateDoc(ref,{
-    stock: selectedItem.stock + qty
+    stock: latest.stock + qty
   });
 
   await addDoc(collection(db,"logs"),{
     type:"in",
-    code:selectedItem.code,
-    warehouse:selectedItem.warehouse,
+    code:latest.code,
+    warehouse:latest.warehouse,
     qty,
-    date:new Date(),
-    reverted:false
+    date:new Date()
   });
 
   alert("入库成功");
-  operateQty.value="";
 };
 
 /* 出库 */
@@ -125,34 +136,67 @@ btnOut.onclick = async ()=>{
   if(!selectedItem){ alert("请先选择库存"); return;}
   const qty = Number(operateQty.value);
   const customer = operateCustomer.value.trim();
-  const paid = operatePaid.checked;
+  const paid = operatePaid.value;
 
-  if(!qty || !customer){ alert("填写完整"); return;}
+  if(!qty || !customer || !paid){
+    alert("填写完整信息");
+    return;
+  }
 
-  const available = selectedItem.stock - selectedItem.reserved;
+  const ref = doc(db,"inventory",selectedItem.id);
+  const snap = await getDoc(ref);
+  const latest = snap.data();
+
+  const available = latest.stock - latest.reserved;
+
   if(qty>available){
     alert("库存不足，可用："+available);
     return;
   }
 
-  const ref = doc(db,"inventory",selectedItem.id);
   await updateDoc(ref,{
-    stock: selectedItem.stock - qty
+    stock: latest.stock - qty
   });
 
   await addDoc(collection(db,"logs"),{
     type:"out",
-    code:selectedItem.code,
-    warehouse:selectedItem.warehouse,
+    code:latest.code,
+    warehouse:latest.warehouse,
     qty,
     customer,
     paid,
-    date:new Date(),
-    reverted:false
+    date:new Date()
   });
 
   alert("出库成功");
-  operateQty.value="";
+};
+
+/* 新增库存 */
+btnCreate.onclick = async ()=>{
+  const code = new_code.value.trim();
+  const spec = new_spec.value.trim();
+  const color = new_color.value.trim();
+  const warehouse = new_warehouse.value.trim();
+  const qty = Number(new_qty.value);
+
+  if(!code||!spec||!color||!warehouse||!qty){
+    alert("填写完整信息");
+    return;
+  }
+
+  const safeCode = code.replaceAll("/","-");
+  const docId = `${safeCode}_${warehouse}`;
+
+  await setDoc(doc(db,"inventory",docId),{
+    code,
+    spec,
+    color,
+    warehouse,
+    stock:qty,
+    reserved:0
+  });
+
+  alert("新增成功");
 };
 
 /* 日志 */
