@@ -16,60 +16,53 @@
 
 <div class="container">
 
-  <!-- 登录区域 -->
-  <div id="loginSection">
-    <h2>管理员登录</h2>
-    <input id="email" placeholder="邮箱">
-    <input id="password" type="password" placeholder="密码">
-    <button id="btnLogin">登录</button>
-  </div>
+<div id="loginSection">
+  <h2>管理员登录</h2>
+  <input id="email" placeholder="邮箱">
+  <input id="password" type="password" placeholder="密码">
+  <button id="btnLogin">登录</button>
+</div>
 
-  <!-- 管理区域 -->
-  <div id="adminSection" style="display:none;">
+<div id="adminSection" style="display:none;">
 
-    <h2>后台管理</h2>
+<h2>后台管理</h2>
 
-    <hr>
-    <h3>Excel 导入（覆盖库存）</h3>
-    <input type="file" id="excelFile">
+<hr>
+<h3>搜索库存</h3>
+<input id="searchCode" placeholder="输入编号搜索">
+<button id="btnSearch">搜索</button>
 
-    <hr>
-    <h3>入库</h3>
-    <input id="in_code" placeholder="编号">
-    <input id="in_warehouse" placeholder="仓库（如 k38）">
-    <input id="in_qty" type="number" placeholder="数量">
-    <br><br>
-    <input id="in_spec" placeholder="规格（新建时填写）">
-    <input id="in_color" placeholder="色号（新建时填写）">
-    <button id="btnIn">确认入库</button>
+<div id="searchResult"></div>
 
-    <hr>
-    <h3>出库</h3>
-    <input id="out_code" placeholder="编号">
-    <input id="out_warehouse" placeholder="仓库（如 k38）">
-    <input id="out_qty" type="number" placeholder="数量">
-    <input id="out_customer" placeholder="客户名称">
+<hr>
+<h3>操作区</h3>
 
-    <label>
-      <input type="checkbox" id="out_paid">
-      已付款
-    </label>
+<div id="selectedInfo"></div>
 
-    <button id="btnOut">确认出库</button>
+<input id="operateQty" type="number" placeholder="数量">
+<input id="operateCustomer" placeholder="客户（出库时填写）">
 
-    <hr>
-    <h3>操作日志</h3>
-    <div id="logList"></div>
+<label>
+<input type="checkbox" id="operatePaid">
+已付款
+</label>
 
-    <hr>
-    <button id="btnLogout">退出登录</button>
+<br><br>
 
-  </div>
+<button id="btnIn">入库</button>
+<button id="btnOut">出库</button>
+
+<hr>
+<h3>操作日志</h3>
+<div id="logList"></div>
+
+<br>
+<button id="btnLogout">退出登录</button>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script type="module" src="js/admin.js"></script>
+</div>
 
+<script type="module" src="js/admin.js"></script>
 </body>
 </html>
