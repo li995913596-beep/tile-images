@@ -3,31 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <title>库存管理后台</title>
-<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="navbar">
-  <div class="logo">库存管理系统</div>
-  <div>
-    <a href="index.html">库存查询</a>
-  </div>
-</div>
-
-<div class="container">
-
-<!-- 登录 -->
+<h2>管理员登录</h2>
 <div id="loginSection">
-  <h2>管理员登录</h2>
   <input id="email" placeholder="邮箱">
   <input id="password" type="password" placeholder="密码">
   <button id="btnLogin">登录</button>
 </div>
 
-<!-- 后台 -->
 <div id="adminSection" style="display:none;">
-
-<h2>后台管理</h2>
 
 <hr>
 <h3>Excel 导入库存</h3>
@@ -35,42 +21,27 @@
 
 <hr>
 <h3>搜索库存</h3>
-<input id="searchCode" placeholder="输入编号或色号搜索">
+<input id="searchCode" placeholder="编号或色号">
 <button id="btnSearch">搜索</button>
 <div id="searchResult"></div>
 
 <hr>
-<h3>操作区</h3>
-<div id="selectedInfo" style="color:green;margin-bottom:10px;"></div>
+<h3>入库 / 出库</h3>
+<div id="selectedInfo" style="color:green;"></div>
 
 <input id="operateQty" type="number" placeholder="数量">
-<input id="operateCustomer" placeholder="客户（出库填写）">
-
+<input id="operateCustomer" placeholder="客户">
 <select id="operatePaid">
-  <option value="">选择付款状态</option>
+  <option value="">付款状态</option>
   <option value="已付款">已付款</option>
   <option value="未付款">未付款</option>
 </select>
-
-<br><br>
 
 <button id="btnIn">入库</button>
 <button id="btnOut">出库</button>
 
 <hr>
-<h3>新增库存</h3>
-
-<input id="new_code" placeholder="编号">
-<input id="new_spec" placeholder="规格">
-<input id="new_color" placeholder="色号">
-<input id="new_warehouse" placeholder="仓库">
-<input id="new_qty" type="number" placeholder="初始数量">
-
-<button id="btnCreate">确认新增</button>
-
-<hr>
-<h3>留货操作</h3>
-
+<h3>留货</h3>
 <input id="reserveCustomer" placeholder="客户名称">
 <input id="reserveQty" type="number" placeholder="留货数量">
 <button id="btnReserve">确认留货</button>
@@ -79,13 +50,10 @@
 <h3>全局留货清单</h3>
 <div id="reserveList"></div>
 
-<hr>
-<button id="btnLogout">退出登录</button>
-
-</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script type="module" src="js/admin.js"></script>
+
 </body>
 </html>
