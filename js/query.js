@@ -15,17 +15,16 @@ async function searchData() {
   resultDiv.innerHTML = "";
 
   if (!keyword) {
-    resultDiv.innerHTML =
-      `<div class="empty">请输入编号或色号</div>`;
+    resultDiv.innerHTML = `<div class="empty">请输入编号或色号</div>`;
     return;
   }
 
   const snap = await getDocs(collection(db, "inventory"));
   let found = false;
 
-  snap.forEach(doc => {
+  snap.forEach(docSnap => {
 
-    const item = doc.data();
+    const item = docSnap.data();
     const code = String(item.code || "").toLowerCase();
     const color = String(item.color || "").toLowerCase();
 
@@ -42,7 +41,8 @@ async function searchData() {
           )
         : 0;
 
-      const imageUrl = `${window.location.origin}/tile-images/images/${item.code}.jpg`;
+      const imageUrl =
+        `${window.location.origin}/tile-images/images/${item.code}.jpg`;
 
       let updateText = "";
 
@@ -59,8 +59,8 @@ async function searchData() {
         <div class="card">
           <div class="card-row">
 
-            <div class="img-box">
-              <img 
+            <div class="img-box" onclick="openModal('${imageUrl}')">
+              < img 
                 src="${imageUrl}"
                 loading="lazy"
                 onerror="this.style.display='none'"
@@ -80,10 +80,10 @@ async function searchData() {
               <div class="qty ${stock > 10 ? "green" : "red"}">
                 ${stock}
               </div>
-              <div class="warehouse">
-                ${item.warehouse || ""}
+              <div class="sub">
+                仓库：${item.warehouse || "-"}
               </div>
-              <div class="reserved">
+              <div class="sub">
                 留货：${reserved}
               </div>
             </div>
@@ -92,11 +92,11 @@ async function searchData() {
         </div>
       `;
     }
+
   });
 
   if (!found) {
-    resultDiv.innerHTML =
-      `<div class="empty">未找到库存</div>`;
+    resultDiv.innerHTML = `<div class="empty">未找到库存</div>`;
   }
 }
 
@@ -104,6 +104,5 @@ btnSearch.onclick = searchData;
 
 btnRefresh.onclick = () => {
   searchInput.value = "";
-  resultDiv.innerHTML =
-    `<div class="empty">请输入编号或色号</div>`;
+  resultDiv.innerHTML = `<div class="empty">请输入编号或色号</div>`;
 };
