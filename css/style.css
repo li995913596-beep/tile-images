@@ -1,59 +1,137 @@
 body {
-  font-family: Arial;
-  margin: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  background: #f4f6f9;
 }
 
-.search-bar,
-.nav-bar {
+/* 顶部 */
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2c3e50;
+  color: white;
+  padding: 15px 20px;
+}
+
+.admin-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: white;
+  cursor: pointer;
+}
+
+.search-section {
+  padding: 20px;
   display: flex;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
-input, select, button {
-  padding: 6px;
-  font-size: 14px;
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-.table-header,
-.table-row {
+button {
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #3498db;
+  color: white;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+.update-time {
+  padding: 0 20px;
+  font-size: 13px;
+  color: #666;
+}
+
+/* 卡片 */
+
+.card {
   display: flex;
-  align-items: center;
   gap: 15px;
-  padding: 8px 0;
+  background: white;
+  margin: 15px 20px;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
 }
 
-.table-header {
-  font-weight: bold;
-  border-bottom: 2px solid #000;
+.card img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
-.table-row {
-  border-bottom: 1px solid #ddd;
-}
-
-.table-row div {
+.card-info {
   flex: 1;
 }
 
-.col-img {
-  width: 60px;
+.title {
+  font-size: 18px;
+  font-weight: bold;
 }
 
-.row-image {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
+.spec {
+  font-size: 14px;
+  color: #888;
+  margin-left: 8px;
 }
+
+.meta {
+  margin: 6px 0;
+  color: #555;
+}
+
+.stock-line {
+  margin: 6px 0;
+  font-size: 15px;
+}
+
+.low {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.normal {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.last-out {
+  font-size: 12px;
+  color: #888;
+  margin-top: 5px;
+}
+
+.error {
+  padding: 20px;
+  color: red;
+}
+
+/* 手机 */
 
 @media (max-width: 768px) {
 
-  body {
-    margin: 10px;
+  .search-section {
+    flex-direction: column;
   }
 
-  input, select, button {
-    width: 100%;
+  .card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 
 }
