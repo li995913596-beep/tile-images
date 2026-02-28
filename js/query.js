@@ -13,6 +13,11 @@ btnSearch.addEventListener("click", async () => {
   const keyword = searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML = "";
 
+  if (!keyword) {
+    resultDiv.innerHTML = "<p style='color:red;'>请输入编号或色号</p>";
+    return;
+  }
+
   try {
 
     const snapshot = await getDocs(collection(db, "inventory"));
@@ -39,15 +44,35 @@ btnSearch.addEventListener("click", async () => {
             )
           : 0;
 
+        const imageUrl = `images/${item.code}.jpg`;
+
         resultDiv.innerHTML += `
-          <div style="background:#fff;padding:15px;margin:10px 0;border-radius:8px;">
-            <b>${item.code} (${item.warehouse})</b><br>
-            规格: ${item.spec} | 色号: ${item.color}<br>
-            剩余库存: 
-              <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
-                ${stock}
-              </span><br>
-            留货: ${reservedTotal}
+          <div style="
+            background:#fff;
+            padding:15px;
+            margin:10px 0;
+            border-radius:8px;
+            display:flex;
+            gap:15px;
+            align-items:center;
+          ">
+            
+            <img 
+              src="${imageUrl}" 
+              style="width:120px;height:120px;object-fit:cover;border-radius:6px;"
+              onerror="this.src='https://li995913596-beep.github.io/tile-images/image/default.jpg'"
+            />
+
+            <div>
+              <b>${item.code} (${item.warehouse})</b><br>
+              规格: ${item.spec} | 色号: ${item.color}<br>
+              剩余库存: 
+                <span style="color:${stock <= 10 ? "red" : "green"};font-weight:bold">
+                  ${stock}
+                </span><br>
+              留货: ${reservedTotal}
+            </div>
+
           </div>
         `;
       }
@@ -59,7 +84,7 @@ btnSearch.addEventListener("click", async () => {
 
   } catch (err) {
     console.error(err);
-    resultDiv.innerHTML = "<p style='color:red;'>查询失败</p>";
+    resultDiv.innerHTML = "<p style='color:red;'>查询失败，请查看控制台</p>";
   }
 
 });
