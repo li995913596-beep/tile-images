@@ -6,7 +6,6 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  deleteDoc,
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -16,23 +15,18 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-/* ================= 登录 ================= */
+/* 登录 */
 
-const loginSection = document.getElementById("loginSection");
-const adminSection = document.getElementById("adminSection");
-
-document.getElementById("btnLogin").onclick = async () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
+btnLogin.onclick = async () => {
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-  } catch (e) {
+    await signInWithEmailAndPassword(auth, email.value, password.value);
+    alert("登录成功");
+  } catch {
     alert("登录失败");
   }
 };
 
-document.getElementById("btnLogout").onclick = async () => {
+btnLogout.onclick = async () => {
   await signOut(auth);
 };
 
@@ -47,14 +41,14 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* ================= 页面切换 ================= */
+/* 页面切换 */
 
 window.showTab = (name) => {
   document.querySelectorAll(".tab").forEach(t => t.style.display="none");
   document.getElementById("tab_"+name).style.display="block";
 };
 
-/* ================= 初始化页面 ================= */
+/* 初始化 */
 
 function initTabs(){
   buildInPage();
@@ -63,16 +57,14 @@ function initTabs(){
   buildLogPage();
 }
 
-/* ================= 入库 ================= */
+/* 入库 */
 
 function buildInPage(){
-  const div = document.getElementById("tab_in");
-  div.innerHTML = `
+  tab_in.innerHTML = `
     <h3>入库</h3>
     <input id="in_search" placeholder="搜索编号">
     <button onclick="searchIn()">搜索</button>
     <div id="in_result"></div>
-
     <h4>新增库存</h4>
     编号<input id="new_code">
     规格<input id="new_spec">
@@ -84,12 +76,11 @@ function buildInPage(){
 }
 
 window.searchIn = async ()=>{
-  const key = in_search.value;
   const snap = await getDocs(collection(db,"inventory"));
   in_result.innerHTML="";
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(key)){
+    if(i.code.includes(in_search.value)){
       in_result.innerHTML+=`
         <div>
           ${i.code}|${i.color}|库存:${i.stock}
@@ -101,10 +92,10 @@ window.searchIn = async ()=>{
 };
 
 window.inStock = async (id)=>{
-  const qty=Number(document.getElementById("in_qty_"+id).value);
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
   const data=snap.data();
+  const qty=Number(document.getElementById("in_qty_"+id).value);
   await updateDoc(ref,{stock:data.stock+qty});
   await log("入库",data,qty);
   alert("完成");
@@ -123,11 +114,10 @@ window.addNewStock = async ()=>{
   alert("新增成功");
 };
 
-/* ================= 出库 ================= */
+/* 出库 */
 
 function buildOutPage(){
-  const div=document.getElementById("tab_out");
-  div.innerHTML=`
+  tab_out.innerHTML=`
     <h3>出库</h3>
     <input id="out_search" placeholder="搜索编号">
     <button onclick="searchOut()">搜索</button>
@@ -136,12 +126,11 @@ function buildOutPage(){
 }
 
 window.searchOut=async()=>{
-  const key=out_search.value;
   const snap=await getDocs(collection(db,"inventory"));
   out_result.innerHTML="";
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(key)){
+    if(i.code.includes(out_search.value)){
       out_result.innerHTML+=`
         <div>
           ${i.code}|${i.color}|库存:${i.stock}
@@ -170,11 +159,10 @@ window.outStock=async(id)=>{
   alert("完成");
 };
 
-/* ================= 留货 ================= */
+/* 留货 */
 
 function buildReservePage(){
-  const div=document.getElementById("tab_reserve");
-  div.innerHTML=`
+  tab_reserve.innerHTML=`
     <h3>留货</h3>
     <input id="re_search" placeholder="搜索编号">
     <button onclick="searchReserve()">搜索</button>
@@ -186,12 +174,11 @@ function buildReservePage(){
 }
 
 window.searchReserve=async()=>{
-  const key=re_search.value;
   const snap=await getDocs(collection(db,"inventory"));
   re_result.innerHTML="";
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(key)){
+    if(i.code.includes(re_search.value)){
       re_result.innerHTML+=`
         <div>
           ${i.code}|${i.color}|库存:${i.stock}
@@ -239,14 +226,12 @@ window.deleteReserve=async(id,index)=>{
   loadReserve();
 };
 
-/* ================= 日志 ================= */
+/* 日志 */
 
 function buildLogPage(){
-  const div=document.getElementById("tab_log");
-  div.innerHTML=`
+  tab_log.innerHTML=`
     <h3>日志</h3>
     <button onclick="downloadLogs()">下载CSV</button>
-    <div id="logList"></div>
   `;
 }
 
