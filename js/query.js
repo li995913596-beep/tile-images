@@ -46,7 +46,7 @@ async function searchData() {
           )
         : Number(item.reserved || 0);
 
-      const imageUrl = `images/${item.code}.jpg`;
+      const imageUrl = `/tile-images/images/${item.code}.jpg`;
 
       resultDiv.innerHTML += `
         <div class="row">
