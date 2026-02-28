@@ -1,42 +1,57 @@
 import { db } from "./firebase.js";
-import { collection, doc, writeBatch, getDocs }
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-export async function importExcel(file){
+export async function importExcel(file) {
 
-const inventoryRef=collection(db,"inventory");
-const batch=writeBatch(db);
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data);
 
-const data=await file.arrayBuffer();
-const wb=XLSX.read(data);
+  for (let sheetName of workbook.SheetNames) {
 
-const old=await getDocs(inventoryRef);
-old.forEach(d=>batch.delete(d.ref));
+    const worksheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(worksheet);
 
-for(let sheetName of wb.SheetNames){
-const sheet=wb.Sheets[sheetName];
-const json=XLSX.utils.sheet_to_json(sheet);
+    const warehouse = sheetName.trim(); // sheet名就是仓库名
 
-for(let row of json){
-const code=String(row["编号"]).trim();
-if(!code) continue;
+    for (let row of json) {
 
-const safeCode = code.replaceAll("/", "-");
+      const code = String(row["编号"]).trim();
+      const spec = String(row["规格"]).trim();
+      const color = String(row["色号"]).trim();
+      const qty = Number(row["数量"]);
 
-const stockValue=Number(row["库存"]||0);
-const reservedValue=Number(row["留货(库存已扣)"]||0);
-const realStock=stockValue+reservedValue;
+      if (!code || !spec || !color || !qty) continue;
 
-batch.set(doc(db,"inventory",`${safeCode}_${sheetName}`),{
-code,
-spec:row["规格"]||"",
-color:row["色号"]||"",
-warehouse:sheetName,
-stock:realStock,
-reserved:reservedValue
-});
-}
-}
+      const docId = `${code}_${color}_${warehouse}`;
+      const ref = doc(db, "inventory", docId);
+      const snap = await getDoc(ref);
 
-await batch.commit();
+      if (snap.exists()) {
+
+        const old = snap.data();
+
+        await updateDoc(ref, {
+          stock: old.stock + qty
+        });
+
+      } else {
+
+        await setDoc(ref, {
+          code,
+          spec,
+          color,
+          warehouse,
+          stock: qty,
+          reserved: 0
+        });
+      }
+    }
+  }
+
+  alert("库存导入完成");
 }
