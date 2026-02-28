@@ -9,8 +9,7 @@ const btnRefresh=document.getElementById("btnRefresh");
 const resultDiv=document.getElementById("result");
 const searchInput=document.getElementById("searchInput");
 
-let currentData=[];
-let sortField="stock";
+let dataList=[];
 let sortAsc=false;
 
 btnSearch.onclick=searchData;
@@ -20,9 +19,10 @@ btnRefresh.onclick=()=>{
 };
 
 async function searchData(){
+
   const keyword=searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML="";
-  currentData=[];
+  dataList=[];
 
   const snap=await getDocs(collection(db,"inventory"));
 
@@ -36,7 +36,7 @@ async function searchData(){
         ?item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
         :0;
 
-      currentData.push({
+      dataList.push({
         ...item,
         stock:Number(item.stock||0),
         reserved
@@ -49,9 +49,8 @@ async function searchData(){
 
 function renderTable(){
 
-  currentData.sort((a,b)=>{
-    if(sortAsc) return a[sortField]-b[sortField];
-    else return b[sortField]-a[sortField];
+  dataList.sort((a,b)=>{
+    return sortAsc?a.stock-b.stock:b.stock-a.stock;
   });
 
   resultDiv.innerHTML=`
@@ -60,16 +59,17 @@ function renderTable(){
       <div class="col">编号</div>
       <div class="col">规格</div>
       <div class="col">色号</div>
-      <div class="col" onclick="sortBy('stock')">数量</div>
+      <div class="col" onclick="toggleSort()">数量</div>
       <div class="col">仓库</div>
       <div class="col">留货</div>
     </div>
   `;
 
-  currentData.forEach(item=>{
+  dataList.forEach(item=>{
 
     const imageUrl=
-      `${window.location.origin}/tile-images/images/${item.code}.jpg`;
+      window.location.origin+
+      "/tile-images/images/"+item.code+".jpg";
 
     resultDiv.innerHTML+=`
       <div class="table-row">
@@ -97,11 +97,7 @@ function renderTable(){
   });
 }
 
-window.sortBy=function(field){
-  if(sortField===field) sortAsc=!sortAsc;
-  else{
-    sortField=field;
-    sortAsc=false;
-  }
+window.toggleSort=function(){
+  sortAsc=!sortAsc;
   renderTable();
 };
