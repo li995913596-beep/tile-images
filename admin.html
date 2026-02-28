@@ -16,28 +16,40 @@
 
 <div class="container">
 
-<!-- 登录区域 -->
-<div id="loginSection">
-  <h2>管理员登录</h2>
-  <input id="email" placeholder="邮箱">
-  <input id="password" type="password" placeholder="密码">
-  <button id="btnLogin">登录</button>
-</div>
+  <!-- ===== 登录区域 ===== -->
+  <div id="loginSection">
+    <h2>管理员登录</h2>
+    <input id="email" placeholder="邮箱">
+    <input id="password" type="password" placeholder="密码">
+    <button id="btnLogin">登录</button>
+  </div>
 
-<!-- 管理模块区域 -->
-<div id="adminSection" style="display:none;">
+  <!-- ===== 管理区域（默认隐藏） ===== -->
+  <div id="adminSection" style="display:none;">
 
-  <h3>Excel 导入（覆盖库存）</h3>
-  <input type="file" id="excelFile">
+    <h2>后台管理</h2>
 
-  <hr>
+    <hr>
 
-  <h3>入库 / 出库 / 留货（下一步添加）</h3>
-  <p>模块正在完善中...</p>
+    <h3>Excel 导入（覆盖库存）</h3>
+    <input type="file" id="excelFile">
 
-  <button id="btnLogout">退出登录</button>
+    <hr>
 
-</div>
+    <h3>入库</h3>
+    <input id="in_code" placeholder="编号">
+    <input id="in_warehouse" placeholder="仓库（如 k38）">
+    <input id="in_qty" type="number" placeholder="数量">
+    <br><br>
+    <input id="in_spec" placeholder="规格（新建时填写）">
+    <input id="in_color" placeholder="色号（新建时填写）">
+    <button id="btnIn">确认入库</button>
+
+    <hr>
+
+    <button id="btnLogout">退出登录</button>
+
+  </div>
 
 </div>
 
