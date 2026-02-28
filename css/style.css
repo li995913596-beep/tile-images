@@ -1,77 +1,65 @@
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f6f9;
+  font-family: Arial;
+  margin: 15px;
 }
 
-.navbar {
-  background: #2d8cf0;
-  color: white;
-  padding: 15px 30px;
+.search-bar,
+.nav-bar {
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+input, select, button {
+  padding: 6px;
+  font-size: 14px;
+}
+
+.table-header,
+.table-row {
+  display: flex;
   align-items: center;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.nav-links a {
-  color: white;
-  margin-left: 20px;
-  text-decoration: none;
-}
-
-.nav-links .active {
-  font-weight: bold;
-}
-
-.container {
-  padding: 30px;
-}
-
-.search-box {
-  margin-bottom: 20px;
-}
-
-input {
-  padding: 8px;
-  width: 250px;
-}
-
-button {
-  padding: 8px 12px;
-  margin-left: 5px;
-  cursor: pointer;
-}
-
-.card {
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  display: flex;
   gap: 15px;
+  padding: 8px 0;
 }
 
-.card img {
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 6px;
+.table-header {
+  font-weight: bold;
+  border-bottom: 2px solid #000;
 }
 
-.card-content {
+.table-row {
+  border-bottom: 1px solid #ddd;
+}
+
+.table-row div {
   flex: 1;
 }
 
-.stock-green { color: #2ecc71; font-weight: bold; }
-.stock-orange { color: #f39c12; font-weight: bold; }
-.stock-red { color: #e74c3c; font-weight: bold; }
+.col-img {
+  width: 60px;
+}
 
-.pagination button {
-  margin: 5px;
+.row-image {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+
+  body {
+    margin: 10px;
+  }
+
+  .table-row,
+  .table-header {
+    font-size: 12px;
+  }
+
+  input, select, button {
+    width: 100%;
+  }
+
 }
