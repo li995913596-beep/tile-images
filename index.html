@@ -9,19 +9,24 @@
 
 <body>
 
-<h2>库存查询</h2>
+<div class="top-bar">
+  <h2>瓷砖库存查询系统</h2>
+  <button class="admin-btn" onclick="location.href='admin.html'">⚙</button>
+</div>
 
-<div class="search-bar">
+<div class="search-section">
   <input id="searchInput" placeholder="输入编号或色号">
   <button id="btnSearch">查询</button>
-  <button onclick="location.reload()">刷新</button>
-  <button onclick="location.href='admin.html'">管理员</button>
+  <button id="btnRefresh">刷新</button>
 </div>
+
+<div class="update-time" id="updateTime"></div>
 
 <hr>
 
 <div id="result"></div>
 
 <script type="module" src="js/query.js"></script>
+
 </body>
 </html>
