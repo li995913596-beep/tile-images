@@ -16,7 +16,7 @@
 
 <div class="container">
 
-<!-- 登录 -->
+<!-- ================= 登录 ================= -->
 <div id="loginSection">
   <h2>管理员登录</h2>
   <input id="email" placeholder="邮箱">
@@ -24,14 +24,18 @@
   <button id="btnLogin">登录</button>
 </div>
 
-<!-- 后台 -->
+<!-- ================= 后台 ================= -->
 <div id="adminSection" style="display:none;">
 
 <h2>后台管理</h2>
 
 <hr>
+<h3>Excel 导入库存</h3>
+<input type="file" id="excelFile">
+
+<hr>
 <h3>搜索库存</h3>
-<input id="searchCode" placeholder="输入编号搜索">
+<input id="searchCode" placeholder="输入编号或色号搜索">
 <button id="btnSearch">搜索</button>
 
 <div id="searchResult"></div>
@@ -39,7 +43,7 @@
 <hr>
 <h3>操作区</h3>
 
-<div id="selectedInfo"></div>
+<div id="selectedInfo" style="margin-bottom:10px;color:green;"></div>
 
 <input id="operateQty" type="number" placeholder="数量">
 <input id="operateCustomer" placeholder="客户（出库时填写）">
@@ -67,16 +71,15 @@
 <button id="btnCreate">确认新增</button>
 
 <hr>
-<h3>操作日志</h3>
-<div id="logList"></div>
-
-<br>
 <button id="btnLogout">退出登录</button>
 
 </div>
 
 </div>
 
+<!-- 必须有这个 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script type="module" src="js/admin.js"></script>
+
 </body>
 </html>
