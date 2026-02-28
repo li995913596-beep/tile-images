@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>管理员后台</title>
+<title>管理后台</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,20 +16,33 @@
 
 <div class="container">
 
-<h2>管理员登录</h2>
-<input id="email" placeholder="邮箱">
-<input id="password" type="password" placeholder="密码">
-<button id="btnLogin">登录</button>
-<button id="btnLogout">退出</button>
+<!-- 登录区域 -->
+<div id="loginSection">
+  <h2>管理员登录</h2>
+  <input id="email" placeholder="邮箱">
+  <input id="password" type="password" placeholder="密码">
+  <button id="btnLogin">登录</button>
+</div>
 
-<hr>
+<!-- 管理模块区域 -->
+<div id="adminSection" style="display:none;">
 
-<h3>Excel 导入（覆盖库存）</h3>
-<input type="file" id="excelFile">
+  <h3>Excel 导入（覆盖库存）</h3>
+  <input type="file" id="excelFile">
+
+  <hr>
+
+  <h3>入库 / 出库 / 留货（下一步添加）</h3>
+  <p>模块正在完善中...</p>
+
+  <button id="btnLogout">退出登录</button>
+
+</div>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script type="module" src="js/admin.js"></script>
+
 </body>
 </html>
