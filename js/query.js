@@ -13,7 +13,6 @@ const updateTime = document.getElementById("updateTime");
 async function searchData() {
 
   const keyword = searchInput.value.trim().toLowerCase();
-
   resultDiv.innerHTML = "";
 
   if (!keyword) {
@@ -23,13 +22,11 @@ async function searchData() {
   }
 
   const snap = await getDocs(collection(db, "inventory"));
-
   let found = false;
 
   snap.forEach(doc => {
 
     const item = doc.data();
-
     const code = String(item.code || "").toLowerCase();
     const color = String(item.color || "").toLowerCase();
 
@@ -46,12 +43,12 @@ async function searchData() {
           )
         : Number(item.reserved || 0);
 
-      const imageUrl = `/tile-images/images/${item.code}.jpg`;
+      const imageUrl = `${window.location.origin}/tile-images/images/${item.code}.jpg`;
 
       resultDiv.innerHTML += `
         <div class="row">
-          <div>
-            < img 
+          <div class="img-box">
+            <img 
               src="${imageUrl}"
               loading="lazy"
               onerror="this.style.display='none'"
@@ -64,7 +61,7 @@ async function searchData() {
               ${stock}
             </div>
           </div>
-          <div>${item.warehouse}</div>
+          <div>${item.warehouse || ""}</div>
           <div>${reserved}</div>
         </div>
       `;
@@ -77,7 +74,7 @@ async function searchData() {
       "<div style='padding:20px;color:#999'>未找到库存</div>";
   }
 
-  updateTime.innerText = new Date().toLocaleString();
+  updateTime.innerText = "查询时间：" + new Date().toLocaleString();
 }
 
 btnSearch.onclick = searchData;
