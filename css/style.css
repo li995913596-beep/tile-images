@@ -181,3 +181,64 @@ header{
   border-radius:16px;
   box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
+/* ================== 后台专用样式 ================== */
+
+.card{
+  background:#fff;
+  padding:28px;
+  border-radius:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.05);
+  margin-bottom:30px;
+}
+
+.nav-card{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.nav-card button{
+  padding:12px 20px;
+  border:none;
+  border-radius:12px;
+  background:#3498db;
+  color:#fff;
+  cursor:pointer;
+  transition:0.25s;
+}
+
+.nav-card button:hover{
+  background:#2980b9;
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(0,0,0,0.1);
+}
+
+#loginSection input{
+  width:100%;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:10px;
+  border:1px solid #e3e8ef;
+}
+
+#loginSection button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#3498db;
+  color:#fff;
+  cursor:pointer;
+}
+
+#loginSection button:hover{
+  background:#2980b9;
+}
+
+/* 统计图表卡片优化 */
+#tab_stats canvas{
+  background:#fff;
+  padding:15px;
+  border-radius:12px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.05);
+}
