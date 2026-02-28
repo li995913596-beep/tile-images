@@ -203,13 +203,85 @@ function buildReservePage(){
   loadReserve();
 }
 
+window.searchReserve=async()=>{
+  const snap=await getDocs(collection(db,"inventory"));
+  re_result.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    if(i.code.includes(re_search.value)){
+      re_result.innerHTML+=`
+        <div>
+          ${i.code}|${i.color}|库存:${i.stock}
+          客户<input id="re_c_${d.id}">
+          数量<input id="re_q_${d.id}">
+          <button onclick="reserveStock('${d.id}')">留货</button>
+        </div>`;
+    }
+  });
+};
+
+window.reserveStock=async(id)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  const qty=Number(document.getElementById("re_q_"+id).value);
+  const customer=document.getElementById("re_c_"+id).value;
+
+  if(!qty || qty<=0) return alert("请输入正确数量");
+  if(qty>data.stock) return alert("库存不足");
+
+  const list=data.reservedList||[];
+  list.push({customer,qty});
+
+  await updateDoc(ref,{
+    stock:data.stock-qty,
+    reservedList:list,
+    lastUpdate: serverTimestamp()
+  });
+
+  await log("留货",data,qty,customer);
+  loadReserve();
+};
+
+async function loadReserve(){
+  const snap=await getDocs(collection(db,"inventory"));
+  reserveList.innerHTML="";
+  snap.forEach(d=>{
+    const i=d.data();
+    (i.reservedList||[]).forEach((r,index)=>{
+      reserveList.innerHTML+=`
+        <div>
+          ${i.code}|${r.customer}|${r.qty}
+          <button onclick="deleteReserve('${d.id}',${index})">删</button>
+        </div>`;
+    });
+  });
+}
+
+window.deleteReserve=async(id,index)=>{
+  const ref=doc(db,"inventory",id);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+
+  const removed=data.reservedList[index];
+  data.reservedList.splice(index,1);
+
+  await updateDoc(ref,{
+    reservedList:data.reservedList,
+    stock:data.stock + removed.qty,
+    lastUpdate: serverTimestamp()
+  });
+
+  await log("取消留货",data,removed.qty,removed.customer);
+  loadReserve();
+};
+
 /* ================= 日志 ================= */
 
 function buildLogPage(){
   tab_log.innerHTML=`
     <h3>日志</h3>
     <button onclick="downloadLogs()">下载CSV</button>
-
     <table border="1" width="100%" style="margin-top:15px;border-collapse:collapse">
       <thead>
         <tr>
@@ -269,7 +341,6 @@ window.downloadLogs=async()=>{
 function buildStatsPage(){
   tab_stats.innerHTML=`
     <h3>库存统计</h3>
-
     <table border="1" width="100%" style="margin-top:15px;border-collapse:collapse">
       <thead>
         <tr>
