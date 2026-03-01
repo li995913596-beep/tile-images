@@ -104,7 +104,7 @@ function buildMobile(list){
   list.forEach(item=>{
 
     const imageUrl = window.location.origin +
-      "/tile-images/images/" + item.code + ".jpg";
+      "/images/" + item.code + ".jpg";
 
     const stockClass =
       item.stock==0 ? "stock-zero" :
