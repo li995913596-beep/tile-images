@@ -417,7 +417,7 @@ async function log(type,data,qty,customer=""){
     customer
   });
 }
-/* ================= Excel 导入 ================= */
+/* ================= Excel 导入（支持多个工作表） ================= */
 
 window.handleImport = async function () {
 
@@ -440,49 +440,49 @@ window.handleImport = async function () {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: "array" });
 
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-
-      const json = XLSX.utils.sheet_to_json(sheet);
-
-      if (!json.length) {
-        alert("Excel 没有数据");
-        return;
-      }
-
       let successCount = 0;
 
-      for (let row of json) {
+      // 🔥 遍历所有工作表
+      for (let sheetName of workbook.SheetNames) {
 
-        // ✅ 安全处理仓库名（解决 / 导致只导入一个仓库问题）
-        const safeWarehouse = (row["所在仓库"] || "")
-          .toString()
-          .replaceAll("/", "_")
-          .replaceAll("\\", "_")
-          .replaceAll(" ", "")
-          .trim();
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet);
 
-        const code = (row["编号"] || "").toString().trim();
-        const color = (row["色号"] || "默认").toString().trim();
+        for (let row of json) {
 
-        if (!code || !safeWarehouse) continue;
+          const safeWarehouse = (row["所在仓库"] || sheetName || "")
+            .toString()
+            .replaceAll("/", "_")
+            .replaceAll("\\", "_")
+            .replaceAll(" ", "")
+            .trim();
 
-        const id = `${code}_${color}_${safeWarehouse}`;
+          const code = (row["编号"] || "").toString().trim();
+          const color = (row["色号"] || "默认").toString().trim();
 
-        await setDoc(doc(db, "inventory", id), {
-          code: code,
-          spec: (row["规格"] || "").toString(),
-          color: color,
-          warehouse: safeWarehouse,
-          stock: Number(row["数量"]) || 0,
-          piecesPerBox: row["每箱片数"] 
-            ? Number(row["每箱片数"]) 
-            : null,
-          reservedList: [],
-          lastUpdate: serverTimestamp()
-        });
+          if (!code || !safeWarehouse) continue;
 
-        successCount++;
+          const id = `${code}_${color}_${safeWarehouse}`;
+
+          // ⚠️ 一定要用三个参数形式
+          await setDoc(
+            doc(db, "inventory", id),
+            {
+              code: code,
+              spec: (row["规格"] || "").toString(),
+              color: color,
+              warehouse: safeWarehouse,
+              stock: Number(row["数量"]) || 0,
+              piecesPerBox: row["每箱片数"]
+                ? Number(row["每箱片数"])
+                : null,
+              reservedList: [],
+              lastUpdate: serverTimestamp()
+            }
+          );
+
+          successCount++;
+        }
       }
 
       alert(`导入完成 ✅ 共导入 ${successCount} 条数据`);
