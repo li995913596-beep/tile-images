@@ -121,6 +121,12 @@ header{
   box-shadow:0 6px 18px rgba(0,0,0,0.04);
 }
 
+.img-col{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
 .img-col img{
   width:70px;
   height:70px;
@@ -144,24 +150,41 @@ header{
   50%{opacity:0.4}
 }
 
-/* 手机卡片模式 */
+/* ================= 手机优化（保持表格，不卡片） ================= */
 @media(max-width:768px){
 
-  .table-header{
-    display:none;
+  .container{
+    margin:20px auto;
+    padding:0 10px;
   }
 
-  .table-row{
-    display:block;
-    margin-bottom:18px;
+  .search-box{
     padding:18px;
-    border-radius:16px;
   }
 
-  .table-row div{
-    margin-bottom:8px;
+  .search-row{
+    flex-direction:column;
+    gap:10px;
   }
 
+  .search-row input,
+  .search-row button{
+    width:100%;
+    font-size:14px;
+    padding:12px;
+  }
+
+  .table-header,
+  .table-row{
+    grid-template-columns:50px 80px 80px 60px 60px 70px 60px;
+    font-size:11px;
+    padding:10px;
+  }
+
+  .img-col img{
+    width:40px;
+    height:40px;
+  }
 }
 
 /* 放大层 */
@@ -181,6 +204,7 @@ header{
   border-radius:16px;
   box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
+
 /* ================== 后台专用样式 ================== */
 
 .card{
@@ -241,45 +265,4 @@ header{
   padding:15px;
   border-radius:12px;
   box-shadow:0 8px 25px rgba(0,0,0,0.05);
-}
-/* ================= 手机优化卡片展示 ================= */
-
-@media(max-width:768px){
-
-  .table-header{
-    display:none;
-  }
-
-  .table-row{
-    display:block;
-    margin-bottom:18px;
-    padding:18px;
-    border-radius:16px;
-  }
-
-  .table-row div{
-    display:flex;
-    justify-content:space-between;
-    padding:6px 0;
-    border-bottom:1px solid #f0f0f0;
-  }
-
-  .table-row div:last-child{
-    border-bottom:none;
-  }
-
-  .table-row div::before{
-    content:attr(data-label);
-    font-weight:bold;
-    color:#666;
-  }
-
-  .img-col{
-    justify-content:center !important;
-  }
-
-  .img-col::before{
-    content:"";
-  }
-
 }
