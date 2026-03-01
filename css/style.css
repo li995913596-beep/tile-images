@@ -100,7 +100,7 @@ header{
   font-weight:600;
 }
 
-/* ===== 手机强制卡片模式 ===== */
+/* ===== 手机横向紧凑卡片 ===== */
 
 @media(max-width:768px){
 
@@ -109,7 +109,8 @@ header{
   }
 
   .table-row{
-    display:block !important;
+    display:flex !important;
+    gap:12px;
     padding:14px;
     margin-bottom:14px;
     border-radius:16px;
@@ -118,27 +119,33 @@ header{
   }
 
   .img-col{
-    text-align:center;
-    margin-bottom:10px;
+    flex-shrink:0;
   }
 
   .img-col img{
-    width:85px;
-    height:85px;
+    width:80px;
+    height:80px;
   }
 
-  .table-row div:not(.img-col){
-    display:flex !important;
+  /* 右侧信息区域 */
+  .table-row > div:not(.img-col){
+    flex:1;
+    display:grid !important;
+    grid-template-columns:1fr 1fr;
+    gap:4px 10px;
+    font-size:13px;
+  }
+
+  .table-row > div:not(.img-col) > div{
+    display:flex;
     justify-content:space-between;
-    font-size:14px;
-    padding:4px 0;
   }
 
-  .table-row div:not(.img-col)::before{
+  .table-row div[data-label]::before{
     content:attr(data-label);
     font-weight:600;
     color:#555;
-    margin-right:10px;
+    margin-right:6px;
   }
 
 }
