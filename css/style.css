@@ -157,42 +157,45 @@ header{
 
   .container{
     margin:20px auto;
-    padding:0 8px;
+    padding:0 6px;
   }
 
-  /* 搜索框保持一行，但缩小 */
   .search-box{
     padding:16px;
   }
 
   .search-row{
-    gap:8px;
+    gap:6px;
   }
 
   .search-row input{
-    padding:10px 12px;
+    padding:10px 10px;
     font-size:13px;
   }
 
   .search-row button{
-    padding:10px 14px;
+    padding:10px 12px;
     font-size:13px;
   }
 
-  /* 智能缩放整张表 */
-  .table-wrapper{
-    transform-origin:left top;
-    transform:scale(calc(100vw / 900));
-  }
-
+  /* 关键：压缩列宽，不使用缩放 */
   .table-header,
   .table-row{
-    font-size:14px;
+    grid-template-columns:
+      50px   /* 图片 */
+      80px   /* 编号 */
+      80px   /* 规格 */
+      70px   /* 色号 */
+      60px   /* 数量 */
+      70px   /* 仓库 */
+      60px;  /* 留货 */
+    font-size:12px;
+    padding:8px;
   }
 
   .img-col img{
-    width:60px;
-    height:60px;
+    width:40px;
+    height:40px;
   }
 
 }
@@ -276,3 +279,4 @@ header{
   border-radius:12px;
   box-shadow:0 8px 25px rgba(0,0,0,0.05);
 }
+
