@@ -17,15 +17,6 @@ header{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  letter-spacing:1px;
-}
-
-.gear{
-  cursor:pointer;
-  transition:0.3s;
-}
-.gear:hover{
-  transform:rotate(90deg);
 }
 
 /* 主体 */
@@ -38,45 +29,32 @@ header{
 /* 查询框 */
 .search-box{
   background:#fff;
-  padding:28px;
+  padding:24px;
   border-radius:18px;
   box-shadow:0 10px 30px rgba(0,0,0,0.05);
   margin-bottom:30px;
 }
 
-.search-box h2{
-  margin-top:0;
-  font-size:22px;
-  margin-bottom:18px;
-}
-
 .search-row{
   display:flex;
-  gap:14px;
+  gap:12px;
   align-items:center;
 }
 
 .search-row input{
   flex:1;
-  padding:14px 16px;
+  padding:12px 14px;
   border-radius:12px;
   border:1px solid #e3e8ef;
-  font-size:15px;
-  transition:0.3s;
-}
-.search-row input:focus{
-  outline:none;
-  border-color:#3498db;
-  box-shadow:0 0 0 3px rgba(52,152,219,0.15);
+  font-size:14px;
 }
 
 .search-row button{
-  padding:14px 22px;
+  padding:12px 18px;
   border:none;
   border-radius:12px;
-  font-size:14px;
   cursor:pointer;
-  transition:0.3s;
+  font-size:14px;
   white-space:nowrap;
 }
 
@@ -84,24 +62,19 @@ header{
   background:#3498db;
   color:#fff;
 }
-.search-row button:first-of-type:hover{
-  background:#2980b9;
-}
 
 .search-row button:last-of-type{
   background:#ecf0f3;
 }
-.search-row button:last-of-type:hover{
-  background:#dfe6ec;
-}
 
-/* 表格（桌面） */
+/* ================= 电脑表格 ================= */
+
 .table-header,
 .table-row{
   display:grid;
   grid-template-columns:90px 150px 150px 150px 100px 120px 100px;
   align-items:center;
-  padding:16px;
+  padding:14px 16px;
 }
 
 .table-header{
@@ -114,18 +87,15 @@ header{
 .table-row{
   background:#fff;
   border-bottom:1px solid #f0f2f5;
-  transition:0.25s;
+  transition:0.2s;
 }
 
 .table-row:hover{
   background:#f6f9fd;
-  transform:translateY(-2px);
-  box-shadow:0 6px 18px rgba(0,0,0,0.04);
 }
 
 .img-col{
   display:flex;
-  justify-content:center;
   align-items:center;
 }
 
@@ -134,68 +104,82 @@ header{
   height:70px;
   object-fit:cover;
   border-radius:10px;
-  cursor:pointer;
-  transition:0.3s;
-}
-.img-col img:hover{
-  transform:scale(1.05);
 }
 
-/* 数量颜色 */
-.low-stock{
-  animation:blink 1s infinite;
-  color:#e74c3c;
-  font-weight:bold;
+/* 数量标签 */
+.stock-badge{
+  padding:4px 12px;
+  border-radius:16px;
+  font-size:13px;
+  font-weight:600;
+  color:#fff;
+  display:inline-block;
 }
 
-@keyframes blink{
-  50%{opacity:0.4}
-}
+.stock-high{ background:#27ae60; }
+.stock-low{ background:#e74c3c; }
 
-/* ================= 手机智能缩放 ================= */
+/* ================= 手机 SaaS 紧凑模式 ================= */
+
 @media(max-width:768px){
 
   .container{
     margin:20px auto;
-    padding:0 6px;
+    padding:0 10px;
   }
 
   .search-box{
     padding:16px;
   }
 
-  .search-row{
-    gap:6px;
-  }
-
   .search-row input{
-    padding:10px 10px;
     font-size:13px;
+    padding:10px 12px;
   }
 
   .search-row button{
-    padding:10px 12px;
     font-size:13px;
+    padding:10px 14px;
   }
 
-  /* 关键：压缩列宽，不使用缩放 */
-  .table-header,
+  .table-header{
+    display:none;
+  }
+
   .table-row{
-    grid-template-columns:
-      50px   /* 图片 */
-      80px   /* 编号 */
-      80px   /* 规格 */
-      70px   /* 色号 */
-      60px   /* 数量 */
-      70px   /* 仓库 */
-      60px;  /* 留货 */
-    font-size:12px;
-    padding:8px;
+    display:flex;
+    gap:10px;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:14px;
+    background:#ffffff;
+    box-shadow:0 4px 16px rgba(0,0,0,0.05);
   }
 
   .img-col img{
-    width:40px;
-    height:40px;
+    width:68px;
+    height:68px;
+  }
+
+  .mobile-info{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    font-size:13px;
+    line-height:1.2;
+  }
+
+  .mobile-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .mobile-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px 10px;
   }
 
 }
@@ -215,68 +199,4 @@ header{
   max-width:90%;
   max-height:90%;
   border-radius:16px;
-  box-shadow:0 20px 60px rgba(0,0,0,0.4);
 }
-
-/* ================== 后台专用样式 ================== */
-
-.card{
-  background:#fff;
-  padding:28px;
-  border-radius:18px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.05);
-  margin-bottom:30px;
-}
-
-.nav-card{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-}
-
-.nav-card button{
-  padding:12px 20px;
-  border:none;
-  border-radius:12px;
-  background:#3498db;
-  color:#fff;
-  cursor:pointer;
-  transition:0.25s;
-}
-
-.nav-card button:hover{
-  background:#2980b9;
-  transform:translateY(-2px);
-  box-shadow:0 6px 16px rgba(0,0,0,0.1);
-}
-
-#loginSection input{
-  width:100%;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:10px;
-  border:1px solid #e3e8ef;
-}
-
-#loginSection button{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:10px;
-  background:#3498db;
-  color:#fff;
-  cursor:pointer;
-}
-
-#loginSection button:hover{
-  background:#2980b9;
-}
-
-/* 统计图表卡片优化 */
-#tab_stats canvas{
-  background:#fff;
-  padding:15px;
-  border-radius:12px;
-  box-shadow:0 8px 25px rgba(0,0,0,0.05);
-}
-
