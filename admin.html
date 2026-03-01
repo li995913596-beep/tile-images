@@ -36,6 +36,13 @@
     <button id="btnLogout">退出</button>
   </div>
 
+  <!-- ✅ 新增 Excel 导入 -->
+  <div class="card">
+    <h3>导入库存（Excel）</h3>
+    <input type="file" id="excelFile" accept=".xlsx,.xls">
+    <button onclick="handleImport()">导入</button>
+  </div>
+
   <div id="tab_in" class="tab card"></div>
   <div id="tab_out" class="tab card" style="display:none;"></div>
   <div id="tab_reserve" class="tab card" style="display:none;"></div>
@@ -46,6 +53,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module" src="js/admin.js"></script>
 
