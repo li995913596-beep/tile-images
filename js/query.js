@@ -32,10 +32,10 @@ async function searchData(){
   snap.forEach(doc=>{
     const item = doc.data();
 
-    // 🔥 强制安全字符串，避免 undefined 报错
     const code = String(item.code || "").toLowerCase();
     const spec = String(item.spec || "").toLowerCase();
 
+    // 只搜索编号 + 规格
     if(code.includes(keyword) || spec.includes(keyword)){
 
       const reserved = Array.isArray(item.reservedList)
@@ -51,6 +51,7 @@ async function searchData(){
     return;
   }
 
+  // 表头（保持你原结构）
   resultDiv.innerHTML=`
     <div class="table-header">
       <div>图片<br>Image</div>
@@ -69,6 +70,8 @@ async function searchData(){
       window.location.origin +
       "/tile-images/images/" + item.code + ".jpg";
 
+    const lowStock = item.stock < 10;
+
     resultDiv.innerHTML+=`
       <div class="table-row">
 
@@ -85,7 +88,7 @@ async function searchData(){
         <div data-label="Color">${item.color||"-"}</div>
 
         <div data-label="Stock"
-             class="${item.stock<10?'low-stock':''}">
+             class="${lowStock?'low-stock':''}">
           ${item.stock}
         </div>
 
@@ -95,4 +98,5 @@ async function searchData(){
       </div>
     `;
   });
+
 }
