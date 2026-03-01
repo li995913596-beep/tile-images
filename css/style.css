@@ -19,7 +19,6 @@ header{
   align-items:center;
 }
 
-/* 主体 */
 .container{
   max-width:1200px;
   margin:40px auto;
@@ -35,39 +34,39 @@ header{
   margin-bottom:30px;
 }
 
-.search-row{
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
-
 .search-row input{
-  flex:1;
+  width:100%;
   padding:12px 14px;
   border-radius:12px;
   border:1px solid #e3e8ef;
   font-size:14px;
 }
 
-.search-row button{
-  padding:12px 18px;
-  border:none;
-  border-radius:12px;
-  cursor:pointer;
-  font-size:14px;
-  white-space:nowrap;
+.search-buttons{
+  display:flex;
+  gap:12px;
+  margin-top:12px;
 }
 
-.search-row button:first-of-type{
+.search-buttons button{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  font-size:14px;
+  cursor:pointer;
+}
+
+.search-buttons button:first-child{
   background:#3498db;
   color:#fff;
 }
 
-.search-row button:last-of-type{
+.search-buttons button:last-child{
   background:#ecf0f3;
 }
 
-/* ================= 电脑保持原 grid ================= */
+/* ================= 电脑模式不变 ================= */
 
 .table-header,
 .table-row{
@@ -89,11 +88,6 @@ header{
   border-bottom:1px solid #f0f2f5;
 }
 
-.img-col{
-  display:flex;
-  align-items:center;
-}
-
 .img-col img{
   width:70px;
   height:70px;
@@ -101,13 +95,12 @@ header{
   border-radius:10px;
 }
 
-/* 低库存 */
 .low-stock{
   color:#e74c3c;
   font-weight:600;
 }
 
-/* ================= 手机横向紧凑卡片 ================= */
+/* ================= 手机模式 ================= */
 
 @media(max-width:768px){
 
@@ -118,86 +111,39 @@ header{
   .table-row{
     display:flex !important;
     gap:12px;
-    padding:12px;
-    margin-bottom:12px;
-    border-radius:14px;
+    padding:14px;
+    margin-bottom:14px;
+    border-radius:16px;
     background:#fff;
     box-shadow:0 6px 18px rgba(0,0,0,0.06);
   }
 
   .img-col{
     flex-shrink:0;
-    align-items:center;
   }
 
   .img-col img{
-    width:70px;
-    height:70px;
-  }
-
-  /* 右侧内容区域 */
-  .table-row div:not(.img-col){
-    display:flex;
-    justify-content:space-between;
-    padding:2px 0;
-    font-size:13px;
-  }
-
-  /* 把右侧所有字段变成两列 */
-  .table-row{
-    flex-wrap:nowrap;
+    width:75px;
+    height:75px;
   }
 
   .table-row div:not(.img-col){
-    width:100%;
-  }
-
-  /* 包一层信息区 */
-  .table-row{
-    align-items:flex-start;
-  }
-
-  .table-row div:not(.img-col){
-    flex-direction:row;
-  }
-
-  /* 整理右侧结构 */
-  .table-row > div:not(.img-col){
-    display:block;
-  }
-
-  /* 重排右侧字段为两列 */
-  .table-row{
     display:flex !important;
-  }
-
-  .table-row > div:not(.img-col){
-    margin-left:4px;
-  }
-
-  /* 创建信息区域 */
-  .table-row{
-    position:relative;
-  }
-
-  .table-row > div:not(.img-col){
-    flex:1;
-  }
-
-  .table-row > div:not(.img-col){
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:4px 12px;
-  }
-
-  .table-row > div:not(.img-col) > div{
-    display:flex;
     justify-content:space-between;
+    font-size:13px;
+    padding:3px 0;
+  }
+
+  .table-row div:not(.img-col)::before{
+    content:attr(data-label);
+    font-weight:600;
+    color:#555;
+    margin-right:8px;
   }
 
 }
 
-/* 放大层 */
+/* 图片放大 */
 .modal{
   display:none;
   position:fixed;
