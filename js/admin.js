@@ -416,3 +416,49 @@ async function log(type,data,qty,customer=""){
     customer
   });
 }
+/* ================= Excel 导入 ================= */
+
+window.importExcel = async function () {
+
+  const fileInput = document.getElementById("excelFile");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("请选择文件");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = async function (e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    for (let row of json) {
+
+      const id = `${row["编号"]}_${row["色号"] || "默认"}_${row["所在仓库"]}`;
+
+      await setDoc(doc(db, "inventory", id), {
+        code: row["编号"],
+        spec: row["规格"] || "",
+        color: row["色号"] || "",
+        warehouse: row["所在仓库"] || "",
+        stock: Number(row["数量"]) || 0,
+        piecesPerBox: Number(row["每箱片数"]) || null,
+        reservedList: [],
+        lastUpdate: serverTimestamp()
+      });
+
+    }
+
+    alert("导入完成");
+
+  };
+
+  reader.readAsArrayBuffer(file);
+};
