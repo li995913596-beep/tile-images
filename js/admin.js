@@ -418,7 +418,7 @@ async function log(type,data,qty,customer=""){
 }
 /* ================= Excel 导入 ================= */
 
-window.importExcel = async function () {
+window.handleImport = async function () {
 
   const fileInput = document.getElementById("excelFile");
   const file = fileInput.files[0];
