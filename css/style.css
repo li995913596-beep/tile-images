@@ -206,3 +206,68 @@ header{
   font-weight:600;
   color:#555;
 }
+/* ===== 手机高级卡片 ===== */
+
+@media(max-width:768px){
+
+  .table-header,
+  .table-row{
+    display:none;
+  }
+
+  .mobile-card{
+    display:flex;
+    gap:14px;
+    background:#fff;
+    padding:14px;
+    border-radius:16px;
+    margin-bottom:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    align-items:flex-start;
+  }
+
+  .mobile-left img{
+    width:90px;
+    height:90px;
+    object-fit:cover;
+    border-radius:14px;
+  }
+
+  .mobile-right{
+    flex:1;
+    font-size:14px;
+  }
+
+  .mobile-right .row{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:6px;
+  }
+
+  .mobile-right .label{
+    color:#666;
+    font-weight:500;
+  }
+
+  .stock-badge{
+    padding:4px 10px;
+    border-radius:20px;
+    font-weight:600;
+    font-size:13px;
+  }
+
+  .stock-zero{
+    background:#fdecea;
+    color:#e74c3c;
+  }
+
+  .stock-low{
+    background:#fff4e5;
+    color:#ff7a00;
+  }
+
+  .stock-ok{
+    background:#eafaf1;
+    color:#2ecc71;
+  }
+}
