@@ -215,21 +215,6 @@ window.outStock=async(id)=>{
   alert("完成");
 };
 
-/* ================= 日志 ================= */
-
-async function log(type,data,qty,customer=""){
-  await addDoc(collection(db,"logs"),{
-    timestamp: serverTimestamp(),
-    type,
-    code:data.code,
-    spec:data.spec||"",
-    color:data.color,
-    warehouse:data.warehouse,
-    qty:Number(qty),
-    customer
-  });
-}
-
 /* ================= 留货 ================= */
 
 function buildReservePage(){
