@@ -35,6 +35,7 @@ async function searchData(){
     const spec = String(item.spec || "").toLowerCase();
 
     if(code.includes(keyword) || spec.includes(keyword)){
+
       const reserved = Array.isArray(item.reservedList)
         ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
         : 0;
@@ -48,16 +49,14 @@ async function searchData(){
     return;
   }
 
-  const isMobile = window.innerWidth <= 768;
-
-  if(!isMobile){
-    buildDesktop(list);
-  }else{
+  if(window.innerWidth <= 768){
     buildMobile(list);
+  }else{
+    buildDesktop(list);
   }
 }
 
-/* ===== 电脑版本 ===== */
+/* ===== 桌面版 ===== */
 
 function buildDesktop(list){
 
@@ -74,23 +73,21 @@ function buildDesktop(list){
   `;
 
   list.forEach(item=>{
-
-    const imageUrl =
-      window.location.origin +
+    const imageUrl = window.location.origin +
       "/tile-images/images/" + item.code + ".jpg";
-
-    const lowStock = item.stock < 10;
 
     resultDiv.innerHTML+=`
       <div class="table-row">
         <div class="img-col" onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy"
-            onerror="this.style.display='none'">
+          < img src="${imageUrl}" loading="lazy"
+          onerror="this.style.display='none'">
         </div>
         <div>${item.code}</div>
         <div>${item.spec||"-"}</div>
         <div>${item.color||"-"}</div>
-        <div class="${lowStock?'low-stock':''}">${item.stock}</div>
+        <div class="${item.stock<10?'low-stock':''}">
+          ${item.stock}
+        </div>
         <div>${item.warehouse||"-"}</div>
         <div>${item.reserved}</div>
       </div>
@@ -98,7 +95,7 @@ function buildDesktop(list){
   });
 }
 
-/* ===== 手机版本（稳定卡片） ===== */
+/* ===== 手机高级卡片版 ===== */
 
 function buildMobile(list){
 
@@ -106,40 +103,58 @@ function buildMobile(list){
 
   list.forEach(item=>{
 
-    const imageUrl =
-      window.location.origin +
+    const imageUrl = window.location.origin +
       "/tile-images/images/" + item.code + ".jpg";
 
-    const lowStock = item.stock < 10;
+    const stockClass =
+      item.stock==0 ? "stock-zero" :
+      item.stock<10 ? "stock-low" :
+      "stock-ok";
 
     resultDiv.innerHTML+=`
       <div class="mobile-card">
 
-        <div class="mobile-img" onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy"
-            onerror="this.style.display='none'">
+        <div class="mobile-left"
+          onclick="openModal('${imageUrl}')">
+          < img src="${imageUrl}" loading="lazy"
+          onerror="this.style.display='none'">
         </div>
 
-        <div class="mobile-info">
-          <div><span>编号 Code</span><span>${item.code}</span></div>
-          <div><span>规格 Size</span><span>${item.spec||"-"}</span></div>
-          <div><span>色号 Color</span><span>${item.color||"-"}</span></div>
-          <div><span>数量 Stock</span>
-  <span class="${
-    item.stock == 0 
-      ? 'stock-zero' 
-      : item.stock < 50 
-        ? 'stock-low' 
-        : 'stock-ok'
-  }">
-    ${item.stock}
-  </span>
-</div>
+        <div class="mobile-right">
+
+          <div class="row">
+            <span class="label">编号 Code</span>
+            <span>${item.code}</span>
           </div>
-          <div><span>仓库 Warehouse</span><span>${item.warehouse||"-"}</span></div>
-          <div><span>留货 Reserved</span><span>${item.reserved}</span></div>
-        </div>
 
+          <div class="row">
+            <span class="label">规格 Size</span>
+            <span>${item.spec||"-"}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">色号 Color</span>
+            <span>${item.color||"-"}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">仓库 Warehouse</span>
+            <span>${item.warehouse||"-"}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">留货 Reserved</span>
+            <span>${item.reserved}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">数量 Stock</span>
+            <span class="stock-badge ${stockClass}">
+              ${item.stock}
+            </span>
+          </div>
+
+        </div>
       </div>
     `;
   });
