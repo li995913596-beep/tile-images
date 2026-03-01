@@ -125,9 +125,16 @@ function buildMobile(list){
           <div><span>规格 Size</span><span>${item.spec||"-"}</span></div>
           <div><span>色号 Color</span><span>${item.color||"-"}</span></div>
           <div><span>数量 Stock</span>
-            <span class="${lowStock?'low-stock':''}">
-              ${item.stock}
-            </span>
+  <span class="${
+    item.stock == 0 
+      ? 'stock-zero' 
+      : item.stock < 50 
+        ? 'stock-low' 
+        : 'stock-ok'
+  }">
+    ${item.stock}
+  </span>
+</div>
           </div>
           <div><span>仓库 Warehouse</span><span>${item.warehouse||"-"}</span></div>
           <div><span>留货 Reserved</span><span>${item.reserved}</span></div>
