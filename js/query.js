@@ -116,7 +116,7 @@ function buildMobile(list){
 
         <div class="mobile-left"
           onclick="openModal('${imageUrl}')">
-          < img src="${imageUrl}" loading="lazy"
+          <img src="${imageUrl}" loading="lazy"
           onerror="this.style.display='none'">
         </div>
 
