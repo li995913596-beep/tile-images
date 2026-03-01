@@ -31,13 +31,10 @@ async function searchData(){
 
   snap.forEach(doc=>{
     const item = doc.data();
-
     const code = String(item.code || "").toLowerCase();
     const spec = String(item.spec || "").toLowerCase();
 
-    // 只搜索编号 + 规格
     if(code.includes(keyword) || spec.includes(keyword)){
-
       const reserved = Array.isArray(item.reservedList)
         ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
         : 0;
@@ -51,7 +48,19 @@ async function searchData(){
     return;
   }
 
-  // 表头（电脑模式使用）
+  const isMobile = window.innerWidth <= 768;
+
+  if(!isMobile){
+    buildDesktop(list);
+  }else{
+    buildMobile(list);
+  }
+}
+
+/* ===== 电脑版本 ===== */
+
+function buildDesktop(list){
+
   resultDiv.innerHTML=`
     <div class="table-header">
       <div>图片<br>Image</div>
@@ -74,32 +83,57 @@ async function searchData(){
 
     resultDiv.innerHTML+=`
       <div class="table-row">
+        <div class="img-col" onclick="openModal('${imageUrl}')">
+          <img src="${imageUrl}" loading="lazy"
+            onerror="this.style.display='none'">
+        </div>
+        <div>${item.code}</div>
+        <div>${item.spec||"-"}</div>
+        <div>${item.color||"-"}</div>
+        <div class="${lowStock?'low-stock':''}">${item.stock}</div>
+        <div>${item.warehouse||"-"}</div>
+        <div>${item.reserved}</div>
+      </div>
+    `;
+  });
+}
 
-        <div class="img-col"
-          data-label="图片 Image"
-          onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}"
-            loading="lazy"
+/* ===== 手机版本（稳定卡片） ===== */
+
+function buildMobile(list){
+
+  resultDiv.innerHTML="";
+
+  list.forEach(item=>{
+
+    const imageUrl =
+      window.location.origin +
+      "/tile-images/images/" + item.code + ".jpg";
+
+    const lowStock = item.stock < 10;
+
+    resultDiv.innerHTML+=`
+      <div class="mobile-card">
+
+        <div class="mobile-img" onclick="openModal('${imageUrl}')">
+          <img src="${imageUrl}" loading="lazy"
             onerror="this.style.display='none'">
         </div>
 
-        <div data-label="编号 Code">${item.code}</div>
-
-        <div data-label="规格 Size">${item.spec||"-"}</div>
-
-        <div data-label="色号 Color">${item.color||"-"}</div>
-
-        <div data-label="数量 Stock"
-             class="${lowStock?'low-stock':''}">
-          ${item.stock}
+        <div class="mobile-info">
+          <div><span>编号 Code</span><span>${item.code}</span></div>
+          <div><span>规格 Size</span><span>${item.spec||"-"}</span></div>
+          <div><span>色号 Color</span><span>${item.color||"-"}</span></div>
+          <div><span>数量 Stock</span>
+            <span class="${lowStock?'low-stock':''}">
+              ${item.stock}
+            </span>
+          </div>
+          <div><span>仓库 Warehouse</span><span>${item.warehouse||"-"}</span></div>
+          <div><span>留货 Reserved</span><span>${item.reserved}</span></div>
         </div>
-
-        <div data-label="仓库 Warehouse">${item.warehouse||"-"}</div>
-
-        <div data-label="留货 Reserved">${item.reserved}</div>
 
       </div>
     `;
   });
-
 }
