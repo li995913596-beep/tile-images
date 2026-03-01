@@ -32,10 +32,10 @@ async function searchData(){
   snap.forEach(doc=>{
     const item = doc.data();
 
-    const code = (item.code || "").toLowerCase();
-    const spec = (item.spec || "").toLowerCase();
+    // 🔥 强制安全字符串，避免 undefined 报错
+    const code = String(item.code || "").toLowerCase();
+    const spec = String(item.spec || "").toLowerCase();
 
-    // 🔥 只按 编号 + 规格 搜索
     if(code.includes(keyword) || spec.includes(keyword)){
 
       const reserved = Array.isArray(item.reservedList)
@@ -73,22 +73,24 @@ async function searchData(){
       <div class="table-row">
 
         <div class="img-col"
+          data-label="Image"
           onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
             loading="lazy"
             onerror="this.style.display='none'">
         </div>
 
-        <div>${item.code}</div>
-        <div>${item.spec||"-"}</div>
-        <div>${item.color||"-"}</div>
+        <div data-label="Code">${item.code}</div>
+        <div data-label="Size">${item.spec||"-"}</div>
+        <div data-label="Color">${item.color||"-"}</div>
 
-        <div class="${item.stock<10?'low-stock':''}">
+        <div data-label="Stock"
+             class="${item.stock<10?'low-stock':''}">
           ${item.stock}
         </div>
 
-        <div>${item.warehouse||"-"}</div>
-        <div>${item.reserved}</div>
+        <div data-label="Warehouse">${item.warehouse||"-"}</div>
+        <div data-label="Reserved">${item.reserved}</div>
 
       </div>
     `;
