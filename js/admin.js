@@ -83,8 +83,11 @@ function buildInPage(){
     <div>仓库</div>
     <input id="new_warehouse">
 
-    <div>数量</div>
-    <input id="new_qty">
+    <div>每箱片数（可空）</div>
+    <input id="new_piecesPerBox" type="number">
+
+    <div>数量（箱）</div>
+    <input id="new_qty" type="number" step="0.01">
 
     <br><br>
     <button onclick="addNewStock()">新增</button>
@@ -100,7 +103,7 @@ window.searchIn = async ()=>{
       in_result.innerHTML+=`
         <div>
           ${i.code}|${i.color}|库存:${i.stock}
-          数量<input id="in_qty_${d.id}">
+          数量<input id="in_qty_${d.id}" type="number" step="0.01">
           <button onclick="inStock('${d.id}')">入库</button>
         </div>`;
     }
@@ -116,7 +119,7 @@ window.inStock = async (id)=>{
   if(!qty || qty<=0) return alert("请输入正确数量");
 
   await updateDoc(ref,{
-    stock:data.stock+qty,
+    stock:Number((data.stock+qty).toFixed(4)),
     lastUpdate: serverTimestamp()
   });
 
@@ -133,6 +136,7 @@ window.addNewStock = async ()=>{
     color:new_color.value,
     warehouse:new_warehouse.value,
     stock:Number(new_qty.value),
+    piecesPerBox: new_piecesPerBox.value ? Number(new_piecesPerBox.value) : null,
     reservedList:[],
     lastUpdate: serverTimestamp()
   });
@@ -158,10 +162,20 @@ window.searchOut=async()=>{
     const i=d.data();
     if(i.code.includes(out_search.value)){
       out_result.innerHTML+=`
-        <div>
+        <div style="margin-bottom:15px;">
           ${i.code}|${i.color}|库存:${i.stock}
-          客户<input id="out_c_${d.id}">
-          数量<input id="out_q_${d.id}">
+
+          <br>客户
+          <input id="out_c_${d.id}">
+
+          <br>数量
+          <input id="out_q_${d.id}" type="number" step="0.01">
+
+          <select id="out_unit_${d.id}">
+            <option value="箱">箱</option>
+            <option value="片">片</option>
+          </select>
+
           <button onclick="outStock('${d.id}')">出库</button>
         </div>`;
     }
@@ -172,22 +186,49 @@ window.outStock=async(id)=>{
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
   const data=snap.data();
-  const qty=Number(document.getElementById("out_q_"+id).value);
 
-  if(!qty || qty<=0) return alert("请输入正确数量");
-  if(qty>data.stock) return alert("库存不足");
+  const qtyInput=Number(document.getElementById("out_q_"+id).value);
+  const unit=document.getElementById("out_unit_"+id).value;
+
+  if(!qtyInput || qtyInput<=0) return alert("请输入正确数量");
+
+  let finalQty=qtyInput;
+
+  if(unit==="片"){
+    if(!data.piecesPerBox){
+      return alert("未设置每箱片数，无法按片出库");
+    }
+    finalQty=qtyInput/data.piecesPerBox;
+  }
+
+  if(finalQty>data.stock) return alert("库存不足");
 
   await updateDoc(ref,{
-    stock:data.stock-qty,
+    stock:Number((data.stock-finalQty).toFixed(4)),
     lastUpdate: serverTimestamp()
   });
 
-  await log("出库",data,qty,
+  await log("出库",data,finalQty,
     document.getElementById("out_c_"+id).value
   );
 
   alert("完成");
 };
+
+/* ================= 日志 ================= */
+
+async function log(type,data,qty,customer=""){
+  await addDoc(collection(db,"logs"),{
+    timestamp: serverTimestamp(),
+    type,
+    code:data.code,
+    spec:data.spec||"",
+    color:data.color,
+    warehouse:data.warehouse,
+    qty:Number(qty),
+    customer
+  });
+}
 
 /* ================= 留货 ================= */
 
