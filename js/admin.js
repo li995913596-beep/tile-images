@@ -429,35 +429,70 @@ window.handleImport = async function () {
     return;
   }
 
+  alert("开始导入，请稍等...");
+
   const reader = new FileReader();
 
   reader.onload = async function (e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
 
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+    try {
 
-    const json = XLSX.utils.sheet_to_json(sheet);
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
 
-    for (let row of json) {
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
 
-      const id = `${row["编号"]}_${row["色号"] || "默认"}_${row["所在仓库"]}`;
+      const json = XLSX.utils.sheet_to_json(sheet);
 
-      await setDoc(doc(db, "inventory", id), {
-        code: row["编号"],
-        spec: row["规格"] || "",
-        color: row["色号"] || "",
-        warehouse: row["所在仓库"] || "",
-        stock: Number(row["数量"]) || 0,
-        piecesPerBox: Number(row["每箱片数"]) || null,
-        reservedList: [],
-        lastUpdate: serverTimestamp()
-      });
+      if (!json.length) {
+        alert("Excel 没有数据");
+        return;
+      }
+
+      let successCount = 0;
+
+      for (let row of json) {
+
+        // ✅ 安全处理仓库名（解决 / 导致只导入一个仓库问题）
+        const safeWarehouse = (row["所在仓库"] || "")
+          .toString()
+          .replaceAll("/", "_")
+          .replaceAll("\\", "_")
+          .replaceAll(" ", "")
+          .trim();
+
+        const code = (row["编号"] || "").toString().trim();
+        const color = (row["色号"] || "默认").toString().trim();
+
+        if (!code || !safeWarehouse) continue;
+
+        const id = `${code}_${color}_${safeWarehouse}`;
+
+        await setDoc(doc(db, "inventory", id), {
+          code: code,
+          spec: (row["规格"] || "").toString(),
+          color: color,
+          warehouse: safeWarehouse,
+          stock: Number(row["数量"]) || 0,
+          piecesPerBox: row["每箱片数"] 
+            ? Number(row["每箱片数"]) 
+            : null,
+          reservedList: [],
+          lastUpdate: serverTimestamp()
+        });
+
+        successCount++;
+      }
+
+      alert(`导入完成 ✅ 共导入 ${successCount} 条数据`);
+
+    } catch (error) {
+
+      console.error("导入错误:", error);
+      alert("导入失败 ❌ 请打开控制台查看错误");
 
     }
-
-    alert("导入完成");
 
   };
 
