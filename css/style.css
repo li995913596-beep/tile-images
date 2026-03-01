@@ -242,3 +242,44 @@ header{
   border-radius:12px;
   box-shadow:0 8px 25px rgba(0,0,0,0.05);
 }
+/* ================= 手机优化卡片展示 ================= */
+
+@media(max-width:768px){
+
+  .table-header{
+    display:none;
+  }
+
+  .table-row{
+    display:block;
+    margin-bottom:18px;
+    padding:18px;
+    border-radius:16px;
+  }
+
+  .table-row div{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
+    border-bottom:1px solid #f0f0f0;
+  }
+
+  .table-row div:last-child{
+    border-bottom:none;
+  }
+
+  .table-row div::before{
+    content:attr(data-label);
+    font-weight:bold;
+    color:#666;
+  }
+
+  .img-col{
+    justify-content:center !important;
+  }
+
+  .img-col::before{
+    content:"";
+  }
+
+}
