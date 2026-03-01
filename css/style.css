@@ -167,3 +167,34 @@ header{
   max-height:90%;
   border-radius:16px;
 }
+.mobile-card{
+  background:#fff;
+  padding:14px;
+  border-radius:16px;
+  margin-bottom:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.06);
+}
+
+.mobile-img{
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.mobile-img img{
+  width:90px;
+  height:90px;
+  object-fit:cover;
+  border-radius:12px;
+}
+
+.mobile-info div{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  padding:4px 0;
+}
+
+.mobile-info span:first-child{
+  font-weight:600;
+  color:#555;
+}
