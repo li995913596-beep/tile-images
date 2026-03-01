@@ -448,41 +448,49 @@ window.handleImport = async function () {
         const sheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(sheet);
 
-        for (let row of json) {
+for (let row of json) {
 
-          const safeWarehouse = (row["所在仓库"] || sheetName || "")
-            .toString()
-            .replaceAll("/", "_")
-            .replaceAll("\\", "_")
-            .replaceAll(" ", "")
-            .trim();
+  const safeWarehouse = (row["所在仓库"] || "")
+    .toString()
+    .replaceAll("/", "_")
+    .replaceAll("\\", "_")
+    .replaceAll(" ", "")
+    .trim();
 
-          const code = (row["编号"] || "").toString().trim();
-          const color = (row["色号"] || "默认").toString().trim();
+  const safeCode = (row["编号"] || "")
+    .toString()
+    .replaceAll("/", "_")
+    .replaceAll("\\", "_")
+    .replaceAll(" ", "")
+    .trim();
 
-          if (!code || !safeWarehouse) continue;
+  const safeColor = (row["色号"] || "默认")
+    .toString()
+    .replaceAll("/", "_")
+    .replaceAll("\\", "_")
+    .replaceAll(" ", "")
+    .trim();
 
-          const id = `${code}_${color}_${safeWarehouse}`;
+  if (!safeCode || !safeWarehouse) continue;
 
-          // ⚠️ 一定要用三个参数形式
-          await setDoc(
-            doc(db, "inventory", id),
-            {
-              code: code,
-              spec: (row["规格"] || "").toString(),
-              color: color,
-              warehouse: safeWarehouse,
-              stock: Number(row["数量"]) || 0,
-              piecesPerBox: row["每箱片数"]
-                ? Number(row["每箱片数"])
-                : null,
-              reservedList: [],
-              lastUpdate: serverTimestamp()
-            }
-          );
+  const id = `${safeCode}_${safeColor}_${safeWarehouse}`;
 
-          successCount++;
-        }
+  await setDoc(
+    doc(db, "inventory", id),
+    {
+      code: safeCode,
+      spec: (row["规格"] || "").toString(),
+      color: safeColor,
+      warehouse: safeWarehouse,
+      stock: Number(row["数量"]) || 0,
+      piecesPerBox: row["每箱片数"]
+        ? Number(row["每箱片数"])
+        : null,
+      reservedList: [],
+      lastUpdate: serverTimestamp()
+    }
+  );
+}
       }
 
       alert(`导入完成 ✅ 共导入 ${successCount} 条数据`);
