@@ -74,7 +74,7 @@ function buildDesktop(list){
 
   list.forEach(item=>{
     const imageUrl = window.location.origin +
-      "/tile-images/images/" + item.code + ".jpg";
+      "/images/" + item.code + ".jpg";
 
     resultDiv.innerHTML+=`
       <div class="table-row">
