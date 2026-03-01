@@ -1,3 +1,4 @@
+console.log("admin.js 开始执行");
 import { db, auth } from "./firebase.js";
 import {
   collection,
@@ -401,7 +402,7 @@ async function loadStats(){
       </tr>`;
   });
 }
-
+console.log("准备注册 handleImport");
 /* ================= 日志写入 ================= */
 
 async function log(type,data,qty,customer=""){
