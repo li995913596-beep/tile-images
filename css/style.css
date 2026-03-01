@@ -167,31 +167,39 @@ header{
   max-height:90%;
   border-radius:16px;
 }
+/* ===== 手机横向卡片最终稳定版 ===== */
+
 .mobile-card{
   background:#fff;
   padding:14px;
   border-radius:16px;
   margin-bottom:14px;
   box-shadow:0 6px 18px rgba(0,0,0,0.06);
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
 }
 
 .mobile-img{
-  text-align:center;
-  margin-bottom:10px;
+  flex-shrink:0;
 }
 
 .mobile-img img{
-  width:90px;
-  height:90px;
+  width:80px;
+  height:80px;
   object-fit:cover;
   border-radius:12px;
+}
+
+.mobile-info{
+  flex:1;
 }
 
 .mobile-info div{
   display:flex;
   justify-content:space-between;
   font-size:14px;
-  padding:4px 0;
+  padding:3px 0;
 }
 
 .mobile-info span:first-child{
