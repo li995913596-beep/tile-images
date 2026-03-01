@@ -79,7 +79,7 @@ function buildDesktop(list){
     resultDiv.innerHTML+=`
       <div class="table-row">
         <div class="img-col" onclick="openModal('${imageUrl}')">
-          < img src="${imageUrl}" loading="lazy"
+          <img src="${imageUrl}" loading="lazy"
           onerror="this.style.display='none'">
         </div>
         <div>${item.code}</div>
