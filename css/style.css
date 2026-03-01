@@ -7,7 +7,6 @@ body{
   color:#2c3e50;
 }
 
-/* 顶部 */
 header{
   background:linear-gradient(90deg,#1f2f46,#2c3e50);
   color:#fff;
@@ -25,7 +24,8 @@ header{
   padding:0 20px;
 }
 
-/* 查询框 */
+/* 搜索区域 */
+
 .search-box{
   background:#fff;
   padding:24px;
@@ -66,7 +66,7 @@ header{
   background:#ecf0f3;
 }
 
-/* ================= 电脑模式不变 ================= */
+/* ===== 电脑保持原 grid ===== */
 
 .table-header,
 .table-row{
@@ -100,17 +100,16 @@ header{
   font-weight:600;
 }
 
-/* ================= 手机模式 ================= */
+/* ===== 手机强制卡片模式 ===== */
 
 @media(max-width:768px){
 
   .table-header{
-    display:none;
+    display:none !important;
   }
 
   .table-row{
-    display:flex !important;
-    gap:12px;
+    display:block !important;
     padding:14px;
     margin-bottom:14px;
     border-radius:16px;
@@ -119,31 +118,33 @@ header{
   }
 
   .img-col{
-    flex-shrink:0;
+    text-align:center;
+    margin-bottom:10px;
   }
 
   .img-col img{
-    width:75px;
-    height:75px;
+    width:85px;
+    height:85px;
   }
 
   .table-row div:not(.img-col){
     display:flex !important;
     justify-content:space-between;
-    font-size:13px;
-    padding:3px 0;
+    font-size:14px;
+    padding:4px 0;
   }
 
   .table-row div:not(.img-col)::before{
     content:attr(data-label);
     font-weight:600;
     color:#555;
-    margin-right:8px;
+    margin-right:10px;
   }
 
 }
 
 /* 图片放大 */
+
 .modal{
   display:none;
   position:fixed;
