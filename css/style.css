@@ -67,7 +67,7 @@ header{
   background:#ecf0f3;
 }
 
-/* ================= 电脑表格 ================= */
+/* ================= 电脑保持原 grid ================= */
 
 .table-header,
 .table-row{
@@ -87,11 +87,6 @@ header{
 .table-row{
   background:#fff;
   border-bottom:1px solid #f0f2f5;
-  transition:0.2s;
-}
-
-.table-row:hover{
-  background:#f6f9fd;
 }
 
 .img-col{
@@ -106,80 +101,98 @@ header{
   border-radius:10px;
 }
 
-/* 数量标签 */
-.stock-badge{
-  padding:4px 12px;
-  border-radius:16px;
-  font-size:13px;
+/* 低库存 */
+.low-stock{
+  color:#e74c3c;
   font-weight:600;
-  color:#fff;
-  display:inline-block;
 }
 
-.stock-high{ background:#27ae60; }
-.stock-low{ background:#e74c3c; }
-
-/* ================= 手机 SaaS 紧凑模式 ================= */
+/* ================= 手机横向紧凑卡片 ================= */
 
 @media(max-width:768px){
-
-  .container{
-    margin:20px auto;
-    padding:0 10px;
-  }
-
-  .search-box{
-    padding:16px;
-  }
-
-  .search-row input{
-    font-size:13px;
-    padding:10px 12px;
-  }
-
-  .search-row button{
-    font-size:13px;
-    padding:10px 14px;
-  }
 
   .table-header{
     display:none;
   }
 
   .table-row{
-    display:flex;
-    gap:10px;
+    display:flex !important;
+    gap:12px;
     padding:12px;
-    margin-bottom:10px;
+    margin-bottom:12px;
     border-radius:14px;
-    background:#ffffff;
-    box-shadow:0 4px 16px rgba(0,0,0,0.05);
+    background:#fff;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
   }
 
-  .img-col img{
-    width:68px;
-    height:68px;
-  }
-
-  .mobile-info{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-    font-size:13px;
-    line-height:1.2;
-  }
-
-  .mobile-top{
-    display:flex;
-    justify-content:space-between;
+  .img-col{
+    flex-shrink:0;
     align-items:center;
   }
 
-  .mobile-grid{
+  .img-col img{
+    width:70px;
+    height:70px;
+  }
+
+  /* 右侧内容区域 */
+  .table-row div:not(.img-col){
+    display:flex;
+    justify-content:space-between;
+    padding:2px 0;
+    font-size:13px;
+  }
+
+  /* 把右侧所有字段变成两列 */
+  .table-row{
+    flex-wrap:nowrap;
+  }
+
+  .table-row div:not(.img-col){
+    width:100%;
+  }
+
+  /* 包一层信息区 */
+  .table-row{
+    align-items:flex-start;
+  }
+
+  .table-row div:not(.img-col){
+    flex-direction:row;
+  }
+
+  /* 整理右侧结构 */
+  .table-row > div:not(.img-col){
+    display:block;
+  }
+
+  /* 重排右侧字段为两列 */
+  .table-row{
+    display:flex !important;
+  }
+
+  .table-row > div:not(.img-col){
+    margin-left:4px;
+  }
+
+  /* 创建信息区域 */
+  .table-row{
+    position:relative;
+  }
+
+  .table-row > div:not(.img-col){
+    flex:1;
+  }
+
+  .table-row > div:not(.img-col){
     display:grid;
     grid-template-columns:1fr 1fr;
-    gap:4px 10px;
+    gap:4px 12px;
+  }
+
+  .table-row > div:not(.img-col) > div{
+    display:flex;
+    justify-content:space-between;
   }
 
 }
