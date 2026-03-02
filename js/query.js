@@ -11,12 +11,6 @@ const btnRefresh = document.getElementById("btnRefresh");
 const resultDiv = document.getElementById("result");
 const searchInput = document.getElementById("searchInput");
 
-btnSearch.onclick = window.searchData;
-
-btnRefresh.onclick = () => {
-  searchInput.value = "";
-  resultDiv.innerHTML = "";
-};
 
 window.searchData = async function(){
   console.log("searchData 开始执行");
@@ -63,7 +57,11 @@ const snap = await getDocs(q);
     buildDesktop(list);
   }
 }
-
+btnSearch.addEventListener("click", window.searchData);
+btnRefresh.addEventListener("click", () => {
+searchInput.value = "";
+resultDiv.innerHTML = "";
+});
 /* ===== 桌面版 ===== */
 
 function buildDesktop(list){
