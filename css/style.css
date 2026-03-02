@@ -224,6 +224,9 @@ header{
     margin-bottom:16px;
     box-shadow:0 6px 18px rgba(0,0,0,0.06);
     align-items:flex-start;
+
+    border: 1px solid rgba(0,0,0,0.05);
+}
   }
 
   .mobile-left img{
@@ -271,3 +274,4 @@ header{
     color:#2ecc71;
   }
 }
+
