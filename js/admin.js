@@ -199,9 +199,9 @@ function buildOutPage(){
 
 /* 🔥 优化后的低读次数搜索 */
 
-window.searchOut=async()=>{
+window.searchOut = async ()=>{
 
-  const keyword = out_search.value.trim();
+  const keyword = out_search.value.trim().toLowerCase();
 
   if(!keyword){
     alert("请输入编号");
@@ -210,42 +210,53 @@ window.searchOut=async()=>{
 
   const q = query(
     collection(db,"inventory"),
-    where("code","==", keyword)
+    limit(500)
   );
 
   const snap = await getDocs(q);
 
   out_result.innerHTML="";
-
-  if(snap.empty){
-    out_result.innerHTML="未找到该编号";
-    return;
-  }
+  let found = false;
 
   snap.forEach(d=>{
-    const i=d.data();
+    const i = d.data();
 
-    out_result.innerHTML+=`
-      <div style="margin-bottom:15px;">
-        ${i.code}|${i.color}|库存:${i.stock}
+    const fullId = d.id.toLowerCase();
+    const code = (i.code || "").toLowerCase();
 
-        <br>客户
-        <input id="out_c_${d.id}">
+    if(fullId.includes(keyword) || code.includes(keyword)){
 
-        <br>数量
-        <input id="out_q_${d.id}" type="number" step="0.01">
+      found = true;
 
-        <select id="out_unit_${d.id}">
-          <option value="箱">箱</option>
-          <option value="片">片</option>
-        </select>
+      out_result.innerHTML += `
+        <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
+          <div><b>编号：</b>${i.code}</div>
+          <div><b>色号：</b>${i.color}</div>
+          <div><b>规格：</b>${i.spec || "-"}</div>
+          <div><b>仓库：</b>${i.warehouse}</div>
+          <div><b>库存：</b>${i.stock}</div>
 
-        <button onclick="outStock('${d.id}')">出库</button>
-      </div>`;
+          <div style="margin-top:8px;">
+            客户：
+            <input id="out_c_${d.id}" style="width:120px;">
+            数量：
+            <input id="out_q_${d.id}" type="number" step="0.01" style="width:100px;">
+
+            <select id="out_unit_${d.id}">
+              <option value="箱">箱</option>
+              <option value="片">片</option>
+            </select>
+
+            <button onclick="outStock('${d.id}')">出库</button>
+          </div>
+        </div>`;
+    }
   });
 
+  if(!found){
+    out_result.innerHTML = "未找到库存";
+  }
 };
-
 window.outStock=async(id)=>{
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
@@ -295,9 +306,9 @@ function buildReservePage(){
 
 /* 🔥 优化后的搜索（低读次数） */
 
-window.searchReserve=async()=>{
+window.searchReserve = async ()=>{
 
-  const keyword = re_search.value.trim();
+  const keyword = re_search.value.trim().toLowerCase();
 
   if(!keyword){
     alert("请输入编号");
@@ -306,30 +317,47 @@ window.searchReserve=async()=>{
 
   const q = query(
     collection(db,"inventory"),
-    where("code","==", keyword)
+    limit(500)
   );
 
   const snap = await getDocs(q);
 
   re_result.innerHTML="";
-
-  if(snap.empty){
-    re_result.innerHTML="未找到该编号";
-    return;
-  }
+  let found = false;
 
   snap.forEach(d=>{
-    const i=d.data();
-    re_result.innerHTML+=`
-      <div>
-        ${i.code}|${i.color}|库存:${i.stock}
-        客户<input id="re_c_${d.id}">
-        数量<input id="re_q_${d.id}">
-        <button onclick="reserveStock('${d.id}')">留货</button>
-      </div>`;
-  });
-};
+    const i = d.data();
 
+    const fullId = d.id.toLowerCase();
+    const code = (i.code || "").toLowerCase();
+
+    if(fullId.includes(keyword) || code.includes(keyword)){
+
+      found = true;
+
+      re_result.innerHTML += `
+        <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
+          <div><b>编号：</b>${i.code}</div>
+          <div><b>色号：</b>${i.color}</div>
+          <div><b>规格：</b>${i.spec || "-"}</div>
+          <div><b>仓库：</b>${i.warehouse}</div>
+          <div><b>库存：</b>${i.stock}</div>
+
+          <div style="margin-top:8px;">
+            客户：
+            <input id="re_c_${d.id}" style="width:120px;">
+            数量：
+            <input id="re_q_${d.id}" type="number" step="0.01" style="width:100px;">
+            <button onclick="reserveStock('${d.id}')">留货</button>
+          </div>
+        </div>`;
+    }
+  });
+
+  if(!found){
+    re_result.innerHTML = "未找到库存";
+  }
+};
 window.reserveStock=async(id)=>{
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
