@@ -26,7 +26,7 @@ window.searchData = async function(){
   // 🔥 限制最多读取 300 条，防止爆读
   const q = query(
     collection(db, "inventory"),
-    limit(300)
+    limit(1000)
   );
 
   const snap = await getDocs(q);
