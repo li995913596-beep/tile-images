@@ -114,60 +114,97 @@ function buildMobile(list){
     const imageUrl = window.location.origin +
       "/images/" + item.code + ".jpg";
 
-    const stockClass =
-      item.stock==0 ? "stock-zero" :
-      item.stock<10 ? "stock-low" :
-      "stock-ok";
+    /* ===== 仓库颜色区分 ===== */
 
-    resultDiv.innerHTML+=`
-      <div class="mobile-card">
+    let bgColor = "#eef3ff"; // 默认蓝
 
-        <div class="mobile-left"
-          onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy"
-          onerror="this.style.display='none'">
+    if(item.warehouse === "k38"){
+      bgColor = "#e6f0ff";   // 浅蓝
+    }
+    else if(item.warehouse === "k39"){
+      bgColor = "#e9f7ef";   // 浅绿
+    }
+    else if(item.warehouse === "k40"){
+      bgColor = "#fff4e6";   // 浅橙
+    }
+
+    /* ===== 库存颜色 ===== */
+
+    let stockColor = "#2ecc71"; // 正常绿色
+
+    if(item.stock == 0){
+      stockColor = "#e74c3c"; // 红
+    }
+    else if(item.stock < 10){
+      stockColor = "#f39c12"; // 橙
+    }
+
+    resultDiv.innerHTML += `
+      <div style="
+        background:${bgColor};
+        padding:10px;
+        border-radius:12px;
+        margin-bottom:10px;
+        display:flex;
+        align-items:center;
+        gap:10px;
+      ">
+
+        <!-- 左侧图片 -->
+        <div onclick="openModal('${imageUrl}')">
+          <img src="${imageUrl}"
+            style="width:65px;height:65px;border-radius:6px;object-fit:cover;"
+            onerror="this.style.display='none'">
         </div>
 
-        <div class="mobile-right">
+        <!-- 中间信息 -->
+        <div style="flex:1;">
 
-          <div class="row">
-            <span class="label">编号 Code</span>
-            <span>${item.code}</span>
+          <div style="font-weight:bold;font-size:15px;">
+            ${item.code}
           </div>
 
-          <div class="row">
-            <span class="label">规格 Size</span>
-            <span>${item.spec||"-"}</span>
+          <div style="font-size:13px;color:#555;">
+            ${item.spec || "-"} | 色号 ${item.color}
           </div>
 
-          <div class="row">
-            <span class="label">色号 Color</span>
-            <span>${item.color||"-"}</span>
-          </div>
-
-          <div class="row">
-            <span class="label">仓库 Warehouse</span>
-            <span>${item.warehouse||"-"}</span>
-          </div>
-
-          <div class="row">
-            <span class="label">留货 Reserved</span>
-            <span>${item.reserved}</span>
-          </div>
-
-          <div class="row">
-            <span class="label">数量 Stock</span>
-            <span class="stock-badge ${stockClass}">
-              ${item.stock}
-            </span>
+          <div style="margin-top:6px;font-size:13px;">
+            留货 ${item.reserved}
           </div>
 
         </div>
+
+        <!-- 右侧区域 -->
+        <div style="text-align:right;">
+
+          <div style="
+            font-size:12px;
+            padding:3px 8px;
+            border-radius:20px;
+            background:#333;
+            color:#fff;
+            margin-bottom:6px;
+          ">
+            ${item.warehouse}
+          </div>
+
+          <div style="
+            font-size:16px;
+            font-weight:bold;
+            padding:6px 10px;
+            border-radius:8px;
+            background:${stockColor};
+            color:#fff;
+          ">
+            ${item.stock}
+          </div>
+
+        </div>
+
       </div>
     `;
   });
 }
-
 /* ================= DOM 绑定 ================= */
 
 document.addEventListener("DOMContentLoaded", () => {
