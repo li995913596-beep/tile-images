@@ -111,7 +111,6 @@ function buildDesktop(list){
 }
 
 /* ================= 手机版 ================= */
-
 function buildMobile(list){
 
   const resultDiv = document.getElementById("result");
@@ -122,39 +121,57 @@ function buildMobile(list){
     const imageUrl = window.location.origin +
       "/images/" + item.code + ".jpg";
 
-    /* ===== 仓库左侧颜色条 ===== */
+    /* ===== 整卡仓库底色 ===== */
 
-    let barColor = "#4a90e2"; // 默认蓝
+    let bgColor = "#f3f4f6";   // 默认浅灰
 
     if(item.warehouse === "k38"){
-      barColor = "#4a90e2";
+      bgColor = "#e8f1fb";    // 淡蓝
     }
     else if(item.warehouse === "k39"){
-      barColor = "#27ae60";
+      bgColor = "#eaf7f1";    // 淡绿
     }
-    else if(item.warehouse === "k40"){
-      barColor = "#f39c12";
+    else if(item.warehouse === "1"){
+      bgColor = "#f3ecff";    // 淡橙
+    }
+
+    /* ===== 仓库标签颜色（轻量风格） ===== */
+
+    let warehouseBg = "#e5e7eb";
+    let warehouseColor = "#555";
+
+    if(item.warehouse === "k38"){
+      warehouseBg = "#dbeafe";
+      warehouseColor = "#2563eb";
+    }
+    else if(item.warehouse === "k39"){
+      warehouseBg = "#dcfce7";
+      warehouseColor = "#16a34a";
+    }
+    else if(item.warehouse === "1"){
+      warehouseBg = "#ffedd5";
+      warehouseColor = "#ea580c";
     }
 
     /* ===== 库存颜色 ===== */
 
-    let stockColor = "#2ecc71";
+    let stockColor = "#22c55e";
 
     if(item.stock == 0){
-      stockColor = "#e74c3c";
+      stockColor = "#ef4444";
     }
     else if(item.stock < 10){
-      stockColor = "#f39c12";
+      stockColor = "#f59e0b";
     }
 
-    /* ===== 留货颜色 ===== */
+    /* ===== 留货标签 ===== */
 
     let reserveHtml = `
       <span style="
-        font-size:12px;
+        font-size:11px;
         padding:3px 8px;
-        border-radius:20px;
-        background:#eee;
+        border-radius:999px;
+        background:#e5e7eb;
         color:#666;
       ">
         留货 0
@@ -164,10 +181,10 @@ function buildMobile(list){
     if(item.reserved > 0){
       reserveHtml = `
         <span style="
-          font-size:12px;
+          font-size:11px;
           padding:3px 8px;
-          border-radius:20px;
-          background:#e74c3c;
+          border-radius:999px;
+          background:#ef4444;
           color:#fff;
         ">
           留货 ${item.reserved}
@@ -177,32 +194,30 @@ function buildMobile(list){
 
     resultDiv.innerHTML += `
       <div style="
-        background:#fff;
-        padding:10px;
-        border-radius:12px;
-        margin-bottom:10px;
+        background:${bgColor};
+        padding:12px;
+        border-radius:14px;
+        margin-bottom:12px;
         display:flex;
         align-items:center;
-        gap:10px;
-        box-shadow:0 2px 6px rgba(0,0,0,0.05);
-        border-left:4px solid ${barColor};
+        gap:12px;
       ">
 
         <!-- 图片 -->
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
-            style="width:60px;height:60px;border-radius:6px;object-fit:cover;"
+            style="width:58px;height:58px;border-radius:8px;object-fit:cover;"
             onerror="this.style.display='none'">
         </div>
 
         <!-- 中间信息 -->
         <div style="flex:1;">
 
-          <div style="font-weight:bold;font-size:15px;">
+          <div style="font-weight:600;font-size:15px;">
             ${item.code}
           </div>
 
-          <div style="font-size:13px;color:#666;">
+          <div style="font-size:13px;color:#555;margin-top:2px;">
             ${item.spec || "-"} | 色号 ${item.color}
           </div>
 
@@ -215,22 +230,26 @@ function buildMobile(list){
         <!-- 右侧 -->
         <div style="text-align:right;">
 
+          <!-- 仓库标签 -->
           <div style="
-            font-size:12px;
-            padding:3px 8px;
-            border-radius:20px;
-            background:#333;
-            color:#fff;
+            display:inline-block;
+            font-size:11px;
+            padding:4px 10px;
+            border-radius:999px;
+            background:${warehouseBg};
+            color:${warehouseColor};
+            font-weight:500;
             margin-bottom:6px;
           ">
             ${item.warehouse}
           </div>
 
+          <!-- 库存 -->
           <div style="
             font-size:16px;
-            font-weight:bold;
-            padding:6px 10px;
-            border-radius:8px;
+            font-weight:700;
+            padding:6px 12px;
+            border-radius:10px;
             background:${stockColor};
             color:#fff;
           ">
