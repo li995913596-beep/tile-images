@@ -1,7 +1,9 @@
 import { db } from "./firebase.js";
 import {
   collection,
-  getDocs
+  getDocs,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const btnSearch = document.getElementById("btnSearch");
@@ -26,7 +28,13 @@ async function searchData(){
     return;
   }
 
-  const snap = await getDocs(collection(db,"inventory"));
+  const q = query(
+  collection(db, "inventory"),
+  where("code", ">=", keyword),
+  where("code", "<=", keyword + "\uf8ff")
+);
+
+const snap = await getDocs(q);
   let list = [];
 
   snap.forEach(doc=>{
