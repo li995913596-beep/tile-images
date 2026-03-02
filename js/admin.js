@@ -99,46 +99,52 @@ function buildInPage(){
   `;
 }
 
-/* 🔥 优化后的搜索（低读次数版本） */
-
 window.searchIn = async ()=>{
 
-  const keyword = in_search.value
-    .trim()
-    .replaceAll("/", "_")
-    .replaceAll("\\", "_")
-    .replaceAll(" ", "");
+  const keyword = in_search.value.trim().toLowerCase();
 
   if(!keyword){
     alert("请输入编号");
     return;
   }
 
+  // 🔥 读取最多 500 条
   const q = query(
     collection(db,"inventory"),
-    where("code","==", keyword)
+    limit(500)
   );
 
   const snap = await getDocs(q);
 
   in_result.innerHTML="";
 
-  if(snap.empty){
-    in_result.innerHTML = "未找到该编号";
-    return;
-  }
+  let found = false;
 
   snap.forEach(d=>{
-    const i=d.data();
-    in_result.innerHTML+=`
-      <div>
-        ${i.code}|${i.color}|库存:${i.stock}
-        数量<input id="in_qty_${d.id}" type="number" step="0.01">
-        <button onclick="inStock('${d.id}')">入库</button>
-      </div>`;
-  });
-};
+    const i = d.data();
 
+    const fullId = d.id.toLowerCase();      // NB3610_250920_k38
+    const code = (i.code || "").toLowerCase();  // NB3610
+
+    if(
+      fullId.includes(keyword) ||
+      code.includes(keyword)
+    ){
+      found = true;
+
+      in_result.innerHTML += `
+        <div>
+          ${i.code}|${i.color}|库存:${i.stock}
+          数量<input id="in_qty_${d.id}" type="number" step="0.01">
+          <button onclick="inStock('${d.id}')">入库</button>
+        </div>`;
+    }
+  });
+
+  if(!found){
+    in_result.innerHTML = "未找到库存";
+  }
+};
 window.inStock = async (id)=>{
   const ref=doc(db,"inventory",id);
   const snap=await getDoc(ref);
