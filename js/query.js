@@ -19,7 +19,7 @@ btnRefresh.onclick = () => {
 };
 
 window.searchData = async function(){
-
+  console.log("searchData 开始执行");
   const keyword = searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML = "";
 
