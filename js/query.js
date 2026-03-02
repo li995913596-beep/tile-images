@@ -3,7 +3,7 @@ import {
   collection,
   getDocs,
   query,
-  where
+  limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* ================= 搜索函数 ================= */
@@ -23,10 +23,10 @@ window.searchData = async function(){
     return;
   }
 
+  // 🔥 限制最多读取 300 条，防止爆读
   const q = query(
     collection(db, "inventory"),
-    where("code", ">=", keyword),
-    where("code", "<=", keyword + "\uf8ff")
+    limit(300)
   );
 
   const snap = await getDocs(q);
@@ -34,9 +34,11 @@ window.searchData = async function(){
 
   snap.forEach(doc=>{
     const item = doc.data();
+
     const code = String(item.code || "").toLowerCase();
     const spec = String(item.spec || "").toLowerCase();
 
+    // 🔥 真正模糊包含
     if(code.includes(keyword) || spec.includes(keyword)){
 
       const reserved = Array.isArray(item.reservedList)
@@ -166,7 +168,7 @@ function buildMobile(list){
   });
 }
 
-/* ================= DOM 绑定（关键修复） ================= */
+/* ================= DOM 绑定 ================= */
 
 document.addEventListener("DOMContentLoaded", () => {
 
