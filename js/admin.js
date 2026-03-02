@@ -99,19 +99,39 @@ function buildInPage(){
   `;
 }
 
+/* 🔥 优化后的搜索（低读次数版本） */
+
 window.searchIn = async ()=>{
-  const snap = await getDocs(collection(db,"inventory"));
+
+  const keyword = in_search.value.trim();
+
+  if(!keyword){
+    alert("请输入编号");
+    return;
+  }
+
+  const q = query(
+    collection(db,"inventory"),
+    where("code","==", keyword)
+  );
+
+  const snap = await getDocs(q);
+
   in_result.innerHTML="";
+
+  if(snap.empty){
+    in_result.innerHTML = "未找到该编号";
+    return;
+  }
+
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(in_search.value)){
-      in_result.innerHTML+=`
-        <div>
-          ${i.code}|${i.color}|库存:${i.stock}
-          数量<input id="in_qty_${d.id}" type="number" step="0.01">
-          <button onclick="inStock('${d.id}')">入库</button>
-        </div>`;
-    }
+    in_result.innerHTML+=`
+      <div>
+        ${i.code}|${i.color}|库存:${i.stock}
+        数量<input id="in_qty_${d.id}" type="number" step="0.01">
+        <button onclick="inStock('${d.id}')">入库</button>
+      </div>`;
   });
 };
 
@@ -148,7 +168,6 @@ window.addNewStock = async ()=>{
 
   alert("新增成功");
 };
-
 /* ================= 出库 ================= */
 
 function buildOutPage(){
@@ -160,31 +179,53 @@ function buildOutPage(){
   `;
 }
 
+/* 🔥 优化后的低读次数搜索 */
+
 window.searchOut=async()=>{
-  const snap=await getDocs(collection(db,"inventory"));
+
+  const keyword = out_search.value.trim();
+
+  if(!keyword){
+    alert("请输入编号");
+    return;
+  }
+
+  const q = query(
+    collection(db,"inventory"),
+    where("code","==", keyword)
+  );
+
+  const snap = await getDocs(q);
+
   out_result.innerHTML="";
+
+  if(snap.empty){
+    out_result.innerHTML="未找到该编号";
+    return;
+  }
+
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(out_search.value)){
-      out_result.innerHTML+=`
-        <div style="margin-bottom:15px;">
-          ${i.code}|${i.color}|库存:${i.stock}
 
-          <br>客户
-          <input id="out_c_${d.id}">
+    out_result.innerHTML+=`
+      <div style="margin-bottom:15px;">
+        ${i.code}|${i.color}|库存:${i.stock}
 
-          <br>数量
-          <input id="out_q_${d.id}" type="number" step="0.01">
+        <br>客户
+        <input id="out_c_${d.id}">
 
-          <select id="out_unit_${d.id}">
-            <option value="箱">箱</option>
-            <option value="片">片</option>
-          </select>
+        <br>数量
+        <input id="out_q_${d.id}" type="number" step="0.01">
 
-          <button onclick="outStock('${d.id}')">出库</button>
-        </div>`;
-    }
+        <select id="out_unit_${d.id}">
+          <option value="箱">箱</option>
+          <option value="片">片</option>
+        </select>
+
+        <button onclick="outStock('${d.id}')">出库</button>
+      </div>`;
   });
+
 };
 
 window.outStock=async(id)=>{
@@ -234,20 +275,40 @@ function buildReservePage(){
   loadReserve();
 }
 
+/* 🔥 优化后的搜索（低读次数） */
+
 window.searchReserve=async()=>{
-  const snap=await getDocs(collection(db,"inventory"));
+
+  const keyword = re_search.value.trim();
+
+  if(!keyword){
+    alert("请输入编号");
+    return;
+  }
+
+  const q = query(
+    collection(db,"inventory"),
+    where("code","==", keyword)
+  );
+
+  const snap = await getDocs(q);
+
   re_result.innerHTML="";
+
+  if(snap.empty){
+    re_result.innerHTML="未找到该编号";
+    return;
+  }
+
   snap.forEach(d=>{
     const i=d.data();
-    if(i.code.includes(re_search.value)){
-      re_result.innerHTML+=`
-        <div>
-          ${i.code}|${i.color}|库存:${i.stock}
-          客户<input id="re_c_${d.id}">
-          数量<input id="re_q_${d.id}">
-          <button onclick="reserveStock('${d.id}')">留货</button>
-        </div>`;
-    }
+    re_result.innerHTML+=`
+      <div>
+        ${i.code}|${i.color}|库存:${i.stock}
+        客户<input id="re_c_${d.id}">
+        数量<input id="re_q_${d.id}">
+        <button onclick="reserveStock('${d.id}')">留货</button>
+      </div>`;
   });
 };
 
@@ -271,14 +332,26 @@ window.reserveStock=async(id)=>{
   });
 
   await log("留货",data,qty,customer);
+
   loadReserve();
 };
 
+/* 🔥 优化后的留货清单加载（只加载有留货的） */
+
 async function loadReserve(){
-  const snap=await getDocs(collection(db,"inventory"));
+
+  const q = query(
+    collection(db,"inventory"),
+    where("reservedList","!=", [])
+  );
+
+  const snap = await getDocs(q);
+
   reserveList.innerHTML="";
+
   snap.forEach(d=>{
     const i=d.data();
+
     (i.reservedList||[]).forEach((r,index)=>{
       reserveList.innerHTML+=`
         <div>
@@ -304,9 +377,9 @@ window.deleteReserve=async(id,index)=>{
   });
 
   await log("取消留货",data,removed.qty,removed.customer);
+
   loadReserve();
 };
-
 /* ================= 日志 ================= */
 
 function buildLogPage(){
