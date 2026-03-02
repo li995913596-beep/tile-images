@@ -6,14 +6,15 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const btnSearch = document.getElementById("btnSearch");
-const btnRefresh = document.getElementById("btnRefresh");
-const resultDiv = document.getElementById("result");
-const searchInput = document.getElementById("searchInput");
-
+/* ================= 搜索函数 ================= */
 
 window.searchData = async function(){
+
+  const searchInput = document.getElementById("searchInput");
+  const resultDiv = document.getElementById("result");
+
   console.log("searchData 开始执行");
+
   const keyword = searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML = "";
 
@@ -23,12 +24,12 @@ window.searchData = async function(){
   }
 
   const q = query(
-  collection(db, "inventory"),
-  where("code", ">=", keyword),
-  where("code", "<=", keyword + "\uf8ff")
-);
+    collection(db, "inventory"),
+    where("code", ">=", keyword),
+    where("code", "<=", keyword + "\uf8ff")
+  );
 
-const snap = await getDocs(q);
+  const snap = await getDocs(q);
   let list = [];
 
   snap.forEach(doc=>{
@@ -56,15 +57,13 @@ const snap = await getDocs(q);
   }else{
     buildDesktop(list);
   }
-}
-btnSearch.addEventListener("click", window.searchData);
-btnRefresh.addEventListener("click", () => {
-searchInput.value = "";
-resultDiv.innerHTML = "";
-});
-/* ===== 桌面版 ===== */
+};
+
+/* ================= 桌面版 ================= */
 
 function buildDesktop(list){
+
+  const resultDiv = document.getElementById("result");
 
   resultDiv.innerHTML=`
     <div class="table-header">
@@ -101,10 +100,11 @@ function buildDesktop(list){
   });
 }
 
-/* ===== 手机高级卡片版 ===== */
+/* ================= 手机版 ================= */
 
 function buildMobile(list){
 
+  const resultDiv = document.getElementById("result");
   resultDiv.innerHTML="";
 
   list.forEach(item=>{
@@ -165,3 +165,21 @@ function buildMobile(list){
     `;
   });
 }
+
+/* ================= DOM 绑定（关键修复） ================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const btnSearch = document.getElementById("btnSearch");
+  const btnRefresh = document.getElementById("btnRefresh");
+  const searchInput = document.getElementById("searchInput");
+  const resultDiv = document.getElementById("result");
+
+  btnSearch.addEventListener("click", window.searchData);
+
+  btnRefresh.addEventListener("click", () => {
+    searchInput.value = "";
+    resultDiv.innerHTML = "";
+  });
+
+});
