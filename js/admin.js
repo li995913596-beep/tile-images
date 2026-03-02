@@ -223,8 +223,17 @@ window.searchOut = async ()=>{
 
     const fullId = d.id.toLowerCase();
     const code = (i.code || "").toLowerCase();
+    const spec = (i.spec || "").toLowerCase();
+    const color = (i.color || "").toLowerCase();
+    const warehouse = (i.warehouse || "").toLowerCase();
 
-    if(fullId.includes(keyword) || code.includes(keyword)){
+    if(
+      fullId.includes(keyword) ||
+      code.includes(keyword) ||
+      spec.includes(keyword) ||
+      color.includes(keyword) ||
+      warehouse.includes(keyword)
+    ){
 
       found = true;
 
@@ -239,6 +248,7 @@ window.searchOut = async ()=>{
           <div style="margin-top:8px;">
             客户：
             <input id="out_c_${d.id}" style="width:120px;">
+
             数量：
             <input id="out_q_${d.id}" type="number" step="0.01" style="width:100px;">
 
@@ -330,8 +340,17 @@ window.searchReserve = async ()=>{
 
     const fullId = d.id.toLowerCase();
     const code = (i.code || "").toLowerCase();
+    const spec = (i.spec || "").toLowerCase();
+    const color = (i.color || "").toLowerCase();
+    const warehouse = (i.warehouse || "").toLowerCase();
 
-    if(fullId.includes(keyword) || code.includes(keyword)){
+    if(
+      fullId.includes(keyword) ||
+      code.includes(keyword) ||
+      spec.includes(keyword) ||
+      color.includes(keyword) ||
+      warehouse.includes(keyword)
+    ){
 
       found = true;
 
@@ -347,7 +366,7 @@ window.searchReserve = async ()=>{
             客户：
             <input id="re_c_${d.id}" style="width:120px;">
             数量：
-            <input id="re_q_${d.id}" type="number" step="0.01" style="width:100px;">
+            <input id="re_q_${d.id}" type="number" style="width:100px;">
             <button onclick="reserveStock('${d.id}')">留货</button>
           </div>
         </div>`;
