@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
   limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -388,43 +389,61 @@ window.downloadLogs = async () => {
 /* ================= 统计 ================= */
 
 function buildStatsPage(){
-  tab_stats.innerHTML=`
-    <h3>库存统计</h3>
-    <table border="1" width="100%" style="margin-top:15px;border-collapse:collapse">
-      <thead>
-        <tr>
-          <th>编号</th>
-          <th>规格</th>
-          <th>色号</th>
-          <th>仓库</th>
-          <th>当前库存</th>
-          <th>留货数量</th>
-        </tr>
-      </thead>
-      <tbody id="statsTable"></tbody>
-    </table>
+  tab_stats.innerHTML = `
+    <h3>出库统计（按编号 + 日期）</h3>
+    <div style="margin-bottom:20px;">
+      编号：
+      <input id="stats_code" placeholder="输入编号">
+      开始日期：
+      <input type="date" id="stats_start">
+      结束日期：
+      <input type="date" id="stats_end">
+      <button onclick="runStats()">查询</button>
+    </div>
+    <div id="statsResult" style="font-size:18px;font-weight:bold;"></div>
   `;
-  loadStats();
-}
-
-async function loadStats(){
-  const snap=await getDocs(collection(db,"inventory"));
-  statsTable.innerHTML="";
-  snap.forEach(d=>{
-    const i=d.data();
-    const reserved=(i.reservedList||[]).reduce((sum,r)=>sum+r.qty,0);
-    statsTable.innerHTML+=`
-      <tr>
-        <td>${i.code}</td>
-        <td>${i.spec||""}</td>
-        <td>${i.color}</td>
-        <td>${i.warehouse}</td>
-        <td>${i.stock}</td>
-        <td>${reserved}</td>
-      </tr>`;
-  });
 }
 console.log("准备注册 handleImport");
+
+/* ================= 出库统计函数 ================= */
+
+window.runStats = async function(){
+
+  const code = document.getElementById("stats_code").value.trim();
+  const startValue = document.getElementById("stats_start").value;
+  const endValue = document.getElementById("stats_end").value;
+
+  if(!code || !startValue || !endValue){
+    alert("请填写完整条件");
+    return;
+  }
+
+  const startDate = new Date(startValue);
+  startDate.setHours(0,0,0,0);
+
+  const endDate = new Date(endValue);
+  endDate.setHours(23,59,59,999);
+
+  const q = query(
+    collection(db,"logs"),
+    where("type","==","出库"),
+    where("code","==", code),
+    where("timestamp",">=", startDate),
+    where("timestamp","<=", endDate),
+    orderBy("timestamp","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  let total = 0;
+
+  snap.forEach(doc=>{
+    total += Number(doc.data().qty || 0);
+  });
+
+  document.getElementById("statsResult").innerText =
+    `编号 ${code} 在所选时间段内出库总量：${total}`;
+};
 /* ================= 日志写入 ================= */
 
 async function log(type,data,qty,customer=""){
