@@ -5,7 +5,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function safe(text) {
-  return String(text || "").replace(/[\/\s#]/g, "_");
+  return String(text || "")
+    .replace(/[\/\s#]/g, "_")
+    .trim();
 }
 
 export async function importExcel(file) {
@@ -22,19 +24,22 @@ export async function importExcel(file) {
 
       const code = row["编号"]?.toString().trim();
       const spec = row["规格"]?.toString().trim() || "";
-      const color = row["色号"]?.toString().trim() || "";   // ✅ 允许为空
-      const qty = Number(row["数量"] || 0);                 // 箱数
+      const color = row["色号"]?.toString().trim() || "";
+      const qty = Number(row["数量"] || 0);
       const warehouse = row["所在仓库"]?.toString().trim();
       const reserved = Number(row["留货(库存已扣)"] || 0);
-      const piecesPerBox = Number(row["每箱片数"] || 1);   // ✅ 新增字段
+      const piecesPerBox = Number(row["每箱片数"] || 1);
 
       // 只要求 编号 + 仓库
       if (!code || !warehouse) continue;
 
-      // 色号为空用 NO_COLOR 防止冲突
-      const safeColor = color || "NO_COLOR";
+      const safeCode = safe(code);
+      const safeSpec = safe(spec);              // ✅ 新增
+      const safeColor = safe(color || "NO_COLOR");
+      const safeWarehouse = safe(warehouse);
 
-      const id = `${safe(code)}_${safe(safeColor)}_${safe(warehouse)}`;
+      // ✅ 关键修复：加入规格防止覆盖
+      const id = `${safeCode}_${safeSpec}_${safeColor}_${safeWarehouse}`;
 
       const reservedList = reserved > 0 ? [
         {
@@ -50,11 +55,12 @@ export async function importExcel(file) {
         spec,
         color,
         warehouse,
-        stock: Number(qty),                 // 箱数（支持小数）
-        piecesPerBox: Number(piecesPerBox), // ✅ 新字段
+        stock: Number(qty),
+        piecesPerBox: Number(piecesPerBox),
         reservedList,
         lastUpdate: new Date()
       });
+
     }
   }
 
