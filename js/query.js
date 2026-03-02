@@ -114,46 +114,76 @@ function buildMobile(list){
     const imageUrl = window.location.origin +
       "/images/" + item.code + ".jpg";
 
-    /* ===== 仓库颜色区分 ===== */
+    /* ===== 仓库左侧颜色条 ===== */
 
-    let bgColor = "#eef3ff"; // 默认蓝
+    let barColor = "#4a90e2"; // 默认蓝
 
     if(item.warehouse === "k38"){
-      bgColor = "#e6f0ff";   // 浅蓝
+      barColor = "#4a90e2";
     }
     else if(item.warehouse === "k39"){
-      bgColor = "#e9f7ef";   // 浅绿
+      barColor = "#27ae60";
     }
     else if(item.warehouse === "k40"){
-      bgColor = "#fff4e6";   // 浅橙
+      barColor = "#f39c12";
     }
 
     /* ===== 库存颜色 ===== */
 
-    let stockColor = "#2ecc71"; // 正常绿色
+    let stockColor = "#2ecc71";
 
     if(item.stock == 0){
-      stockColor = "#e74c3c"; // 红
+      stockColor = "#e74c3c";
     }
     else if(item.stock < 10){
-      stockColor = "#f39c12"; // 橙
+      stockColor = "#f39c12";
+    }
+
+    /* ===== 留货颜色 ===== */
+
+    let reserveHtml = `
+      <span style="
+        font-size:12px;
+        padding:3px 8px;
+        border-radius:20px;
+        background:#eee;
+        color:#666;
+      ">
+        留货 0
+      </span>
+    `;
+
+    if(item.reserved > 0){
+      reserveHtml = `
+        <span style="
+          font-size:12px;
+          padding:3px 8px;
+          border-radius:20px;
+          background:#e74c3c;
+          color:#fff;
+        ">
+          留货 ${item.reserved}
+        </span>
+      `;
     }
 
     resultDiv.innerHTML += `
       <div style="
-        background:${bgColor};
+        background:#fff;
         padding:10px;
         border-radius:12px;
         margin-bottom:10px;
         display:flex;
         align-items:center;
         gap:10px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.05);
+        border-left:4px solid ${barColor};
       ">
 
-        <!-- 左侧图片 -->
+        <!-- 图片 -->
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
-            style="width:65px;height:65px;border-radius:6px;object-fit:cover;"
+            style="width:60px;height:60px;border-radius:6px;object-fit:cover;"
             onerror="this.style.display='none'">
         </div>
 
@@ -164,17 +194,17 @@ function buildMobile(list){
             ${item.code}
           </div>
 
-          <div style="font-size:13px;color:#555;">
+          <div style="font-size:13px;color:#666;">
             ${item.spec || "-"} | 色号 ${item.color}
           </div>
 
-          <div style="margin-top:6px;font-size:13px;">
-            留货 ${item.reserved}
+          <div style="margin-top:6px;">
+            ${reserveHtml}
           </div>
 
         </div>
 
-        <!-- 右侧区域 -->
+        <!-- 右侧 -->
         <div style="text-align:right;">
 
           <div style="
