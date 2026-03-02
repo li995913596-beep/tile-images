@@ -8,7 +8,10 @@ import {
   setDoc,
   updateDoc,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  orderBy,
+  limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import {
@@ -329,18 +332,28 @@ function buildLogPage(){
 }
 
 async function loadLogs(){
-  const snap=await getDocs(collection(db,"logs"));
+
+  const q = query(
+    collection(db,"logs"),
+    orderBy("timestamp","desc"), // 按时间倒序
+    limit(100)                   // 只显示100条
+  );
+
+  const snap = await getDocs(q);
+
   logTable.innerHTML="";
+
   snap.forEach(d=>{
     const l=d.data();
     const time=l.timestamp ? l.timestamp.toDate().toLocaleString() : "";
+
     logTable.innerHTML+=`
       <tr>
         <td>${time}</td>
         <td>${l.type}</td>
         <td>${l.code}</td>
         <td>${l.spec||""}</td>
-        <td>${l.color}</td>
+        <td>${l.color||""}</td>
         <td>${l.qty}</td>
         <td>${l.warehouse}</td>
         <td>${l.customer||""}</td>
@@ -348,14 +361,23 @@ async function loadLogs(){
   });
 }
 
-window.downloadLogs=async()=>{
-  const snap=await getDocs(collection(db,"logs"));
+window.downloadLogs = async () => {
+
+  const q = query(
+    collection(db,"logs"),
+    orderBy("timestamp","desc") // 按时间排序
+  );
+
+  const snap = await getDocs(q);
+
   let csv="时间,类型,编号,规格,色号,数量,仓库,客户\n";
+
   snap.forEach(d=>{
     const l=d.data();
     const time=l.timestamp ? l.timestamp.toDate().toLocaleString() : "";
-    csv+=`${time},${l.type},${l.code},${l.spec||""},${l.color},${l.qty},${l.warehouse},${l.customer||""}\n`;
+    csv+=`${time},${l.type},${l.code},${l.spec||""},${l.color||""},${l.qty},${l.warehouse},${l.customer||""}\n`;
   });
+
   const blob=new Blob([csv]);
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
