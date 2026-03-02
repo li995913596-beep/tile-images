@@ -132,12 +132,20 @@ window.searchIn = async ()=>{
     ){
       found = true;
 
-      in_result.innerHTML += `
-        <div>
-          ${i.code}|${i.color}|库存:${i.stock}
-          数量<input id="in_qty_${d.id}" type="number" step="0.01">
-          <button onclick="inStock('${d.id}')">入库</button>
-        </div>`;
+    in_result.innerHTML += `
+  <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
+    <div><b>编号：</b>${i.code}</div>
+    <div><b>色号：</b>${i.color}</div>
+    <div><b>规格：</b>${i.spec || "-"}</div>
+    <div><b>仓库：</b>${i.warehouse}</div>
+    <div><b>库存：</b>${i.stock}</div>
+
+    <div style="margin-top:8px;">
+      数量：
+      <input id="in_qty_${d.id}" type="number" step="0.01" style="width:100px;">
+      <button onclick="inStock('${d.id}')">入库</button>
+    </div>
+  </div>`;
     }
   });
 
