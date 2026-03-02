@@ -18,7 +18,7 @@ btnRefresh.onclick = () => {
   resultDiv.innerHTML = "";
 };
 
-async function searchData(){
+window.searchData = async function(){
 
   const keyword = searchInput.value.trim().toLowerCase();
   resultDiv.innerHTML = "";
