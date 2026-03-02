@@ -103,7 +103,11 @@ function buildInPage(){
 
 window.searchIn = async ()=>{
 
-  const keyword = in_search.value.trim();
+  const keyword = in_search.value
+    .trim()
+    .replaceAll("/", "_")
+    .replaceAll("\\", "_")
+    .replaceAll(" ", "");
 
   if(!keyword){
     alert("请输入编号");
