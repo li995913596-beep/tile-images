@@ -33,13 +33,21 @@ window.searchData = async function(){
   let list = [];
 
   snap.forEach(doc=>{
-    const item = doc.data();
+  const item = doc.data();
 
-    const code = String(item.code || "").toLowerCase();
-    const spec = String(item.spec || "").toLowerCase();
+  const fullId = doc.id.toLowerCase();   // 🔥 文档ID
+  const code = String(item.code || "").toLowerCase();
+  const spec = String(item.spec || "").toLowerCase();
+  const color = String(item.color || "").toLowerCase();
+  const warehouse = String(item.warehouse || "").toLowerCase();
 
-    // 🔥 真正模糊包含
-    if(code.includes(keyword) || spec.includes(keyword)){
+  if(
+    fullId.includes(keyword) ||
+    code.includes(keyword) ||
+    spec.includes(keyword) ||
+    color.includes(keyword) ||
+    warehouse.includes(keyword)
+  ){
 
       const reserved = Array.isArray(item.reservedList)
         ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
