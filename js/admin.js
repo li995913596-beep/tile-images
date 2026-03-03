@@ -685,16 +685,49 @@ for (let row of json) {
 
   reader.readAsArrayBuffer(file);
 };
-window.hideItem = async (id)=>{
-  await updateDoc(doc(db,"inventory",id),{
-    hidden: true
-  });
-  alert("已隐藏");
-};
+window.exportInventory = async function(){
 
-window.restoreItem = async (id)=>{
-  await updateDoc(doc(db,"inventory",id),{
-    hidden: false
+  const snap = await getDocs(collection(db,"inventory"));
+
+  let warehouseMap = {};  // 按仓库分组
+
+  snap.forEach(doc=>{
+    const i = doc.data();
+
+    if(i.hidden) return; // 隐藏的不导出
+
+    const reserved = Array.isArray(i.reservedList)
+      ? i.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
+      : 0;
+
+    const row = {
+      "编号": i.code || "",
+      "规格": i.spec || "",
+      "色号": i.color || "",
+      "数量": i.stock || 0,
+      "所在仓库": i.warehouse || "",
+      "留货": reserved,
+      "每箱片数": i.piecesPerBox || ""
+    };
+
+    const w = i.warehouse || "未分类";
+
+    if(!warehouseMap[w]){
+      warehouseMap[w] = [];
+    }
+
+    warehouseMap[w].push(row);
   });
-  alert("已恢复");
+
+  const wb = XLSX.utils.book_new();
+
+  // 每个仓库一个 Sheet
+  for(const warehouse in warehouseMap){
+    const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
+    XLSX.utils.book_append_sheet(wb, ws, warehouse);
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  XLSX.writeFile(wb, `当前库存_${today}.xlsx`);
 };
