@@ -698,16 +698,23 @@ window.exportInventory = async function(){
 
     let reserved = 0;
 
-    // 🔥 兼容数组和对象两种情况
     if(i.reservedList){
 
+      // 情况1：数组
       if(Array.isArray(i.reservedList)){
         i.reservedList.forEach(r=>{
-          reserved += Number(r.qty || 0);
+          if(r){
+            reserved += Number(r.qty || r.quantity || 0);
+          }
         });
-      } else if(typeof i.reservedList === "object"){
+      }
+
+      // 情况2：对象
+      else if(typeof i.reservedList === "object"){
         Object.values(i.reservedList).forEach(r=>{
-          reserved += Number(r.qty || 0);
+          if(r){
+            reserved += Number(r.qty || r.quantity || 0);
+          }
         });
       }
 
