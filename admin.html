@@ -42,7 +42,17 @@
     <input type="file" id="excelFile" accept=".xlsx,.xls">
     <button onclick="handleImport()">导入</button>
   </div>
+<!-- Excel 管理 -->
+<div class="card">
+  <h3>库存文件管理</h3>
 
+  <input type="file" id="excelFile" accept=".xlsx,.xls">
+  <button onclick="handleImport()">导入库存</button>
+
+  <button onclick="exportInventory()" style="margin-left:10px;">
+    导出当前库存
+  </button>
+</div>
   <div id="tab_in" class="tab card"></div>
   <div id="tab_out" class="tab card" style="display:none;"></div>
   <div id="tab_reserve" class="tab card" style="display:none;"></div>
