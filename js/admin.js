@@ -685,3 +685,16 @@ for (let row of json) {
 
   reader.readAsArrayBuffer(file);
 };
+window.hideItem = async (id)=>{
+  await updateDoc(doc(db,"inventory",id),{
+    hidden: true
+  });
+  alert("已隐藏");
+};
+
+window.restoreItem = async (id)=>{
+  await updateDoc(doc(db,"inventory",id),{
+    hidden: false
+  });
+  alert("已恢复");
+};
