@@ -689,22 +689,35 @@ window.exportInventory = async function(){
 
   const snap = await getDocs(collection(db,"inventory"));
 
-  let warehouseMap = {};  // 按仓库分组
+  let warehouseMap = {};
 
   snap.forEach(doc=>{
     const i = doc.data();
 
-    if(i.hidden) return; // 隐藏的不导出
+    if(i.hidden) return;
 
-    const reserved = Array.isArray(i.reservedList)
-      ? i.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
-      : 0;
+    let reserved = 0;
+
+    // 🔥 兼容数组和对象两种情况
+    if(i.reservedList){
+
+      if(Array.isArray(i.reservedList)){
+        i.reservedList.forEach(r=>{
+          reserved += Number(r.qty || 0);
+        });
+      } else if(typeof i.reservedList === "object"){
+        Object.values(i.reservedList).forEach(r=>{
+          reserved += Number(r.qty || 0);
+        });
+      }
+
+    }
 
     const row = {
       "编号": i.code || "",
       "规格": i.spec || "",
       "色号": i.color || "",
-      "数量": i.stock || 0,
+      "数量": Number(i.stock || 0),
       "所在仓库": i.warehouse || "",
       "留货": reserved,
       "每箱片数": i.piecesPerBox || ""
@@ -721,7 +734,6 @@ window.exportInventory = async function(){
 
   const wb = XLSX.utils.book_new();
 
-  // 每个仓库一个 Sheet
   for(const warehouse in warehouseMap){
     const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
     XLSX.utils.book_append_sheet(wb, ws, warehouse);
