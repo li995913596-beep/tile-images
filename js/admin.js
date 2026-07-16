@@ -111,7 +111,7 @@ window.searchIn = async ()=>{
   // 🔥 读取最多 500 条
   const q = query(
     collection(db,"inventory"),
-    limit(500)
+    limit(5000)
   );
 
   const snap = await getDocs(q);
@@ -210,7 +210,7 @@ window.searchOut = async ()=>{
 
   const q = query(
     collection(db,"inventory"),
-    limit(500)
+    limit(5000)
   );
 
   const snap = await getDocs(q);
@@ -327,7 +327,7 @@ window.searchReserve = async ()=>{
 
   const q = query(
     collection(db,"inventory"),
-    limit(500)
+    limit(5000)
   );
 
   const snap = await getDocs(q);
