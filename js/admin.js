@@ -104,7 +104,6 @@ function initTabs(){
   buildReservePage();
   buildLogPage();
   buildStatsPage();
-  // 后台登录后自动清理：数量为0且无留货的记录
   cleanupZeroStock();
 }
 
@@ -408,7 +407,6 @@ window.outStock=async(id)=>{
 
   const newStock = Number((data.stock-finalQty).toFixed(4));
 
-  // 出完且没有留货 → 直接删除；有留货则保留（数量可为0）
   if(newStock <= 0 && !hasActiveReserve(data.reservedList)){
     await deleteDoc(ref);
   } else {
@@ -439,14 +437,19 @@ function buildReservePage(){
       <button type="button" onclick="exportReserve()">导出留货信息</button>
     </div>
 
+    <p style="margin:0 0 10px;font-size:13px;color:#666;">
+      提示：可直接在清单里对留货「出库」，支持只出一部分，剩余继续留货。
+    </p>
+
     <div style="overflow-x:auto;">
-      <table id="reserveTable" width="100%" style="border-collapse:collapse;min-width:480px;">
+      <table id="reserveTable" width="100%" style="border-collapse:collapse;min-width:560px;">
         <thead>
           <tr style="background:linear-gradient(90deg,#3a8dde,#2f7dd1);color:#fff;">
             <th style="padding:10px 12px;text-align:left;">编号</th>
             <th style="padding:10px 12px;text-align:left;">规格</th>
             <th style="padding:10px 12px;text-align:left;">留货数量</th>
             <th style="padding:10px 12px;text-align:left;">客户名</th>
+            <th style="padding:10px 12px;text-align:left;">本次出库</th>
             <th style="padding:10px 12px;text-align:left;">操作</th>
           </tr>
         </thead>
@@ -524,7 +527,6 @@ window.reserveStock=async(id)=>{
   const list=data.reservedList||[];
   list.push({customer,qty});
 
-  // 留货后即使库存变 0 也保留记录（因为有留货信息）
   await updateDoc(ref,{
     stock:data.stock-qty,
     reservedList:list,
@@ -556,6 +558,7 @@ async function loadReserve(){
 
     (i.reservedList||[]).forEach((r,index)=>{
       hasRow = true;
+      const inputId = `ship_q_${d.id}_${index}`;
       tbody.innerHTML+=`
         <tr style="border-bottom:1px solid #eef2f6;">
           <td style="padding:10px 12px;">${i.code || ""}</td>
@@ -563,7 +566,15 @@ async function loadReserve(){
           <td style="padding:10px 12px;">${r.qty}</td>
           <td style="padding:10px 12px;">${r.customer || ""}</td>
           <td style="padding:10px 12px;">
-            <button type="button" onclick="deleteReserve('${d.id}',${index})" style="padding:6px 12px;background:#fdecea;color:#e74c3c;box-shadow:none;">删</button>
+            <input id="${inputId}" type="number" step="0.01" value="${r.qty}"
+              style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;"
+              title="默认全部，可改成部分数量">
+          </td>
+          <td style="padding:10px 12px;white-space:nowrap;">
+            <button type="button" onclick="shipReserve('${d.id}',${index})"
+              style="padding:6px 12px;background:#e67e22;color:#fff;margin-right:6px;">出库</button>
+            <button type="button" onclick="deleteReserve('${d.id}',${index})"
+              style="padding:6px 12px;background:#fdecea;color:#e74c3c;box-shadow:none;">取消留货</button>
           </td>
         </tr>`;
     });
@@ -572,10 +583,61 @@ async function loadReserve(){
   if(!hasRow){
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" style="padding:16px 12px;color:#888;text-align:center;">暂无留货记录</td>
+        <td colspan="6" style="padding:16px 12px;color:#888;text-align:center;">暂无留货记录</td>
       </tr>`;
   }
 }
+
+/**
+ * 从留货直接出库（支持部分出库）
+ * - 不把数量加回可售库存（留货时已扣过）
+ * - 只减少留货数量；剩多少继续留
+ * - 记一条「出库」日志，客户用留货客户名
+ */
+window.shipReserve = async function(id, index){
+  const ref = doc(db, "inventory", id);
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return alert("记录不存在");
+
+  const data = snap.data();
+  const list = Array.isArray(data.reservedList) ? [...data.reservedList] : [];
+  const item = list[index];
+  if(!item) return alert("留货记录不存在");
+
+  const maxQty = Number(item.qty || 0);
+  const inputEl = document.getElementById(`ship_q_${id}_${index}`);
+  let shipQty = inputEl ? Number(inputEl.value) : maxQty;
+
+  if(!shipQty || shipQty <= 0) return alert("请输入正确的出库数量");
+  if(shipQty > maxQty) return alert(`不能超过留货数量 ${maxQty}`);
+
+  shipQty = Number(shipQty.toFixed(4));
+  const remain = Number((maxQty - shipQty).toFixed(4));
+
+  if(remain > 0){
+    list[index] = { ...item, qty: remain };
+  } else {
+    list.splice(index, 1);
+  }
+
+  // 库存不变：留货时已经扣过；出库只是把「留货」变成真正发出
+  if(Number(data.stock || 0) <= 0 && !hasActiveReserve(list)){
+    await deleteDoc(ref);
+  } else {
+    await updateDoc(ref, {
+      reservedList: list,
+      lastUpdate: serverTimestamp()
+    });
+  }
+
+  await log("出库", data, shipQty, item.customer || "");
+
+  alert(remain > 0
+    ? `已出库 ${shipQty}，剩余留货 ${remain}`
+    : `已全部出库 ${shipQty}`);
+
+  loadReserve();
+};
 
 window.deleteReserve=async(id,index)=>{
   const ref=doc(db,"inventory",id);
@@ -587,7 +649,6 @@ window.deleteReserve=async(id,index)=>{
 
   const newStock = data.stock + removed.qty;
 
-  // 取消留货后：若库存仍为0且已无留货，删除；否则更新
   if(newStock <= 0 && !hasActiveReserve(data.reservedList)){
     await deleteDoc(ref);
   } else {
