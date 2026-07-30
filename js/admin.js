@@ -692,6 +692,7 @@ window.exportInventory = async function(){
     const snap = await getDocs(collection(db,"inventory"));
 
     let warehouseMap = {};
+    let allRows = [];
 
     snap.forEach(doc=>{
       const i = doc.data();
@@ -729,6 +730,7 @@ window.exportInventory = async function(){
 
       if(!warehouseMap[w]) warehouseMap[w] = [];
       warehouseMap[w].push(row);
+      allRows.push(row);
     });
 
     if(Object.keys(warehouseMap).length === 0){
@@ -737,25 +739,30 @@ window.exportInventory = async function(){
     }
 
     const wb = XLSX.utils.book_new();
+
+    // ① 各仓库工作表：保持原样，不排序
     for(const warehouse in warehouseMap){
-      // 按 规格 → 数量 → 编号 排序
-      warehouseMap[warehouse].sort((a, b) => {
-        const specA = (a["规格"] || "").toString();
-        const specB = (b["规格"] || "").toString();
-        if (specA !== specB) return specA.localeCompare(specB, "zh-CN");
-
-        const qtyA = Number(a["数量"] || 0);
-        const qtyB = Number(b["数量"] || 0);
-        if (qtyA !== qtyB) return qtyA - qtyB;
-
-        const codeA = (a["编号"] || "").toString();
-        const codeB = (b["编号"] || "").toString();
-        return codeA.localeCompare(codeB, "zh-CN");
-      });
-
       const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
       XLSX.utils.book_append_sheet(wb, ws, warehouse);
     }
+
+    // ② 额外汇总工作表：按 规格 → 数量 → 编号 排序
+    allRows.sort((a, b) => {
+      const specA = (a["规格"] || "").toString();
+      const specB = (b["规格"] || "").toString();
+      if (specA !== specB) return specA.localeCompare(specB, "zh-CN");
+
+      const qtyA = Number(a["数量"] || 0);
+      const qtyB = Number(b["数量"] || 0);
+      if (qtyA !== qtyB) return qtyA - qtyB;
+
+      const codeA = (a["编号"] || "").toString();
+      const codeB = (b["编号"] || "").toString();
+      return codeA.localeCompare(codeB, "zh-CN");
+    });
+
+    const summaryWs = XLSX.utils.json_to_sheet(allRows);
+    XLSX.utils.book_append_sheet(wb, summaryWs, "全部排序");
 
     const today = new Date().toISOString().split("T")[0];
     XLSX.writeFile(wb, `当前库存_${today}.xlsx`);
