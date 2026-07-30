@@ -300,6 +300,9 @@ window.downloadLogs=async()=>{
 };
 
 let salesBarChart=null, salesPieChart=null;
+let adminRankedCache=[];
+let adminSortBy="qty";
+
 function getRange(preset){
   const end=new Date(); end.setHours(23,59,59,999); const start=new Date(); start.setHours(0,0,0,0);
   if(preset==="week"){ const day=start.getDay()||7; start.setDate(start.getDate()-(day-1)); }
@@ -308,10 +311,34 @@ function getRange(preset){
   return {start,end};
 }
 
+function renderAdminStatsTable(){
+  const list=[...adminRankedCache];
+  if(adminSortBy==="count") list.sort((a,b)=>b.count-a.count||b.qty-a.qty);
+  else list.sort((a,b)=>b.qty-a.qty||b.count-a.count);
+  const tbody=$("statsTableBody");
+  if(!tbody) return;
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=list.map((r,i)=>`<tr style="border-bottom:1px solid #eef2f6;"><td style="padding:10px 12px;">${i+1}</td><td style="padding:10px 12px;">${r.code}</td><td style="padding:10px 12px;">${r.qty}</td><td style="padding:10px 12px;">${r.count}</td></tr>`).join("");
+}
+
+window.setAdminSort=function(mode){
+  adminSortBy=mode==="count"?"count":"qty";
+  const q=$("admin_sort_qty"), c=$("admin_sort_count");
+  if(q) q.style.background=adminSortBy==="qty"?"#2f7dd1":"";
+  if(q) q.style.color=adminSortBy==="qty"?"#fff":"";
+  if(c) c.style.background=adminSortBy==="count"?"#2f7dd1":"";
+  if(c) c.style.color=adminSortBy==="count"?"#fff":"";
+  renderAdminStatsTable();
+};
+
 function buildStatsPage(){
   const tab_stats = $("tab_stats");
   if(!tab_stats) return;
-  tab_stats.innerHTML=`<h3>卖货分析（出库排行）</h3><p style="font-size:13px;color:#666;margin-top:0;">不用搜编号，自动汇总所选时间段所有出库。</p>
+  tab_stats.innerHTML=`<h3>卖货分析（出库排行）</h3>
+  <p style="font-size:13px;color:#666;margin-top:0;">不用搜编号。老板不登录也可看：打开 <a href="report.html" target="_blank">report.html</a></p>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;">
   <button type="button" onclick="runSalesStats('today')">今天</button><button type="button" onclick="runSalesStats('week')">本周</button>
   <button type="button" onclick="runSalesStats('month')">本月</button><button type="button" onclick="runSalesStats('year')">本年</button>
@@ -320,6 +347,11 @@ function buildStatsPage(){
   <div id="statsSummary" style="font-size:15px;font-weight:600;margin-bottom:16px;"></div>
   <div style="background:#fafbfd;border-radius:12px;padding:12px;margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">出库 Top 15</div><canvas id="salesBarChart" height="120"></canvas></div>
   <div style="background:#fafbfd;border-radius:12px;padding:12px;max-width:480px;margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">Top 10 占比</div><canvas id="salesPieChart" height="200"></canvas></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+    <span style="font-size:13px;color:#555;">排名排序：</span>
+    <button type="button" id="admin_sort_qty" onclick="setAdminSort('qty')" style="background:#2f7dd1;color:#fff;">按出库数量</button>
+    <button type="button" id="admin_sort_count" onclick="setAdminSort('count')">按出库次数</button>
+  </div>
   <div style="overflow-x:auto;"><table width="100%" style="border-collapse:collapse;min-width:400px;"><thead><tr style="background:linear-gradient(90deg,#3a8dde,#2f7dd1);color:#fff;"><th style="padding:10px 12px;text-align:left;">排名</th><th style="padding:10px 12px;text-align:left;">编号</th><th style="padding:10px 12px;text-align:left;">出库总量</th><th style="padding:10px 12px;text-align:left;">出库次数</th></tr></thead><tbody id="statsTableBody"></tbody></table></div>`;
 }
 
@@ -337,7 +369,6 @@ window.runSalesStats=async function(preset){
   }
   const summaryEl=$("statsSummary"); if(summaryEl) summaryEl.innerText="加载中…";
   try{
-    // 只按 type 查（不需要复合索引），日期在本地过滤
     const snap=await getDocs(query(collection(db,"logs"), where("type","==","出库")));
     const map={}; let totalQty=0,totalOrders=0;
     snap.forEach(d=>{
@@ -352,12 +383,12 @@ window.runSalesStats=async function(preset){
       map[code].qty+=qty; map[code].count+=1;
       totalQty+=qty; totalOrders+=1;
     });
-    const ranked=Object.entries(map).map(([code,v])=>({code,qty:Number(v.qty.toFixed(4)),count:v.count})).sort((a,b)=>b.qty-a.qty);
-    if(summaryEl) summaryEl.innerText=ranked.length?`共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${ranked.length} 个编号`:"该时间段没有出库记录";
-    const tbody=$("statsTableBody");
-    if(tbody) tbody.innerHTML=ranked.length?ranked.map((r,i)=>`<tr style="border-bottom:1px solid #eef2f6;"><td style="padding:10px 12px;">${i+1}</td><td style="padding:10px 12px;">${r.code}</td><td style="padding:10px 12px;">${r.qty}</td><td style="padding:10px 12px;">${r.count}</td></tr>`).join(""):`<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据</td></tr>`;
+    adminRankedCache=Object.entries(map).map(([code,v])=>({code,qty:Number(v.qty.toFixed(4)),count:v.count}));
+    if(summaryEl) summaryEl.innerText=adminRankedCache.length?`共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${adminRankedCache.length} 个编号`:"该时间段没有出库记录";
+    renderAdminStatsTable();
+    const byQty=[...adminRankedCache].sort((a,b)=>b.qty-a.qty);
     const colors=["#3498db","#e67e22","#2ecc71","#9b59b6","#e74c3c","#1abc9c","#f39c12","#2980b9","#16a085","#c0392b","#8e44ad","#27ae60","#d35400","#34495e","#7f8c8d"];
-    const top15=ranked.slice(0,15), top10=ranked.slice(0,10);
+    const top15=byQty.slice(0,15), top10=byQty.slice(0,10);
     if(typeof Chart!=="undefined"){
       if(salesBarChart){ salesBarChart.destroy(); salesBarChart=null; } if(salesPieChart){ salesPieChart.destroy(); salesPieChart=null; }
       const barCanvas=$("salesBarChart"), pieCanvas=$("salesPieChart");
