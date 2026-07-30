@@ -738,6 +738,21 @@ window.exportInventory = async function(){
 
     const wb = XLSX.utils.book_new();
     for(const warehouse in warehouseMap){
+      // 按 规格 → 数量 → 编号 排序
+      warehouseMap[warehouse].sort((a, b) => {
+        const specA = (a["规格"] || "").toString();
+        const specB = (b["规格"] || "").toString();
+        if (specA !== specB) return specA.localeCompare(specB, "zh-CN");
+
+        const qtyA = Number(a["数量"] || 0);
+        const qtyB = Number(b["数量"] || 0);
+        if (qtyA !== qtyB) return qtyA - qtyB;
+
+        const codeA = (a["编号"] || "").toString();
+        const codeB = (b["编号"] || "").toString();
+        return codeA.localeCompare(codeB, "zh-CN");
+      });
+
       const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
       XLSX.utils.book_append_sheet(wb, ws, warehouse);
     }
