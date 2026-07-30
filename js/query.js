@@ -7,6 +7,21 @@ import {
   limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+/* 汇总留货数量 + 客户明细 */
+function getReserveInfo(item){
+  const list = Array.isArray(item.reservedList) ? item.reservedList : [];
+  const total = list.reduce((s, r) => s + Number(r.qty || 0), 0);
+  const detail = list
+    .filter(r => r && (r.customer || r.qty))
+    .map(r => {
+      const name = (r.customer || "未填客户").toString();
+      const qty = Number(r.qty || 0);
+      return `${name}(${qty})`;
+    })
+    .join("、");
+  return { total, detail };
+}
+
 /* ================= 搜索函数 ================= */
 
 window.searchData = async function(){
@@ -33,14 +48,12 @@ window.searchData = async function(){
       if(seen.has(doc.id)) return;
       seen.add(doc.id);
       const item = doc.data();
-      const reserved = Array.isArray(item.reservedList)
-        ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
-        : 0;
-      list.push({...item, reserved});
+      const { total, detail } = getReserveInfo(item);
+      list.push({...item, reserved: total, reserveDetail: detail});
     });
   }
 
-  // ① 快速通道：按编号 / 规格精确查询（读次数少、速度快）
+  // ① 快速通道：按编号 / 规格精确查询
   try {
     const variants = [...new Set([raw, keyword, raw.toUpperCase()])];
 
@@ -55,7 +68,7 @@ window.searchData = async function(){
     console.error("精确查询失败，改走模糊搜索:", e);
   }
 
-  // ② 精确没命中时：走原来的模糊搜索，保证色号/仓库/部分匹配仍可用
+  // ② 精确没命中时：模糊搜索
   if (list.length === 0) {
     const q = query(
       collection(db, "inventory"),
@@ -80,11 +93,8 @@ window.searchData = async function(){
         color.includes(keyword) ||
         warehouse.includes(keyword)
       ){
-        const reserved = Array.isArray(item.reservedList)
-          ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
-          : 0;
-
-        list.push({...item, reserved});
+        const { total, detail } = getReserveInfo(item);
+        list.push({...item, reserved: total, reserveDetail: detail});
       }
     });
   }
@@ -123,6 +133,10 @@ function buildDesktop(list){
     const imageUrl = window.location.origin +
       "/images/" + item.code + ".jpg";
 
+    const reserveText = item.reserved > 0
+      ? `${item.reserved}${item.reserveDetail ? "<br><span style=\"font-size:12px;color:#c0392b;\">" + item.reserveDetail + "</span>" : ""}`
+      : "0";
+
     resultDiv.innerHTML+=`
       <div class="table-row">
         <div class="img-col" onclick="openModal('${imageUrl}')">
@@ -136,7 +150,7 @@ function buildDesktop(list){
           ${item.stock}
         </div>
         <div>${item.warehouse||"-"}</div>
-        <div>${item.reserved}</div>
+        <div>${reserveText}</div>
       </div>
     `;
   });
@@ -153,21 +167,17 @@ function buildMobile(list){
     const imageUrl = window.location.origin +
       "/images/" + item.code + ".jpg";
 
-    /* ===== 整卡仓库底色 ===== */
-
-    let bgColor = "#f3f4f6";   // 默认浅灰
+    let bgColor = "#f3f4f6";
 
     if(item.warehouse === "k38"){
-      bgColor = "#e8f1fb";    // 淡蓝
+      bgColor = "#e8f1fb";
     }
     else if(item.warehouse === "k39"){
-      bgColor = "#eaf7f1";    // 淡绿
+      bgColor = "#eaf7f1";
     }
     else if(item.warehouse === "1"){
-      bgColor = "#f3ecff";    // 淡橙
+      bgColor = "#f3ecff";
     }
-
-    /* ===== 仓库标签颜色（轻量风格） ===== */
 
     let warehouseBg = "#e5e7eb";
     let warehouseColor = "#555";
@@ -185,8 +195,6 @@ function buildMobile(list){
       warehouseColor = "#ea580c";
     }
 
-    /* ===== 库存颜色 ===== */
-
     let stockColor = "#22c55e";
 
     if(item.stock == 0){
@@ -195,8 +203,6 @@ function buildMobile(list){
     else if(item.stock < 10){
       stockColor = "#f59e0b";
     }
-
-    /* ===== 留货标签 ===== */
 
     let reserveHtml = `
       <span style="
@@ -212,15 +218,25 @@ function buildMobile(list){
 
     if(item.reserved > 0){
       reserveHtml = `
-        <span style="
-          font-size:11px;
-          padding:3px 8px;
-          border-radius:999px;
-          background:#ef4444;
-          color:#fff;
-        ">
-          留货 ${item.reserved}
-        </span>
+        <div style="margin-top:2px;">
+          <span style="
+            font-size:11px;
+            padding:3px 8px;
+            border-radius:999px;
+            background:#ef4444;
+            color:#fff;
+          ">
+            留货 ${item.reserved}
+          </span>
+          ${item.reserveDetail ? `
+            <div style="
+              margin-top:4px;
+              font-size:12px;
+              color:#c0392b;
+              line-height:1.4;
+            ">客户：${item.reserveDetail}</div>
+          ` : ""}
+        </div>
       `;
     }
 
@@ -235,14 +251,12 @@ function buildMobile(list){
         gap:12px;
       ">
 
-        <!-- 图片 -->
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
             style="width:58px;height:58px;border-radius:8px;object-fit:cover;"
             onerror="this.style.display='none'">
         </div>
 
-        <!-- 中间信息 -->
         <div style="flex:1;">
 
           <div style="font-weight:600;font-size:15px;">
@@ -259,10 +273,8 @@ function buildMobile(list){
 
         </div>
 
-        <!-- 右侧 -->
         <div style="text-align:right;">
 
-          <!-- 仓库标签 -->
           <div style="
             display:inline-block;
             font-size:11px;
@@ -276,7 +288,6 @@ function buildMobile(list){
             ${item.warehouse}
           </div>
 
-          <!-- 库存 -->
           <div style="
             font-size:16px;
             font-weight:700;
