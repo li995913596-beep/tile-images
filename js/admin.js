@@ -64,6 +64,100 @@ function initTabs(){
   buildStatsPage();
 }
 
+/* ================= 搜索结果卡片（样式对齐前台） ================= */
+
+function buildAdminCard(d, i, actionsHtml){
+  const w = String(i.warehouse || "").toLowerCase();
+
+  let bgColor = "#f3f4f6";
+  let warehouseBg = "#e5e7eb";
+  let warehouseColor = "#555";
+
+  if(w === "k38"){
+    bgColor = "#e8f1fb";
+    warehouseBg = "#dbeafe";
+    warehouseColor = "#2563eb";
+  } else if(w === "k39"){
+    bgColor = "#eaf7f1";
+    warehouseBg = "#dcfce7";
+    warehouseColor = "#16a34a";
+  } else if(w === "1"){
+    bgColor = "#f3ecff";
+    warehouseBg = "#ffedd5";
+    warehouseColor = "#ea580c";
+  }
+
+  let stockColor = "#22c55e";
+  const stockNum = Number(i.stock || 0);
+  if(stockNum === 0) stockColor = "#ef4444";
+  else if(stockNum < 10) stockColor = "#f59e0b";
+
+  const reserved = Array.isArray(i.reservedList)
+    ? i.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
+    : 0;
+
+  const imageUrl = window.location.origin + "/images/" + (i.code || "") + ".jpg";
+
+  const reserveHtml = reserved > 0
+    ? `<span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">留货 ${reserved}</span>`
+    : `<span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#e5e7eb;color:#666;">留货 0</span>`;
+
+  return `
+    <div style="
+      background:${bgColor};
+      padding:12px;
+      border-radius:14px;
+      margin-bottom:12px;
+    ">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="${imageUrl}"
+          style="width:58px;height:58px;border-radius:8px;object-fit:cover;background:#fff;"
+          onerror="this.style.display='none'">
+
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:15px;">${i.code || ""}</div>
+          <div style="font-size:13px;color:#555;margin-top:2px;">
+            ${i.spec || "-"} | 色号 ${i.color || "-"}
+          </div>
+          <div style="margin-top:6px;">${reserveHtml}</div>
+        </div>
+
+        <div style="text-align:right;">
+          <div style="
+            display:inline-block;
+            font-size:11px;
+            padding:4px 10px;
+            border-radius:999px;
+            background:${warehouseBg};
+            color:${warehouseColor};
+            font-weight:500;
+            margin-bottom:6px;
+          ">${i.warehouse || "-"}</div>
+          <div style="
+            font-size:16px;
+            font-weight:700;
+            padding:6px 12px;
+            border-radius:10px;
+            background:${stockColor};
+            color:#fff;
+          ">${i.stock}</div>
+        </div>
+      </div>
+
+      <div style="
+        margin-top:10px;
+        padding-top:10px;
+        border-top:1px solid rgba(0,0,0,0.06);
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        align-items:center;
+      ">
+        ${actionsHtml}
+      </div>
+    </div>`;
+}
+
 /* ================= 入库 ================= */
 
 function buildInPage(){
@@ -108,7 +202,6 @@ window.searchIn = async ()=>{
     return;
   }
 
-  // 🔥 读取最多 500 条
   const q = query(
     collection(db,"inventory"),
     limit(5000)
@@ -123,8 +216,8 @@ window.searchIn = async ()=>{
   snap.forEach(d=>{
     const i = d.data();
 
-    const fullId = d.id.toLowerCase();      // NB3610_250920_k38
-    const code = (i.code || "").toLowerCase();  // NB3610
+    const fullId = d.id.toLowerCase();
+    const code = (i.code || "").toLowerCase();
 
     if(
       fullId.includes(keyword) ||
@@ -132,20 +225,13 @@ window.searchIn = async ()=>{
     ){
       found = true;
 
-    in_result.innerHTML += `
-  <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
-    <div><b>编号：</b>${i.code}</div>
-    <div><b>色号：</b>${i.color}</div>
-    <div><b>规格：</b>${i.spec || "-"}</div>
-    <div><b>仓库：</b>${i.warehouse}</div>
-    <div><b>库存：</b>${i.stock}</div>
+      const actions = `
+        数量：
+        <input id="in_qty_${d.id}" type="number" step="0.01" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+        <button onclick="inStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#3498db;color:#fff;cursor:pointer;">入库</button>
+      `;
 
-    <div style="margin-top:8px;">
-      数量：
-      <input id="in_qty_${d.id}" type="number" step="0.01" style="width:100px;">
-      <button onclick="inStock('${d.id}')">入库</button>
-    </div>
-  </div>`;
+      in_result.innerHTML += buildAdminCard(d, i, actions);
     }
   });
 
@@ -197,8 +283,6 @@ function buildOutPage(){
   `;
 }
 
-/* 🔥 优化后的低读次数搜索 */
-
 window.searchOut = async ()=>{
 
   const keyword = out_search.value.trim().toLowerCase();
@@ -237,29 +321,19 @@ window.searchOut = async ()=>{
 
       found = true;
 
-      out_result.innerHTML += `
-        <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
-          <div><b>编号：</b>${i.code}</div>
-          <div><b>色号：</b>${i.color}</div>
-          <div><b>规格：</b>${i.spec || "-"}</div>
-          <div><b>仓库：</b>${i.warehouse}</div>
-          <div><b>库存：</b>${i.stock}</div>
+      const actions = `
+        客户：
+        <input id="out_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+        数量：
+        <input id="out_q_${d.id}" type="number" step="0.01" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+        <select id="out_unit_${d.id}" style="padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          <option value="箱">箱</option>
+          <option value="片">片</option>
+        </select>
+        <button onclick="outStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;">出库</button>
+      `;
 
-          <div style="margin-top:8px;">
-            客户：
-            <input id="out_c_${d.id}" style="width:120px;">
-
-            数量：
-            <input id="out_q_${d.id}" type="number" step="0.01" style="width:100px;">
-
-            <select id="out_unit_${d.id}">
-              <option value="箱">箱</option>
-              <option value="片">片</option>
-            </select>
-
-            <button onclick="outStock('${d.id}')">出库</button>
-          </div>
-        </div>`;
+      out_result.innerHTML += buildAdminCard(d, i, actions);
     }
   });
 
@@ -314,8 +388,6 @@ function buildReservePage(){
   loadReserve();
 }
 
-/* 🔥 优化后的搜索（低读次数） */
-
 window.searchReserve = async ()=>{
 
   const keyword = re_search.value.trim().toLowerCase();
@@ -354,22 +426,15 @@ window.searchReserve = async ()=>{
 
       found = true;
 
-      re_result.innerHTML += `
-        <div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:6px;">
-          <div><b>编号：</b>${i.code}</div>
-          <div><b>色号：</b>${i.color}</div>
-          <div><b>规格：</b>${i.spec || "-"}</div>
-          <div><b>仓库：</b>${i.warehouse}</div>
-          <div><b>库存：</b>${i.stock}</div>
+      const actions = `
+        客户：
+        <input id="re_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+        数量：
+        <input id="re_q_${d.id}" type="number" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+        <button onclick="reserveStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#9b59b6;color:#fff;cursor:pointer;">留货</button>
+      `;
 
-          <div style="margin-top:8px;">
-            客户：
-            <input id="re_c_${d.id}" style="width:120px;">
-            数量：
-            <input id="re_q_${d.id}" type="number" style="width:100px;">
-            <button onclick="reserveStock('${d.id}')">留货</button>
-          </div>
-        </div>`;
+      re_result.innerHTML += buildAdminCard(d, i, actions);
     }
   });
 
@@ -400,8 +465,6 @@ window.reserveStock=async(id)=>{
 
   loadReserve();
 };
-
-/* 🔥 优化后的留货清单加载（只加载有留货的） */
 
 async function loadReserve(){
 
@@ -474,8 +537,8 @@ async function loadLogs(){
 
   const q = query(
     collection(db,"logs"),
-    orderBy("timestamp","desc"), // 按时间倒序
-    limit(100)                   // 只显示100条
+    orderBy("timestamp","desc"),
+    limit(100)
   );
 
   const snap = await getDocs(q);
@@ -504,7 +567,7 @@ window.downloadLogs = async () => {
 
   const q = query(
     collection(db,"logs"),
-    orderBy("timestamp","desc") // 按时间排序
+    orderBy("timestamp","desc")
   );
 
   const snap = await getDocs(q);
@@ -542,8 +605,6 @@ function buildStatsPage(){
   `;
 }
 console.log("准备注册 handleImport");
-
-/* ================= 出库统计函数 ================= */
 
 window.runStats = async function(){
 
@@ -621,7 +682,6 @@ window.handleImport = async function () {
 
       let successCount = 0;
 
-      // 🔥 遍历所有工作表
       for (let sheetName of workbook.SheetNames) {
 
         const sheet = workbook.Sheets[sheetName];
@@ -721,7 +781,6 @@ window.exportInventory = async function(){
         "每箱片数": i.piecesPerBox || ""
       };
 
-      // 清洗仓库名，去掉非法字符，限制长度
       let w = (i.warehouse || "未分类")
         .toString()
         .replace(/[\\\/\?\*\[\]\:]/g, "_")
@@ -740,13 +799,11 @@ window.exportInventory = async function(){
 
     const wb = XLSX.utils.book_new();
 
-    // ① 各仓库工作表：保持原样，不排序
     for(const warehouse in warehouseMap){
       const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
       XLSX.utils.book_append_sheet(wb, ws, warehouse);
     }
 
-    // ② 额外汇总工作表：按 规格 → 数量 → 编号 排序
     allRows.sort((a, b) => {
       const specA = (a["规格"] || "").toString();
       const specB = (b["规格"] || "").toString();
