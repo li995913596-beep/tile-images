@@ -1,6 +1,6 @@
 import { db } from "./firebase.js";
 import {
-  collection, getDocs, query, where
+  collection, getDocs, query, where, orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let barChart = null;
@@ -58,7 +58,6 @@ function renderTable(){
 
 function renderCharts(){
   const colors = ["#3498db","#e67e22","#2ecc71","#9b59b6","#e74c3c","#1abc9c","#f39c12","#2980b9","#16a085","#c0392b","#8e44ad","#27ae60","#d35400","#34495e","#7f8c8d"];
-  // 图表始终按数量排 Top，更直观
   const byQty = [...rankedCache].sort((a,b)=>b.qty-a.qty);
   const top15 = byQty.slice(0,15);
   const top10 = byQty.slice(0,10);
@@ -120,17 +119,19 @@ window.loadReport = async function(preset){
   if(summaryEl) summaryEl.innerText = "加载中…";
 
   try {
-    const snap = await getDocs(query(collection(db, "logs"), where("type", "==", "出库")));
+    // 按时间范围查（单字段索引，很快），再在本地筛「出库」
+    const snap = await getDocs(query(
+      collection(db, "logs"),
+      where("timestamp", ">=", start),
+      where("timestamp", "<=", end),
+      orderBy("timestamp", "desc")
+    ));
     const map = {};
     let totalQty = 0, totalOrders = 0;
 
     snap.forEach(d => {
       const l = d.data();
-      let t = null;
-      if(l.timestamp && typeof l.timestamp.toDate === "function") t = l.timestamp.toDate();
-      else if(l.timestamp instanceof Date) t = l.timestamp;
-      if(!t) return;
-      if(t < start || t > end) return;
+      if(l.type !== "出库") return;
       const code = (l.code || "未知").toString();
       const qty = Number(l.qty || 0);
       if(!map[code]) map[code] = { qty: 0, count: 0 };
@@ -154,9 +155,8 @@ window.loadReport = async function(preset){
   } catch (err) {
     console.error(err);
     if(summaryEl) summaryEl.innerText = "加载失败：" + (err.message || err);
-    alert("加载失败。若提示权限，请在 Firebase 规则中允许读取 logs 集合。\n" + (err.message || err));
+    alert("加载失败。\n" + (err.message || err));
   }
 };
 
-// 默认本月
 loadReport("month");
