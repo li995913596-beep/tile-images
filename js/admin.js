@@ -686,67 +686,67 @@ for (let row of json) {
   reader.readAsArrayBuffer(file);
 };
 window.exportInventory = async function(){
+  try {
+    alert("正在导出，请稍等…");
 
-  const snap = await getDocs(collection(db,"inventory"));
+    const snap = await getDocs(collection(db,"inventory"));
 
-  let warehouseMap = {};
+    let warehouseMap = {};
 
-  snap.forEach(doc=>{
-    const i = doc.data();
+    snap.forEach(doc=>{
+      const i = doc.data();
+      if(i.hidden) return;
 
-    if(i.hidden) return;
-
-    let reserved = 0;
-
-    if(i.reservedList){
-
-      // 情况1：数组
-      if(Array.isArray(i.reservedList)){
-        i.reservedList.forEach(r=>{
-          if(r){
-            reserved += Number(r.qty || r.quantity || 0);
-          }
-        });
+      let reserved = 0;
+      if(i.reservedList){
+        if(Array.isArray(i.reservedList)){
+          i.reservedList.forEach(r=>{
+            if(r) reserved += Number(r.qty || r.quantity || 0);
+          });
+        } else if(typeof i.reservedList === "object"){
+          Object.values(i.reservedList).forEach(r=>{
+            if(r) reserved += Number(r.qty || r.quantity || 0);
+          });
+        }
       }
 
-      // 情况2：对象
-      else if(typeof i.reservedList === "object"){
-        Object.values(i.reservedList).forEach(r=>{
-          if(r){
-            reserved += Number(r.qty || r.quantity || 0);
-          }
-        });
-      }
+      const row = {
+        "编号": i.code || "",
+        "规格": i.spec || "",
+        "色号": i.color || "",
+        "数量": Number(i.stock || 0),
+        "所在仓库": i.warehouse || "",
+        "留货": reserved,
+        "每箱片数": i.piecesPerBox || ""
+      };
 
+      // 清洗仓库名，去掉非法字符，限制长度
+      let w = (i.warehouse || "未分类")
+        .toString()
+        .replace(/[\\\/\?\*\[\]\:]/g, "_")
+        .trim()
+        .substring(0, 31) || "未分类";
+
+      if(!warehouseMap[w]) warehouseMap[w] = [];
+      warehouseMap[w].push(row);
+    });
+
+    if(Object.keys(warehouseMap).length === 0){
+      alert("当前没有可导出的库存数据");
+      return;
     }
 
-    const row = {
-      "编号": i.code || "",
-      "规格": i.spec || "",
-      "色号": i.color || "",
-      "数量": Number(i.stock || 0),
-      "所在仓库": i.warehouse || "",
-      "留货": reserved,
-      "每箱片数": i.piecesPerBox || ""
-    };
-
-    const w = i.warehouse || "未分类";
-
-    if(!warehouseMap[w]){
-      warehouseMap[w] = [];
+    const wb = XLSX.utils.book_new();
+    for(const warehouse in warehouseMap){
+      const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
+      XLSX.utils.book_append_sheet(wb, ws, warehouse);
     }
 
-    warehouseMap[w].push(row);
-  });
-
-  const wb = XLSX.utils.book_new();
-
-  for(const warehouse in warehouseMap){
-    const ws = XLSX.utils.json_to_sheet(warehouseMap[warehouse]);
-    XLSX.utils.book_append_sheet(wb, ws, warehouse);
+    const today = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `当前库存_${today}.xlsx`);
+    alert("导出成功！");
+  } catch (err) {
+    console.error("导出失败:", err);
+    alert("导出失败：" + (err.message || err));
   }
-
-  const today = new Date().toISOString().split("T")[0];
-
-  XLSX.writeFile(wb, `当前库存_${today}.xlsx`);
 };
