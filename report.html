@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>卖货分析报表</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .report-wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+  .report-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .report-header h1 { margin:0; font-size:22px; color:#1f2f46; }
+  .period-btns { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  .period-btns button { cursor:pointer; }
+  .period-btns button.active { background:#2f7dd1; color:#fff; }
+  .summary { font-size:15px; font-weight:600; margin-bottom:16px; color:#1f2f46; }
+  .chart-box { background:#fafbfd; border-radius:12px; padding:14px; margin-bottom:16px; }
+  .chart-box h3 { margin:0 0 10px; font-size:15px; }
+  .sort-row { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .sort-row button { font-size:13px; padding:6px 12px; }
+  .sort-row button.active { background:#2f7dd1; color:#fff; }
+  table.report-table { width:100%; border-collapse:collapse; min-width:360px; }
+  table.report-table th { background:linear-gradient(90deg,#3a8dde,#2f7dd1); color:#fff; padding:10px 12px; text-align:left; }
+  table.report-table td { padding:10px 12px; border-bottom:1px solid #eef2f6; }
+  .hint { font-size:12px; color:#888; margin-top:20px; }
+</style>
+</head>
+<body>
+<header>
+  卖货分析报表
+  <div style="cursor:pointer" onclick="location.href='index.html'">🏠</div>
+</header>
+
+<div class="report-wrap">
+  <div class="report-header">
+    <h1>出库排行（老板看板）</h1>
+  </div>
+
+  <div class="period-btns">
+    <button type="button" id="btn_today" onclick="loadReport('today')">今天</button>
+    <button type="button" id="btn_week" onclick="loadReport('week')">本周</button>
+    <button type="button" id="btn_month" class="active" onclick="loadReport('month')">本月</button>
+    <button type="button" id="btn_year" onclick="loadReport('year')">本年</button>
+    <span style="color:#888;margin-left:6px;">或</span>
+    <input type="date" id="r_start">
+    <span>~</span>
+    <input type="date" id="r_end">
+    <button type="button" onclick="loadReport('custom')">查询</button>
+  </div>
+
+  <div id="summary" class="summary">加载中…</div>
+
+  <div class="chart-box">
+    <h3>出库 Top 15（柱状图）</h3>
+    <canvas id="barChart" height="120"></canvas>
+  </div>
+
+  <div class="chart-box" style="max-width:480px;">
+    <h3>Top 10 占比（饼图）</h3>
+    <canvas id="pieChart" height="200"></canvas>
+  </div>
+
+  <div class="sort-row">
+    <span style="font-size:13px;color:#555;">排名排序：</span>
+    <button type="button" id="sort_qty" class="active" onclick="setSort('qty')">按出库数量</button>
+    <button type="button" id="sort_count" onclick="setSort('count')">按出库次数</button>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>排名</th>
+          <th>编号</th>
+          <th>出库总量</th>
+          <th>出库次数</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <p class="hint">此页面无需登录。数据来自出库日志，仅供查看。</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="js/report.js"></script>
+</body>
+</html>

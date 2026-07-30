@@ -1,0 +1,162 @@
+import { db } from "./firebase.js";
+import {
+  collection, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+let barChart = null;
+let pieChart = null;
+let rankedCache = [];
+let sortBy = "qty"; // qty | count
+
+function $(id){ return document.getElementById(id); }
+
+function getRange(preset){
+  const end = new Date();
+  end.setHours(23,59,59,999);
+  const start = new Date();
+  start.setHours(0,0,0,0);
+  if(preset === "week"){
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - (day - 1));
+  } else if(preset === "month"){
+    start.setDate(1);
+  } else if(preset === "year"){
+    start.setMonth(0, 1);
+  }
+  return { start, end };
+}
+
+function setActivePeriod(preset){
+  ["today","week","month","year"].forEach(p => {
+    const btn = $("btn_" + p);
+    if(btn) btn.classList.toggle("active", p === preset);
+  });
+}
+
+function renderTable(){
+  const list = [...rankedCache];
+  if(sortBy === "count"){
+    list.sort((a,b) => b.count - a.count || b.qty - a.qty);
+  } else {
+    list.sort((a,b) => b.qty - a.qty || b.count - a.count);
+  }
+  const tbody = $("tableBody");
+  if(!tbody) return;
+  if(!list.length){
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((r,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.code}</td>
+      <td>${r.qty}</td>
+      <td>${r.count}</td>
+    </tr>
+  `).join("");
+}
+
+function renderCharts(){
+  const colors = ["#3498db","#e67e22","#2ecc71","#9b59b6","#e74c3c","#1abc9c","#f39c12","#2980b9","#16a085","#c0392b","#8e44ad","#27ae60","#d35400","#34495e","#7f8c8d"];
+  // 图表始终按数量排 Top，更直观
+  const byQty = [...rankedCache].sort((a,b)=>b.qty-a.qty);
+  const top15 = byQty.slice(0,15);
+  const top10 = byQty.slice(0,10);
+
+  if(typeof Chart === "undefined") return;
+  if(barChart){ barChart.destroy(); barChart = null; }
+  if(pieChart){ pieChart.destroy(); pieChart = null; }
+
+  const barCanvas = $("barChart");
+  const pieCanvas = $("pieChart");
+  if(barCanvas){
+    barChart = new Chart(barCanvas, {
+      type: "bar",
+      data: {
+        labels: top15.map(r=>r.code),
+        datasets: [{ label: "出库数量", data: top15.map(r=>r.qty), backgroundColor: colors.slice(0, top15.length) }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  if(pieCanvas){
+    pieChart = new Chart(pieCanvas, {
+      type: "pie",
+      data: {
+        labels: top10.map(r=>r.code),
+        datasets: [{ data: top10.map(r=>r.qty), backgroundColor: colors.slice(0, top10.length) }]
+      },
+      options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+    });
+  }
+}
+
+window.setSort = function(mode){
+  sortBy = mode === "count" ? "count" : "qty";
+  const q = $("sort_qty"); const c = $("sort_count");
+  if(q) q.classList.toggle("active", sortBy === "qty");
+  if(c) c.classList.toggle("active", sortBy === "count");
+  renderTable();
+};
+
+window.loadReport = async function(preset){
+  let start, end;
+  if(preset === "custom"){
+    const sv = $("r_start").value;
+    const ev = $("r_end").value;
+    if(!sv || !ev) return alert("请选择开始和结束日期");
+    start = new Date(sv); start.setHours(0,0,0,0);
+    end = new Date(ev); end.setHours(23,59,59,999);
+  } else {
+    const r = getRange(preset || "month");
+    start = r.start; end = r.end;
+    setActivePeriod(preset || "month");
+    const toI = d => d.toISOString().split("T")[0];
+    if($("r_start")) $("r_start").value = toI(start);
+    if($("r_end")) $("r_end").value = toI(end);
+  }
+
+  const summaryEl = $("summary");
+  if(summaryEl) summaryEl.innerText = "加载中…";
+
+  try {
+    const snap = await getDocs(query(collection(db, "logs"), where("type", "==", "出库")));
+    const map = {};
+    let totalQty = 0, totalOrders = 0;
+
+    snap.forEach(d => {
+      const l = d.data();
+      let t = null;
+      if(l.timestamp && typeof l.timestamp.toDate === "function") t = l.timestamp.toDate();
+      else if(l.timestamp instanceof Date) t = l.timestamp;
+      if(!t) return;
+      if(t < start || t > end) return;
+      const code = (l.code || "未知").toString();
+      const qty = Number(l.qty || 0);
+      if(!map[code]) map[code] = { qty: 0, count: 0 };
+      map[code].qty += qty;
+      map[code].count += 1;
+      totalQty += qty;
+      totalOrders += 1;
+    });
+
+    rankedCache = Object.entries(map)
+      .map(([code, v]) => ({ code, qty: Number(v.qty.toFixed(4)), count: v.count }));
+
+    if(summaryEl){
+      summaryEl.innerText = rankedCache.length
+        ? `共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号`
+        : "该时间段没有出库记录";
+    }
+
+    renderTable();
+    renderCharts();
+  } catch (err) {
+    console.error(err);
+    if(summaryEl) summaryEl.innerText = "加载失败：" + (err.message || err);
+    alert("加载失败。若提示权限，请在 Firebase 规则中允许读取 logs 集合。\n" + (err.message || err));
+  }
+};
+
+// 默认本月
+loadReport("month");
