@@ -369,15 +369,16 @@ window.runSalesStats=async function(preset){
   }
   const summaryEl=$("statsSummary"); if(summaryEl) summaryEl.innerText="加载中…";
   try{
-    const snap=await getDocs(query(collection(db,"logs"), where("type","==","出库")));
+    const snap=await getDocs(query(
+      collection(db,"logs"),
+      where("timestamp",">=",start),
+      where("timestamp","<=",end),
+      orderBy("timestamp","desc")
+    ));
     const map={}; let totalQty=0,totalOrders=0;
     snap.forEach(d=>{
       const l=d.data();
-      let t = null;
-      if(l.timestamp && typeof l.timestamp.toDate === "function") t = l.timestamp.toDate();
-      else if(l.timestamp instanceof Date) t = l.timestamp;
-      if(!t) return;
-      if(t < start || t > end) return;
+      if(l.type !== "出库") return;
       const code=(l.code||"未知").toString(); const qty=Number(l.qty||0);
       if(!map[code]) map[code]={qty:0,count:0};
       map[code].qty+=qty; map[code].count+=1;
