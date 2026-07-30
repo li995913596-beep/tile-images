@@ -3,6 +3,7 @@ import {
   collection,
   getDocs,
   query,
+  where,
   limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -15,47 +16,78 @@ window.searchData = async function(){
 
   console.log("searchData 开始执行");
 
-  const keyword = searchInput.value.trim().toLowerCase();
+  const raw = searchInput.value.trim();
+  const keyword = raw.toLowerCase();
   resultDiv.innerHTML = "";
 
-  if(!keyword){
+  if(!raw){
     resultDiv.innerHTML = "请输入编号或规格 / Please enter Code or Size";
     return;
   }
 
-  // 🔥 限制最多读取 300 条，防止爆读
-  const q = query(
-    collection(db, "inventory"),
-    limit(1000)
-  );
-
-  const snap = await getDocs(q);
   let list = [];
+  const seen = new Set();
 
-  snap.forEach(doc=>{
-  const item = doc.data();
-
-  const fullId = doc.id.toLowerCase();   // 🔥 文档ID
-  const code = String(item.code || "").toLowerCase();
-  const spec = String(item.spec || "").toLowerCase();
-  const color = String(item.color || "").toLowerCase();
-  const warehouse = String(item.warehouse || "").toLowerCase();
-
-  if(
-    fullId.includes(keyword) ||
-    code.includes(keyword) ||
-    spec.includes(keyword) ||
-    color.includes(keyword) ||
-    warehouse.includes(keyword)
-  ){
-
+  function addDocs(snap){
+    snap.forEach(doc=>{
+      if(seen.has(doc.id)) return;
+      seen.add(doc.id);
+      const item = doc.data();
       const reserved = Array.isArray(item.reservedList)
         ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
         : 0;
+      list.push({...item, reserved});
+    });
+  }
 
-      list.push({...item,reserved});
+  // ① 快速通道：按编号 / 规格精确查询（读次数少、速度快）
+  try {
+    const variants = [...new Set([raw, keyword, raw.toUpperCase()])];
+
+    for (const v of variants) {
+      const qCode = query(collection(db, "inventory"), where("code", "==", v));
+      addDocs(await getDocs(qCode));
+
+      const qSpec = query(collection(db, "inventory"), where("spec", "==", v));
+      addDocs(await getDocs(qSpec));
     }
-  });
+  } catch (e) {
+    console.error("精确查询失败，改走模糊搜索:", e);
+  }
+
+  // ② 精确没命中时：走原来的模糊搜索，保证色号/仓库/部分匹配仍可用
+  if (list.length === 0) {
+    const q = query(
+      collection(db, "inventory"),
+      limit(1000)
+    );
+
+    const snap = await getDocs(q);
+
+    snap.forEach(doc=>{
+      const item = doc.data();
+
+      const fullId = doc.id.toLowerCase();
+      const code = String(item.code || "").toLowerCase();
+      const spec = String(item.spec || "").toLowerCase();
+      const color = String(item.color || "").toLowerCase();
+      const warehouse = String(item.warehouse || "").toLowerCase();
+
+      if(
+        fullId.includes(keyword) ||
+        code.includes(keyword) ||
+        spec.includes(keyword) ||
+        color.includes(keyword) ||
+        warehouse.includes(keyword)
+      ){
+        const reserved = Array.isArray(item.reservedList)
+          ? item.reservedList.reduce((s,r)=>s+Number(r.qty||0),0)
+          : 0;
+
+        list.push({...item, reserved});
+      }
+    });
+  }
 
   if(list.length===0){
     resultDiv.innerHTML="未找到库存 / No Inventory Found";
