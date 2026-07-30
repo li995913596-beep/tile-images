@@ -127,7 +127,6 @@ header{
     height:80px;
   }
 
-  /* 右侧信息区域 */
   .table-row > div:not(.img-col){
     flex:1;
     display:grid !important;
@@ -167,7 +166,6 @@ header{
   max-height:90%;
   border-radius:16px;
 }
-/* ===== 手机横向卡片最终稳定版 ===== */
 
 .mobile-card{
   background:#fff;
@@ -206,7 +204,6 @@ header{
   font-weight:600;
   color:#555;
 }
-/* ===== 手机高级卡片 ===== */
 
 @media(max-width:768px){
 
@@ -224,9 +221,7 @@ header{
     margin-bottom:16px;
     box-shadow:0 6px 18px rgba(0,0,0,0.06);
     align-items:flex-start;
-
     border: 1px solid rgba(0,0,0,0.05);
-}
   }
 
   .mobile-left img{
@@ -275,3 +270,141 @@ header{
   }
 }
 
+/* ================= 后台通用 ================= */
+
+.card{
+  background:#fff;
+  padding:22px 24px;
+  border-radius:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.05);
+  margin-bottom:18px;
+}
+
+.card h2,
+.card h3{
+  margin:0 0 16px;
+  font-size:17px;
+  color:#1f2f46;
+}
+
+.card input[type="text"],
+.card input[type="password"],
+.card input[type="number"],
+.card input[type="date"],
+.card input:not([type]),
+.tab input[type="text"],
+.tab input[type="number"],
+.tab input:not([type]){
+  padding:10px 12px;
+  border:1px solid #e3e8ef;
+  border-radius:10px;
+  font-size:14px;
+  outline:none;
+  margin:4px 0 10px;
+}
+
+.card input:focus,
+.tab input:focus{
+  border-color:#3498db;
+  box-shadow:0 0 0 3px rgba(52,152,219,0.12);
+}
+
+/* 后台按钮统一风格 */
+.card button,
+.tab button,
+.nav-card button{
+  appearance:none;
+  -webkit-appearance:none;
+  border:none;
+  border-radius:10px;
+  padding:10px 18px;
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  background:#3498db;
+  color:#fff;
+  transition:background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow:0 2px 8px rgba(52,152,219,0.25);
+}
+
+.card button:hover,
+.tab button:hover,
+.nav-card button:hover{
+  background:#2980b9;
+}
+
+.card button:active,
+.tab button:active,
+.nav-card button:active{
+  transform:scale(0.98);
+}
+
+/* 导航按钮行 */
+.nav-card{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+}
+
+.nav-card button{
+  background:#eef3f8;
+  color:#2c3e50;
+  box-shadow:none;
+  font-weight:600;
+}
+
+.nav-card button:hover{
+  background:#dce6f0;
+  color:#1f2f46;
+}
+
+.nav-card #btnLogout{
+  background:#fdecea;
+  color:#e74c3c;
+  margin-left:auto;
+}
+
+.nav-card #btnLogout:hover{
+  background:#f9d6d2;
+}
+
+/* 导出等次要按钮 */
+.card button.btn-secondary,
+button.btn-secondary{
+  background:#ecf0f3;
+  color:#2c3e50;
+  box-shadow:none;
+}
+
+.card button.btn-secondary:hover{
+  background:#dde3e8;
+}
+
+/* 登录按钮加宽一点 */
+#btnLogin{
+  width:100%;
+  margin-top:8px;
+  padding:12px;
+  border-radius:12px;
+  font-size:15px;
+}
+
+#loginSection input{
+  width:100%;
+  display:block;
+}
+
+/* 文件选择区域 */
+.card input[type="file"]{
+  font-size:13px;
+  color:#555;
+  margin-right:10px;
+}
+
+.file-row{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+}
