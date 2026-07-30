@@ -68,7 +68,6 @@ function hasActiveReserve(reservedList){
   return false;
 }
 
-/** 库存<=0 且没有有效留货时删除该文档 */
 async function removeIfEmpty(id, stock, reservedList){
   if(Number(stock) > 0) return false;
   if(hasActiveReserve(reservedList)) return false;
@@ -76,7 +75,6 @@ async function removeIfEmpty(id, stock, reservedList){
   return true;
 }
 
-/** 登录后静默清理历史 0 库存（无留货） */
 async function cleanupZeroStock(){
   try {
     const snap = await getDocs(collection(db, "inventory"));
@@ -107,7 +105,7 @@ function initTabs(){
   cleanupZeroStock();
 }
 
-/* ================= 搜索结果卡片（样式对齐前台） ================= */
+/* ================= 搜索结果卡片 ================= */
 
 function buildAdminCard(d, i, actionsHtml){
   const w = String(i.warehouse || "").toLowerCase();
@@ -191,10 +189,6 @@ function buildAdminCard(d, i, actionsHtml){
         margin-top:10px;
         padding-top:10px;
         border-top:1px solid rgba(0,0,0,0.06);
-        display:flex;
-        flex-wrap:wrap;
-        gap:8px;
-        align-items:center;
       ">
         ${actionsHtml}
       </div>
@@ -269,9 +263,11 @@ window.searchIn = async ()=>{
       found = true;
 
       const actions = `
-        数量：
-        <input id="in_qty_${d.id}" type="number" step="0.01" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-        <button onclick="inStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#3498db;color:#fff;cursor:pointer;">入库</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          数量：
+          <input id="in_qty_${d.id}" type="number" step="0.01" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          <button onclick="inStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#3498db;color:#fff;cursor:pointer;">入库</button>
+        </div>
       `;
 
       in_result.innerHTML += buildAdminCard(d, i, actions);
@@ -364,17 +360,54 @@ window.searchOut = async ()=>{
 
       found = true;
 
-      const actions = `
-        客户：
-        <input id="out_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-        数量：
-        <input id="out_q_${d.id}" type="number" step="0.01" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-        <select id="out_unit_${d.id}" style="padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-          <option value="箱">箱</option>
-          <option value="片">片</option>
-        </select>
-        <button onclick="outStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;">出库</button>
+      // 可售库存出库（普通出库）
+      let actions = `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:#666;width:100%;">可售库存出库：</span>
+          客户：
+          <input id="out_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          数量：
+          <input id="out_q_${d.id}" type="number" step="0.01" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          <select id="out_unit_${d.id}" style="padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+            <option value="箱">箱</option>
+            <option value="片">片</option>
+          </select>
+          <button onclick="outStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;">出库</button>
+        </div>
       `;
+
+      // 有留货时：在出库页直接对留货出库（支持部分）
+      const list = Array.isArray(i.reservedList) ? i.reservedList : [];
+      if(list.length > 0){
+        actions += `
+          <div style="
+            margin-top:4px;
+            padding:10px;
+            background:rgba(231,76,60,0.06);
+            border-radius:10px;
+            border:1px solid rgba(231,76,60,0.15);
+          ">
+            <div style="font-size:13px;font-weight:600;color:#c0392b;margin-bottom:8px;">从留货出库（可改数量，只出一部分）：</div>
+        `;
+
+        list.forEach((r, index) => {
+          const inputId = `ship_q_${d.id}_${index}`;
+          actions += `
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+              <span style="font-size:13px;min-width:120px;">客户：${r.customer || "未填"}（留 ${r.qty}）</span>
+              本次：
+              <input id="${inputId}" type="number" step="0.01" value="${r.qty}"
+                style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+              <button type="button" onclick="shipReserve('${d.id}',${index})"
+                style="padding:6px 14px;border:none;border-radius:8px;background:#c0392b;color:#fff;cursor:pointer;">
+                从留货出库
+              </button>
+            </div>
+          `;
+        });
+
+        actions += `</div>`;
+      }
 
       out_result.innerHTML += buildAdminCard(d, i, actions);
     }
@@ -421,6 +454,7 @@ window.outStock=async(id)=>{
   );
 
   alert("完成");
+  if(out_search.value.trim()) searchOut();
 };
 
 /* ================= 留货 ================= */
@@ -437,19 +471,14 @@ function buildReservePage(){
       <button type="button" onclick="exportReserve()">导出留货信息</button>
     </div>
 
-    <p style="margin:0 0 10px;font-size:13px;color:#666;">
-      提示：可直接在清单里对留货「出库」，支持只出一部分，剩余继续留货。
-    </p>
-
     <div style="overflow-x:auto;">
-      <table id="reserveTable" width="100%" style="border-collapse:collapse;min-width:560px;">
+      <table id="reserveTable" width="100%" style="border-collapse:collapse;min-width:480px;">
         <thead>
           <tr style="background:linear-gradient(90deg,#3a8dde,#2f7dd1);color:#fff;">
             <th style="padding:10px 12px;text-align:left;">编号</th>
             <th style="padding:10px 12px;text-align:left;">规格</th>
             <th style="padding:10px 12px;text-align:left;">留货数量</th>
             <th style="padding:10px 12px;text-align:left;">客户名</th>
-            <th style="padding:10px 12px;text-align:left;">本次出库</th>
             <th style="padding:10px 12px;text-align:left;">操作</th>
           </tr>
         </thead>
@@ -499,11 +528,13 @@ window.searchReserve = async ()=>{
       found = true;
 
       const actions = `
-        客户：
-        <input id="re_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-        数量：
-        <input id="re_q_${d.id}" type="number" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
-        <button onclick="reserveStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#9b59b6;color:#fff;cursor:pointer;">留货</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          客户：
+          <input id="re_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          数量：
+          <input id="re_q_${d.id}" type="number" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+          <button onclick="reserveStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#9b59b6;color:#fff;cursor:pointer;">留货</button>
+        </div>
       `;
 
       re_result.innerHTML += buildAdminCard(d, i, actions);
@@ -558,7 +589,6 @@ async function loadReserve(){
 
     (i.reservedList||[]).forEach((r,index)=>{
       hasRow = true;
-      const inputId = `ship_q_${d.id}_${index}`;
       tbody.innerHTML+=`
         <tr style="border-bottom:1px solid #eef2f6;">
           <td style="padding:10px 12px;">${i.code || ""}</td>
@@ -566,13 +596,6 @@ async function loadReserve(){
           <td style="padding:10px 12px;">${r.qty}</td>
           <td style="padding:10px 12px;">${r.customer || ""}</td>
           <td style="padding:10px 12px;">
-            <input id="${inputId}" type="number" step="0.01" value="${r.qty}"
-              style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;"
-              title="默认全部，可改成部分数量">
-          </td>
-          <td style="padding:10px 12px;white-space:nowrap;">
-            <button type="button" onclick="shipReserve('${d.id}',${index})"
-              style="padding:6px 12px;background:#e67e22;color:#fff;margin-right:6px;">出库</button>
             <button type="button" onclick="deleteReserve('${d.id}',${index})"
               style="padding:6px 12px;background:#fdecea;color:#e74c3c;box-shadow:none;">取消留货</button>
           </td>
@@ -583,16 +606,14 @@ async function loadReserve(){
   if(!hasRow){
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="padding:16px 12px;color:#888;text-align:center;">暂无留货记录</td>
+        <td colspan="5" style="padding:16px 12px;color:#888;text-align:center;">暂无留货记录</td>
       </tr>`;
   }
 }
 
 /**
- * 从留货直接出库（支持部分出库）
- * - 不把数量加回可售库存（留货时已扣过）
- * - 只减少留货数量；剩多少继续留
- * - 记一条「出库」日志，客户用留货客户名
+ * 从留货直接出库（出库页 / 通用）
+ * 支持部分出库；不回加可售库存；记出库日志
  */
 window.shipReserve = async function(id, index){
   const ref = doc(db, "inventory", id);
@@ -620,7 +641,6 @@ window.shipReserve = async function(id, index){
     list.splice(index, 1);
   }
 
-  // 库存不变：留货时已经扣过；出库只是把「留货」变成真正发出
   if(Number(data.stock || 0) <= 0 && !hasActiveReserve(list)){
     await deleteDoc(ref);
   } else {
@@ -636,7 +656,13 @@ window.shipReserve = async function(id, index){
     ? `已出库 ${shipQty}，剩余留货 ${remain}`
     : `已全部出库 ${shipQty}`);
 
-  loadReserve();
+  // 刷新出库搜索结果 + 留货清单
+  if(document.getElementById("out_search") && out_search.value.trim()){
+    searchOut();
+  }
+  if(document.getElementById("reserveList")){
+    loadReserve();
+  }
 };
 
 window.deleteReserve=async(id,index)=>{
@@ -664,7 +690,6 @@ window.deleteReserve=async(id,index)=>{
   loadReserve();
 };
 
-/* 导出留货信息（与表格列一致） */
 window.exportReserve = async function(){
   try {
     const q = query(
@@ -842,7 +867,6 @@ window.runStats = async function(){
   document.getElementById("statsResult").innerText =
     `编号 ${code} 在所选时间段内出库总量：${total}`;
 };
-/* ================= 日志写入 ================= */
 
 async function log(type,data,qty,customer=""){
   await addDoc(collection(db,"logs"),{
@@ -856,7 +880,6 @@ async function log(type,data,qty,customer=""){
     customer
   });
 }
-/* ================= Excel 导入（支持多个工作表） ================= */
 
 window.handleImport = async function () {
 
