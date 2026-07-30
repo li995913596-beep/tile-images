@@ -337,10 +337,21 @@ window.runSalesStats=async function(preset){
   }
   const summaryEl=$("statsSummary"); if(summaryEl) summaryEl.innerText="加载中…";
   try{
-    const snap=await getDocs(query(collection(db,"logs"),where("type","==","出库"),where("timestamp",">=",start),where("timestamp","<=",end),orderBy("timestamp","desc")));
+    // 只按 type 查（不需要复合索引），日期在本地过滤
+    const snap=await getDocs(query(collection(db,"logs"), where("type","==","出库")));
     const map={}; let totalQty=0,totalOrders=0;
-    snap.forEach(d=>{ const l=d.data(); const code=(l.code||"未知").toString(); const qty=Number(l.qty||0);
-      if(!map[code]) map[code]={qty:0,count:0}; map[code].qty+=qty; map[code].count+=1; totalQty+=qty; totalOrders+=1; });
+    snap.forEach(d=>{
+      const l=d.data();
+      let t = null;
+      if(l.timestamp && typeof l.timestamp.toDate === "function") t = l.timestamp.toDate();
+      else if(l.timestamp instanceof Date) t = l.timestamp;
+      if(!t) return;
+      if(t < start || t > end) return;
+      const code=(l.code||"未知").toString(); const qty=Number(l.qty||0);
+      if(!map[code]) map[code]={qty:0,count:0};
+      map[code].qty+=qty; map[code].count+=1;
+      totalQty+=qty; totalOrders+=1;
+    });
     const ranked=Object.entries(map).map(([code,v])=>({code,qty:Number(v.qty.toFixed(4)),count:v.count})).sort((a,b)=>b.qty-a.qty);
     if(summaryEl) summaryEl.innerText=ranked.length?`共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${ranked.length} 个编号`:"该时间段没有出库记录";
     const tbody=$("statsTableBody");
@@ -353,7 +364,7 @@ window.runSalesStats=async function(preset){
       if(barCanvas) salesBarChart=new Chart(barCanvas,{type:"bar",data:{labels:top15.map(r=>r.code),datasets:[{label:"出库数量",data:top15.map(r=>r.qty),backgroundColor:colors.slice(0,top15.length)}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
       if(pieCanvas) salesPieChart=new Chart(pieCanvas,{type:"pie",data:{labels:top10.map(r=>r.code),datasets:[{data:top10.map(r=>r.qty),backgroundColor:colors.slice(0,top10.length)}]},options:{responsive:true,plugins:{legend:{position:"bottom"}}}});
     }
-  }catch(err){ console.error(err); if(summaryEl) summaryEl.innerText="统计失败：若提示索引，请点控制台链接创建"; alert("统计失败："+(err.message||err)); }
+  }catch(err){ console.error(err); if(summaryEl) summaryEl.innerText="统计失败："+(err.message||err); alert("统计失败："+(err.message||err)); }
 };
 
 async function log(type,data,qty,customer=""){
