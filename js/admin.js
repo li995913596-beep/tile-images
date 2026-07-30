@@ -382,8 +382,26 @@ function buildReservePage(){
     <input id="re_search" placeholder="搜索编号">
     <button onclick="searchReserve()">搜索</button>
     <div id="re_result"></div>
-    <h4>留货清单</h4>
-    <div id="reserveList"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:25px;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+      <h4 style="margin:0;">留货清单</h4>
+      <button type="button" onclick="exportReserve()">导出留货信息</button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="reserveTable" width="100%" style="border-collapse:collapse;min-width:480px;">
+        <thead>
+          <tr style="background:linear-gradient(90deg,#3a8dde,#2f7dd1);color:#fff;">
+            <th style="padding:10px 12px;text-align:left;">编号</th>
+            <th style="padding:10px 12px;text-align:left;">规格</th>
+            <th style="padding:10px 12px;text-align:left;">留货数量</th>
+            <th style="padding:10px 12px;text-align:left;">客户名</th>
+            <th style="padding:10px 12px;text-align:left;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="reserveList"></tbody>
+      </table>
+    </div>
   `;
   loadReserve();
 }
@@ -475,19 +493,36 @@ async function loadReserve(){
 
   const snap = await getDocs(q);
 
-  reserveList.innerHTML="";
+  const tbody = document.getElementById("reserveList");
+  if(!tbody) return;
+
+  tbody.innerHTML="";
+  let hasRow = false;
 
   snap.forEach(d=>{
     const i=d.data();
 
     (i.reservedList||[]).forEach((r,index)=>{
-      reserveList.innerHTML+=`
-        <div>
-          ${i.code}|${r.customer}|${r.qty}
-          <button onclick="deleteReserve('${d.id}',${index})">删</button>
-        </div>`;
+      hasRow = true;
+      tbody.innerHTML+=`
+        <tr style="border-bottom:1px solid #eef2f6;">
+          <td style="padding:10px 12px;">${i.code || ""}</td>
+          <td style="padding:10px 12px;">${i.spec || "-"}</td>
+          <td style="padding:10px 12px;">${r.qty}</td>
+          <td style="padding:10px 12px;">${r.customer || ""}</td>
+          <td style="padding:10px 12px;">
+            <button type="button" onclick="deleteReserve('${d.id}',${index})" style="padding:6px 12px;background:#fdecea;color:#e74c3c;box-shadow:none;">删</button>
+          </td>
+        </tr>`;
     });
   });
+
+  if(!hasRow){
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="padding:16px 12px;color:#888;text-align:center;">暂无留货记录</td>
+      </tr>`;
+  }
 }
 
 window.deleteReserve=async(id,index)=>{
@@ -508,6 +543,50 @@ window.deleteReserve=async(id,index)=>{
 
   loadReserve();
 };
+
+/* 导出留货信息（与表格列一致） */
+window.exportReserve = async function(){
+  try {
+    const q = query(
+      collection(db,"inventory"),
+      where("reservedList","!=", [])
+    );
+
+    const snap = await getDocs(q);
+    const rows = [];
+
+    snap.forEach(d=>{
+      const i = d.data();
+      (i.reservedList || []).forEach(r=>{
+        rows.push({
+          "编号": i.code || "",
+          "规格": i.spec || "",
+          "留货数量": Number(r.qty || 0),
+          "客户名": r.customer || ""
+        });
+      });
+    });
+
+    if(rows.length === 0){
+      alert("当前没有留货记录");
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows, {
+      header: ["编号", "规格", "留货数量", "客户名"]
+    });
+    XLSX.utils.book_append_sheet(wb, ws, "留货清单");
+
+    const today = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `留货信息_${today}.xlsx`);
+    alert("导出成功！");
+  } catch (err) {
+    console.error("导出留货失败:", err);
+    alert("导出失败：" + (err.message || err));
+  }
+};
+
 /* ================= 日志 ================= */
 
 function buildLogPage(){
