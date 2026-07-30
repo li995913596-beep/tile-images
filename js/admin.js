@@ -7,6 +7,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   addDoc,
   serverTimestamp,
   query,
@@ -54,6 +55,47 @@ window.showTab = (name) => {
   document.getElementById("tab_"+name).style.display="block";
 };
 
+/* ================= 0库存清理（有留货的保留） ================= */
+
+function hasActiveReserve(reservedList){
+  if(!reservedList) return false;
+  if(Array.isArray(reservedList)){
+    return reservedList.some(r => r && Number(r.qty || r.quantity || 0) > 0);
+  }
+  if(typeof reservedList === "object"){
+    return Object.values(reservedList).some(r => r && Number(r.qty || r.quantity || 0) > 0);
+  }
+  return false;
+}
+
+/** 库存<=0 且没有有效留货时删除该文档 */
+async function removeIfEmpty(id, stock, reservedList){
+  if(Number(stock) > 0) return false;
+  if(hasActiveReserve(reservedList)) return false;
+  await deleteDoc(doc(db, "inventory", id));
+  return true;
+}
+
+/** 登录后静默清理历史 0 库存（无留货） */
+async function cleanupZeroStock(){
+  try {
+    const snap = await getDocs(collection(db, "inventory"));
+    let removed = 0;
+    for (const d of snap.docs) {
+      const i = d.data();
+      if(Number(i.stock || 0) > 0) continue;
+      if(hasActiveReserve(i.reservedList)) continue;
+      await deleteDoc(d.ref);
+      removed++;
+    }
+    if(removed > 0){
+      console.log("已清理 0 库存记录:", removed, "条");
+    }
+  } catch (e) {
+    console.error("清理 0 库存失败:", e);
+  }
+}
+
 /* ================= 初始化 ================= */
 
 function initTabs(){
@@ -62,6 +104,8 @@ function initTabs(){
   buildReservePage();
   buildLogPage();
   buildStatsPage();
+  // 后台登录后自动清理：数量为0且无留货的记录
+  cleanupZeroStock();
 }
 
 /* ================= 搜索结果卡片（样式对齐前台） ================= */
@@ -362,10 +406,17 @@ window.outStock=async(id)=>{
 
   if(finalQty>data.stock) return alert("库存不足");
 
-  await updateDoc(ref,{
-    stock:Number((data.stock-finalQty).toFixed(4)),
-    lastUpdate: serverTimestamp()
-  });
+  const newStock = Number((data.stock-finalQty).toFixed(4));
+
+  // 出完且没有留货 → 直接删除；有留货则保留（数量可为0）
+  if(newStock <= 0 && !hasActiveReserve(data.reservedList)){
+    await deleteDoc(ref);
+  } else {
+    await updateDoc(ref,{
+      stock: newStock,
+      lastUpdate: serverTimestamp()
+    });
+  }
 
   await log("出库",data,finalQty,
     document.getElementById("out_c_"+id).value
@@ -473,6 +524,7 @@ window.reserveStock=async(id)=>{
   const list=data.reservedList||[];
   list.push({customer,qty});
 
+  // 留货后即使库存变 0 也保留记录（因为有留货信息）
   await updateDoc(ref,{
     stock:data.stock-qty,
     reservedList:list,
@@ -533,11 +585,18 @@ window.deleteReserve=async(id,index)=>{
   const removed=data.reservedList[index];
   data.reservedList.splice(index,1);
 
-  await updateDoc(ref,{
-    reservedList:data.reservedList,
-    stock:data.stock + removed.qty,
-    lastUpdate: serverTimestamp()
-  });
+  const newStock = data.stock + removed.qty;
+
+  // 取消留货后：若库存仍为0且已无留货，删除；否则更新
+  if(newStock <= 0 && !hasActiveReserve(data.reservedList)){
+    await deleteDoc(ref);
+  } else {
+    await updateDoc(ref,{
+      reservedList:data.reservedList,
+      stock:newStock,
+      lastUpdate: serverTimestamp()
+    });
+  }
 
   await log("取消留货",data,removed.qty,removed.customer);
 
