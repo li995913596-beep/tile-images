@@ -124,6 +124,7 @@ function buildAdminCard(d, i, actionsHtml){
   if(w === "k38"){ bgColor = "#e8f1fb"; warehouseBg = "#dbeafe"; warehouseColor = "#2563eb"; }
   else if(w === "k39"){ bgColor = "#eaf7f1"; warehouseBg = "#dcfce7"; warehouseColor = "#16a34a"; }
   else if(w === "1"){ bgColor = "#f3ecff"; warehouseBg = "#ffedd5"; warehouseColor = "#ea580c"; }
+  else if(w === "c9"){ bgColor = "#fdf2f8"; warehouseBg = "#fce7f3"; warehouseColor = "#db2777"; }
   let stockColor = "#22c55e"; const stockNum = Number(i.stock || 0);
   if(stockNum === 0) stockColor = "#ef4444"; else if(stockNum < 10) stockColor = "#f59e0b";
   const reserved = Array.isArray(i.reservedList) ? i.reservedList.reduce((s,r)=>s+Number(r.qty||0),0) : 0;
@@ -187,7 +188,6 @@ window.addNewStock = async ()=>{
   alert("新增成功");
 };
 
-// ========== 出库 + 批量出库 ==========
 let batchList = [];
 
 function renderBatchTable(){
@@ -513,6 +513,7 @@ function buildStatsPage(){
     <option value="k38">k38</option>
     <option value="k39">k39</option>
     <option value="1">1</option>
+    <option value="c9">C9</option>
   </select>
   </div>
   <div id="statsSummary" style="font-size:15px;font-weight:600;margin-bottom:16px;"></div>
