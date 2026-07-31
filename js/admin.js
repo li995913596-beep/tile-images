@@ -230,11 +230,25 @@ window.searchReserve=async()=>{ const raw=$("re_search").value.trim(); if(!raw) 
   docs.forEach(d=>{ const i=d.data(); re_result.innerHTML+=buildAdminCard(d,i,`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">客户：<input id="re_c_${d.id}" style="width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">数量：<input id="re_q_${d.id}" type="number" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;"><button onclick="reserveStock('${d.id}')" style="padding:6px 14px;border:none;border-radius:8px;background:#9b59b6;color:#fff;cursor:pointer;">留货</button></div>`); });
 };
 
-window.reserveStock=async(id)=>{ const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
-  const qty=Number($("re_q_"+id).value); const customer=$("re_c_"+id).value;
-  if(!qty||qty<=0) return alert("请输入正确数量"); if(qty>data.stock) return alert("库存不足");
-  const list=data.reservedList||[]; list.push({customer,qty});
-  await updateDoc(ref,{stock:data.stock-qty,reservedList:list,lastUpdate:serverTimestamp()}); await log("留货",data,qty,customer); loadReserve();
+window.reserveStock=async(id)=>{
+  try{
+    const ref=doc(db,"inventory",id); const snap=await getDoc(ref);
+    if(!snap.exists()) return alert("记录不存在");
+    const data=snap.data();
+    const qty=Number($("re_q_"+id).value); const customer=($("re_c_"+id).value||"").trim();
+    if(!qty||qty<=0) return alert("请输入正确数量");
+    if(qty>data.stock) return alert("库存不足");
+    const list=Array.isArray(data.reservedList)?[...data.reservedList]:[];
+    list.push({customer,qty});
+    await updateDoc(ref,{stock:Number((data.stock-qty).toFixed(4)),reservedList:list,lastUpdate:serverTimestamp()});
+    await log("留货",data,qty,customer);
+    alert(customer?`留货成功：${customer} ${qty}`:`留货成功：${qty}`);
+    loadReserve();
+    if($("re_search")&&$("re_search").value.trim()) searchReserve();
+  }catch(e){
+    console.error(e);
+    alert("留货失败："+(e.message||e));
+  }
 };
 
 async function loadReserve(){
@@ -261,11 +275,18 @@ window.shipReserve=async function(id,index){
 };
 
 window.deleteReserve=async(id,index)=>{
-  const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
-  const removed=data.reservedList[index]; data.reservedList.splice(index,1); const newStock=data.stock+removed.qty;
-  if(newStock<=0&&!hasActiveReserve(data.reservedList)) await deleteDoc(ref);
-  else await updateDoc(ref,{reservedList:data.reservedList,stock:newStock,lastUpdate:serverTimestamp()});
-  await log("取消留货",data,removed.qty,removed.customer); loadReserve();
+  try{
+    const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
+    const removed=data.reservedList[index]; data.reservedList.splice(index,1); const newStock=data.stock+removed.qty;
+    if(newStock<=0&&!hasActiveReserve(data.reservedList)) await deleteDoc(ref);
+    else await updateDoc(ref,{reservedList:data.reservedList,stock:newStock,lastUpdate:serverTimestamp()});
+    await log("取消留货",data,removed.qty,removed.customer);
+    alert("已取消留货");
+    loadReserve();
+  }catch(e){
+    console.error(e);
+    alert("取消失败："+(e.message||e));
+  }
 };
 
 window.exportReserve=async function(){
