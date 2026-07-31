@@ -163,11 +163,18 @@ window.searchIn = async ()=>{
 };
 
 window.inStock = async (id)=>{
-  const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
-  const qty=Number($("in_qty_"+id).value);
-  if(!qty||qty<=0) return alert("请输入正确数量");
-  await updateDoc(ref,{stock:Number((data.stock+qty).toFixed(4)),lastUpdate:serverTimestamp()});
-  await log("入库",data,qty); alert("完成");
+  try{
+    const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
+    const qty=Number($("in_qty_"+id).value);
+    if(!qty||qty<=0) return alert("请输入正确数量");
+    await updateDoc(ref,{stock:Number((data.stock+qty).toFixed(4)),lastUpdate:serverTimestamp()});
+    await log("入库",data,qty);
+    alert("入库成功："+qty);
+    if($("in_search")&&$("in_search").value.trim()) searchIn();
+  }catch(e){
+    console.error(e);
+    alert("入库失败："+(e.message||e));
+  }
 };
 
 window.addNewStock = async ()=>{
@@ -276,12 +283,20 @@ window.shipReserve=async function(id,index){
 
 window.deleteReserve=async(id,index)=>{
   try{
-    const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
-    const removed=data.reservedList[index]; data.reservedList.splice(index,1); const newStock=data.stock+removed.qty;
-    if(newStock<=0&&!hasActiveReserve(data.reservedList)) await deleteDoc(ref);
-    else await updateDoc(ref,{reservedList:data.reservedList,stock:newStock,lastUpdate:serverTimestamp()});
-    await log("取消留货",data,removed.qty,removed.customer);
-    alert("已取消留货");
+    const ref=doc(db,"inventory",id);
+    const snap=await getDoc(ref);
+    if(!snap.exists()) return alert("记录不存在");
+    const data=snap.data();
+    const list=Array.isArray(data.reservedList)?[...data.reservedList]:[];
+    const removed=list[index];
+    if(!removed) return alert("留货记录不存在");
+    list.splice(index,1);
+    const backQty=Number(removed.qty||0);
+    const newStock=Number((Number(data.stock||0)+backQty).toFixed(4));
+    if(newStock<=0&&!hasActiveReserve(list)) await deleteDoc(ref);
+    else await updateDoc(ref,{reservedList:list,stock:newStock,lastUpdate:serverTimestamp()});
+    await log("取消留货",data,backQty,removed.customer||"");
+    alert(removed.customer?`已取消留货：${removed.customer} ${backQty}`:`已取消留货：${backQty}`);
     loadReserve();
   }catch(e){
     console.error(e);
