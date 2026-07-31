@@ -187,10 +187,133 @@ window.addNewStock = async ()=>{
   alert("新增成功");
 };
 
+// ========== 出库 + 批量出库 ==========
+let batchList = [];
+
+function renderBatchTable(){
+  const tbody = $("batchBody");
+  if(!tbody) return;
+  if(!batchList.length){
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:12px;text-align:center;color:#888;">暂无批量项，请先加入</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = batchList.map((item, idx) => `
+    <tr style="border-bottom:1px solid #eef2f6;">
+      <td style="padding:8px 10px;">${item.code}</td>
+      <td style="padding:8px 10px;">${item.warehouse}</td>
+      <td style="padding:8px 10px;">${item.stock}</td>
+      <td style="padding:8px 10px;">${item.qty}</td>
+      <td style="padding:8px 10px;"><button type="button" onclick="removeBatchItem(${idx})" style="padding:4px 10px;background:#fdecea;color:#e74c3c;box-shadow:none;">移除</button></td>
+    </tr>
+  `).join("");
+}
+
+window.removeBatchItem = function(idx){
+  batchList.splice(idx, 1);
+  renderBatchTable();
+};
+
+window.clearBatch = function(){
+  batchList = [];
+  renderBatchTable();
+};
+
+window.addToBatch = async function(){
+  const code = ($("batch_code").value || "").trim();
+  const qty = Number($("batch_qty").value);
+  const warehouseHint = ($("batch_wh").value || "").trim().toLowerCase();
+  if(!code) return alert("请输入编号");
+  if(!qty || qty <= 0) return alert("请输入正确数量");
+  const docs = await findInventoryDocs(code, ["code"]);
+  if(!docs.length) return alert("未找到该编号");
+  let matched = docs;
+  if(warehouseHint){
+    matched = docs.filter(d => String(d.data().warehouse || "").toLowerCase() === warehouseHint);
+    if(!matched.length) return alert("该仓库没有此编号");
+  }
+  if(matched.length > 1){
+    const opts = matched.map(d => `${d.data().warehouse}(库存${d.data().stock})`).join(" / ");
+    return alert(`找到多个仓库：${opts}\n请在「仓库」栏填写具体仓库再加入`);
+  }
+  const d = matched[0];
+  const i = d.data();
+  if(qty > Number(i.stock || 0)) return alert(`库存不足，当前可售 ${i.stock}`);
+  const exist = batchList.findIndex(x => x.id === d.id);
+  if(exist >= 0){
+    batchList[exist].qty = Number((batchList[exist].qty + qty).toFixed(4));
+    if(batchList[exist].qty > Number(i.stock || 0)) return alert(`合计数量超过库存 ${i.stock}`);
+  } else {
+    batchList.push({ id: d.id, code: i.code || code, warehouse: i.warehouse || "", stock: Number(i.stock || 0), qty });
+  }
+  $("batch_code").value = "";
+  $("batch_qty").value = "";
+  renderBatchTable();
+};
+
+window.submitBatch = async function(){
+  if(!batchList.length) return alert("批量列表为空");
+  const customer = ($("batch_customer").value || "").trim();
+  const lines = batchList.map(x => `${x.code} @${x.warehouse} × ${x.qty}`).join("\n");
+  if(!confirm(`确认批量出库 ${batchList.length} 项？\n客户：${customer || "未填"}\n\n${lines}`)) return;
+  let ok = 0, fail = [];
+  for(const item of batchList){
+    try{
+      const ref = doc(db, "inventory", item.id);
+      const snap = await getDoc(ref);
+      if(!snap.exists()){ fail.push(item.code + " 不存在"); continue; }
+      const data = snap.data();
+      if(item.qty > Number(data.stock || 0)){ fail.push(item.code + " 库存不足"); continue; }
+      const newStock = Number((Number(data.stock) - item.qty).toFixed(4));
+      if(newStock <= 0 && !hasActiveReserve(data.reservedList)) await deleteDoc(ref);
+      else await updateDoc(ref, { stock: newStock, lastUpdate: serverTimestamp() });
+      await log("出库", data, item.qty, customer);
+      ok++;
+    }catch(e){
+      console.error(e);
+      fail.push(item.code + " 失败");
+    }
+  }
+  alert(`批量出库完成：成功 ${ok} 项` + (fail.length ? `\n失败：${fail.join("；")}` : ""));
+  batchList = [];
+  renderBatchTable();
+  if($("out_search") && $("out_search").value.trim()) searchOut();
+};
+
 function buildOutPage(){
   const tab_out = $("tab_out");
   if(!tab_out) return;
-  tab_out.innerHTML=`<h3>出库</h3><input id="out_search" placeholder="搜索编号"><button onclick="searchOut()">搜索</button><div id="out_result"></div>`;
+  tab_out.innerHTML = `
+  <h3>出库</h3>
+  <input id="out_search" placeholder="搜索编号"><button onclick="searchOut()">搜索</button>
+  <div id="out_result"></div>
+
+  <h4 style="margin-top:28px;">批量出库</h4>
+  <p style="font-size:13px;color:#666;margin:0 0 10px;">同一客户一次出多个编号。多仓库同编号时请填写仓库。</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+    <span>客户</span><input id="batch_customer" placeholder="客户名" style="width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+    <span>编号</span><input id="batch_code" placeholder="编号" style="width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+    <span>仓库</span><input id="batch_wh" placeholder="可选" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+    <span>数量</span><input id="batch_qty" type="number" step="0.01" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">
+    <button type="button" onclick="addToBatch()" style="padding:6px 14px;border:none;border-radius:8px;background:#3498db;color:#fff;cursor:pointer;">加入</button>
+  </div>
+  <div style="overflow-x:auto;margin-bottom:10px;">
+    <table width="100%" style="border-collapse:collapse;min-width:400px;">
+      <thead><tr style="background:linear-gradient(90deg,#3a8dde,#2f7dd1);color:#fff;">
+        <th style="padding:8px 10px;text-align:left;">编号</th>
+        <th style="padding:8px 10px;text-align:left;">仓库</th>
+        <th style="padding:8px 10px;text-align:left;">可售</th>
+        <th style="padding:8px 10px;text-align:left;">出库数</th>
+        <th style="padding:8px 10px;text-align:left;">操作</th>
+      </tr></thead>
+      <tbody id="batchBody"></tbody>
+    </table>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" onclick="submitBatch()" style="padding:8px 16px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;">确认批量出库</button>
+    <button type="button" onclick="clearBatch()" style="padding:8px 16px;border:none;border-radius:8px;background:#ecf0f3;color:#333;cursor:pointer;box-shadow:none;">清空列表</button>
+  </div>`;
+  batchList = [];
+  renderBatchTable();
 }
 
 window.searchOut = async ()=>{
@@ -211,13 +334,15 @@ window.searchOut = async ()=>{
 window.outStock=async(id)=>{
   const ref=doc(db,"inventory",id); const data=(await getDoc(ref)).data();
   const qtyInput=Number($("out_q_"+id).value); const unit=$("out_unit_"+id).value;
+  const customer=($("out_c_"+id).value||"").trim();
   if(!qtyInput||qtyInput<=0) return alert("请输入正确数量");
   let finalQty=qtyInput; if(unit==="片"){ if(!data.piecesPerBox) return alert("未设置每箱片数"); finalQty=qtyInput/data.piecesPerBox; }
   if(finalQty>data.stock) return alert("库存不足");
+  if(!confirm(`确认出库？\n编号：${data.code}\n仓库：${data.warehouse}\n数量：${finalQty}${unit==="片"?"（由片换算）":" 箱"}\n客户：${customer||"未填"}`)) return;
   const newStock=Number((data.stock-finalQty).toFixed(4));
   if(newStock<=0&&!hasActiveReserve(data.reservedList)) await deleteDoc(ref);
   else await updateDoc(ref,{stock:newStock,lastUpdate:serverTimestamp()});
-  await log("出库",data,finalQty,$("out_c_"+id).value); alert("完成");
+  await log("出库",data,finalQty,customer); alert("完成");
   if($("out_search").value.trim()) searchOut();
 };
 
@@ -271,6 +396,7 @@ window.shipReserve=async function(id,index){
   const data=snap.data(); const list=Array.isArray(data.reservedList)?[...data.reservedList]:[]; const item=list[index]; if(!item) return alert("留货记录不存在");
   const maxQty=Number(item.qty||0); const inputEl=$("ship_q_"+id+"_"+index); let shipQty=inputEl?Number(inputEl.value):maxQty;
   if(!shipQty||shipQty<=0) return alert("请输入正确的出库数量"); if(shipQty>maxQty) return alert(`不能超过留货数量 ${maxQty}`);
+  if(!confirm(`确认从留货出库？\n编号：${data.code}\n客户：${item.customer||"未填"}\n数量：${shipQty}`)) return;
   shipQty=Number(shipQty.toFixed(4)); const remain=Number((maxQty-shipQty).toFixed(4));
   if(remain>0) list[index]={...item,qty:remain}; else list.splice(index,1);
   if(Number(data.stock||0)<=0&&!hasActiveReserve(list)) await deleteDoc(ref);
@@ -338,6 +464,7 @@ window.downloadLogs=async()=>{
 let salesBarChart=null, salesPieChart=null;
 let adminRankedCache=[];
 let adminSortBy="qty";
+let adminLastPreset="month";
 
 function getRange(preset){
   const end=new Date(); end.setHours(23,59,59,999); const start=new Date(); start.setHours(0,0,0,0);
@@ -379,7 +506,15 @@ function buildStatsPage(){
   <button type="button" onclick="runSalesStats('today')">今天</button><button type="button" onclick="runSalesStats('week')">本周</button>
   <button type="button" onclick="runSalesStats('month')">本月</button><button type="button" onclick="runSalesStats('year')">本年</button>
   <span style="margin-left:8px;color:#888;">或</span><input type="date" id="stats_start"><span>~</span><input type="date" id="stats_end">
-  <button type="button" onclick="runSalesStats('custom')">查询</button></div>
+  <button type="button" onclick="runSalesStats('custom')">查询</button>
+  <span style="margin-left:8px;color:#888;">仓库</span>
+  <select id="stats_warehouse" onchange="runSalesStats(adminLastPreset||'month')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;">
+    <option value="">全部仓库</option>
+    <option value="k38">k38</option>
+    <option value="k39">k39</option>
+    <option value="1">1</option>
+  </select>
+  </div>
   <div id="statsSummary" style="font-size:15px;font-weight:600;margin-bottom:16px;"></div>
   <div style="background:#fafbfd;border-radius:12px;padding:12px;margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">出库 Top 15</div><canvas id="salesBarChart" height="120"></canvas></div>
   <div style="background:#fafbfd;border-radius:12px;padding:12px;max-width:480px;margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;">Top 10 占比</div><canvas id="salesPieChart" height="200"></canvas></div>
@@ -392,6 +527,7 @@ function buildStatsPage(){
 }
 
 window.runSalesStats=async function(preset){
+  adminLastPreset = preset || adminLastPreset || "month";
   let start,end;
   if(preset==="custom"){
     const sv=$("stats_start").value, ev=$("stats_end").value;
@@ -403,6 +539,7 @@ window.runSalesStats=async function(preset){
     if($("stats_start")) $("stats_start").value=toI(start);
     if($("stats_end")) $("stats_end").value=toI(end);
   }
+  const whFilter = (($("stats_warehouse") && $("stats_warehouse").value) || "").trim().toLowerCase();
   const summaryEl=$("statsSummary"); if(summaryEl) summaryEl.innerText="加载中…";
   try{
     const snap=await getDocs(query(
@@ -415,13 +552,15 @@ window.runSalesStats=async function(preset){
     snap.forEach(d=>{
       const l=d.data();
       if(l.type !== "出库") return;
+      if(whFilter && String(l.warehouse||"").toLowerCase() !== whFilter) return;
       const code=(l.code||"未知").toString(); const qty=Number(l.qty||0);
       if(!map[code]) map[code]={qty:0,count:0};
       map[code].qty+=qty; map[code].count+=1;
       totalQty+=qty; totalOrders+=1;
     });
     adminRankedCache=Object.entries(map).map(([code,v])=>({code,qty:Number(v.qty.toFixed(4)),count:v.count}));
-    if(summaryEl) summaryEl.innerText=adminRankedCache.length?`共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${adminRankedCache.length} 个编号`:"该时间段没有出库记录";
+    const whText = whFilter ? `（仓库 ${whFilter}）` : "";
+    if(summaryEl) summaryEl.innerText=adminRankedCache.length?`共 ${totalOrders} 笔出库${whText}，总量 ${Number(totalQty.toFixed(2))}，涉及 ${adminRankedCache.length} 个编号`:`该时间段没有出库记录${whText}`;
     renderAdminStatsTable();
     const byQty=[...adminRankedCache].sort((a,b)=>b.qty-a.qty);
     const colors=["#3498db","#e67e22","#2ecc71","#9b59b6","#e74c3c","#1abc9c","#f39c12","#2980b9","#16a085","#c0392b","#8e44ad","#27ae60","#d35400","#34495e","#7f8c8d"];

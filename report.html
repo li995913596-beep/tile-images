@@ -45,6 +45,13 @@
     <span>~</span>
     <input type="date" id="r_end">
     <button type="button" onclick="loadReport('custom')">查询</button>
+    <span style="color:#888;margin-left:6px;">仓库</span>
+    <select id="r_warehouse" onchange="loadReport(window._lastPreset||'month')" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;">
+      <option value="">全部仓库</option>
+      <option value="k38">k38</option>
+      <option value="k39">k39</option>
+      <option value="1">1</option>
+    </select>
   </div>
 
   <div id="summary" class="summary">加载中…</div>

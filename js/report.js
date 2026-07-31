@@ -6,7 +6,7 @@ import {
 let barChart = null;
 let pieChart = null;
 let rankedCache = [];
-let sortBy = "qty"; // qty | count
+let sortBy = "qty";
 
 function $(id){ return document.getElementById(id); }
 
@@ -99,6 +99,7 @@ window.setSort = function(mode){
 };
 
 window.loadReport = async function(preset){
+  window._lastPreset = preset || window._lastPreset || "month";
   let start, end;
   if(preset === "custom"){
     const sv = $("r_start").value;
@@ -115,11 +116,11 @@ window.loadReport = async function(preset){
     if($("r_end")) $("r_end").value = toI(end);
   }
 
+  const whFilter = (($("r_warehouse") && $("r_warehouse").value) || "").trim().toLowerCase();
   const summaryEl = $("summary");
   if(summaryEl) summaryEl.innerText = "加载中…";
 
   try {
-    // 按时间范围查（单字段索引，很快），再在本地筛「出库」
     const snap = await getDocs(query(
       collection(db, "logs"),
       where("timestamp", ">=", start),
@@ -132,6 +133,7 @@ window.loadReport = async function(preset){
     snap.forEach(d => {
       const l = d.data();
       if(l.type !== "出库") return;
+      if(whFilter && String(l.warehouse || "").toLowerCase() !== whFilter) return;
       const code = (l.code || "未知").toString();
       const qty = Number(l.qty || 0);
       if(!map[code]) map[code] = { qty: 0, count: 0 };
@@ -144,10 +146,11 @@ window.loadReport = async function(preset){
     rankedCache = Object.entries(map)
       .map(([code, v]) => ({ code, qty: Number(v.qty.toFixed(4)), count: v.count }));
 
+    const whText = whFilter ? `（仓库 ${whFilter}）` : "";
     if(summaryEl){
       summaryEl.innerText = rankedCache.length
-        ? `共 ${totalOrders} 笔出库，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号`
-        : "该时间段没有出库记录";
+        ? `共 ${totalOrders} 笔出库${whText}，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号`
+        : `该时间段没有出库记录${whText}`;
     }
 
     renderTable();
