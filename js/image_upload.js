@@ -1,5 +1,7 @@
 /**
- * 后台图片上传/替换到 GitHub（绑定 admin.html 里已有的上传区域）
+ * 图片上传/替换到 GitHub
+ * 流程：入库页搜索 → 在结果卡片上上传/替换
+ * Token 在「文件」页设置，只存在本机浏览器
  */
 import { auth } from "./firebase.js";
 
@@ -17,14 +19,13 @@ function setToken(t){
   try { localStorage.setItem(TOKEN_KEY, (t || "").trim()); } catch(e){}
 }
 
-function bindUploadUI(){
+function bindTokenUI(){
   const input = $("gh_token_input");
   const save = $("gh_token_save");
   const clear = $("gh_token_clear");
-  const btn = $("gh_img_upload_btn");
-  if(!btn) return;
+  if(!save) return;
 
-  if(input && getToken()) input.placeholder = "已保存 Token（如需更换请重新粘贴）";
+  if(input && getToken()) input.placeholder = "已保存 Token（更换请重新粘贴）";
 
   if(save && !save.__bound){
     save.__bound = true;
@@ -32,8 +33,8 @@ function bindUploadUI(){
       const v = (input && input.value || "").trim();
       if(!v) return alert("请先粘贴 Token");
       setToken(v);
-      if(input){ input.value = ""; input.placeholder = "已保存 Token（如需更换请重新粘贴）"; }
-      alert("Token 已保存在本机浏览器");
+      if(input){ input.value = ""; input.placeholder = "已保存 Token（更换请重新粘贴）"; }
+      alert("Token 已保存");
     };
   }
   if(clear && !clear.__bound){
@@ -42,13 +43,6 @@ function bindUploadUI(){
       setToken("");
       if(input){ input.value = ""; input.placeholder = "粘贴 GitHub Token"; }
       alert("已清除");
-    };
-  }
-  if(btn && !btn.__bound){
-    btn.__bound = true;
-    btn.onclick = () => {
-      const code = (($("gh_img_code") && $("gh_img_code").value) || "").trim();
-      window.uploadTileImage(code, "gh_img_file");
     };
   }
 }
@@ -120,7 +114,7 @@ async function githubPutFile(path, base64Content, token, message){
     content: base64Content,
     branch: GH_BRANCH
   };
-  if(sha) body.sha = sha;
+  if(sha) body.sha = sha; // 覆盖已有图片
   const encPath = path.split("/").map(encodeURIComponent).join("/");
   const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encPath}`, {
     method: "PUT",
@@ -140,13 +134,12 @@ async function githubPutFile(path, base64Content, token, message){
 }
 
 window.uploadTileImage = async function(code, fileInputId){
-  const status = $("gh_img_status");
   try{
     if(!auth.currentUser) return alert("请先登录后台");
     code = (code || "").trim().replace(/\.jpe?g$/i, "");
-    if(!code) return alert("请填写瓷砖编号");
+    if(!code) return alert("没有编号，无法上传");
     const token = getToken();
-    if(!token) return alert("请先保存 GitHub Token");
+    if(!token) return alert("请先到「文件」页保存 GitHub Token");
     const fileEl = $(fileInputId);
     if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择图片");
     const file = fileEl.files[0];
@@ -156,21 +149,14 @@ window.uploadTileImage = async function(code, fileInputId){
     const path = "images/" + code + ".jpg";
     if(!confirm("确认上传/替换？\n编号：" + code + "\n路径：" + path + "\n已有同名图会被覆盖")) return;
 
-    if(status) status.textContent = "压缩图片中…";
     const blob = await fileToJpegBlob(file);
-    if(blob.size > 8 * 1024 * 1024) {
-      if(status) status.textContent = "";
-      return alert("压缩后仍超过 8MB，请用更小的图");
-    }
-    if(status) status.textContent = "上传到 GitHub 中…（" + Math.round(blob.size/1024) + " KB）";
+    if(blob.size > 8 * 1024 * 1024) return alert("压缩后仍超过 8MB，请用更小的图");
     const b64 = await blobToBase64(blob);
     const { replaced } = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
     const tip = replaced ? "已替换原有图片" : "已新增图片";
-    if(status) status.textContent = "成功：" + tip + " → " + path;
     alert("成功！\n" + tip + "\n" + path + "\n约 1 分钟后强制刷新前台即可看到");
   }catch(e){
     console.error(e);
-    if(status) status.textContent = "失败";
     const msg = (e && e.message) ? e.message : String(e);
     if(/401|Bad credentials|Requires authentication/i.test(msg)){
       alert("Token 无效或过期，请重新生成并保存");
@@ -192,15 +178,17 @@ function injectUploadPanels(){
     if(!panel) return;
     const wrap = document.createElement("div");
     wrap.setAttribute("data-upload-for", id);
-    wrap.style.cssText = "margin-top:10px;padding-top:10px;border-top:1px solid rgba(22,163,74,0.25);display:flex;flex-wrap:wrap;gap:8px;align-items:center;";
+    wrap.style.cssText = "margin-top:10px;padding:10px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;";
     const fid = "edit_img_" + id;
-    wrap.innerHTML = '<span style="font-size:12px;color:#166534;">上传/替换图片</span>' +
+    const code = (input.value || "").trim();
+    wrap.innerHTML = '<span style="font-size:13px;color:#166534;font-weight:600;">📷 上传/替换图片</span>' +
       '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:180px;">' +
-      '<button type="button" style="padding:6px 12px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;">上传/替换</button>';
+      '<button type="button" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换</button>' +
+      '<span style="font-size:12px;color:#888;">编号 ' + code + ' · 有图则覆盖</span>';
     wrap.querySelector("button").onclick = () => {
       const codeEl = $("edit_code_"+id);
-      const code = (codeEl && codeEl.value ? codeEl.value : input.value || "").trim();
-      window.uploadTileImage(code, fid);
+      const c = (codeEl && codeEl.value ? codeEl.value : input.value || "").trim();
+      window.uploadTileImage(c, fid);
     };
     (panel.parentElement || panel).appendChild(wrap);
   });
@@ -217,6 +205,7 @@ function hookSearchIn(){
       setTimeout(injectUploadPanels, 400);
     };
     window.searchIn.__ghUploadHooked = true;
+    console.log("GitHub upload hooked on searchIn");
     return true;
   };
   if(tryHook()) return;
