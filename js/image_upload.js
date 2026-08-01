@@ -1,9 +1,11 @@
 /**
- * 文件页：上传/替换图片到 GitHub
- * 入库页：删除错误库存记录
+ * 文件页：搜索 → 在结果上上传/替换图片
+ * 入库页：删除错误库存
  */
 import { auth, db } from "./firebase.js";
-import { doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  collection, doc, getDocs, getDoc, deleteDoc, query, where, limit
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const GH_OWNER = "li995913596-beep";
 const GH_REPO = "tile-images";
@@ -19,14 +21,11 @@ function setToken(t){
   try { localStorage.setItem(TOKEN_KEY, (t || "").trim()); } catch(e){}
 }
 
-function bindFilesUI(){
+function bindTokenUI(){
   const input = $("gh_token_input");
   const save = $("gh_token_save");
-  const clear = $("gh_token_clear");
-  const btn = $("gh_img_upload_btn");
-
+  if(!save) return;
   if(input && getToken()) input.placeholder = "已保存 Token（更换请重新粘贴）";
-
   if(save && !save.__bound){
     save.__bound = true;
     save.onclick = function(){
@@ -35,21 +34,6 @@ function bindFilesUI(){
       setToken(v);
       if(input){ input.value = ""; input.placeholder = "已保存 Token（更换请重新粘贴）"; }
       alert("Token 已保存");
-    };
-  }
-  if(clear && !clear.__bound){
-    clear.__bound = true;
-    clear.onclick = function(){
-      setToken("");
-      if(input){ input.value = ""; input.placeholder = "粘贴 GitHub Token"; }
-      alert("已清除");
-    };
-  }
-  if(btn && !btn.__bound){
-    btn.__bound = true;
-    btn.onclick = function(){
-      const code = (($("gh_img_code") && $("gh_img_code").value) || "").trim();
-      window.uploadTileImage(code, "gh_img_file");
     };
   }
 }
@@ -110,17 +94,12 @@ async function githubGetSha(path, token){
     const t = await res.text();
     throw new Error("读取失败：" + res.status + " " + t.slice(0, 200));
   }
-  const data = await res.json();
-  return data.sha || null;
+  return (await res.json()).sha || null;
 }
 
 async function githubPutFile(path, base64Content, token, message){
   const sha = await githubGetSha(path, token);
-  const body = {
-    message: message || ("upload " + path),
-    content: base64Content,
-    branch: GH_BRANCH
-  };
+  const body = { message: message || ("upload " + path), content: base64Content, branch: GH_BRANCH };
   if(sha) body.sha = sha;
   const encPath = path.split("/").map(encodeURIComponent).join("/");
   const res = await fetch("https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + encPath, {
@@ -141,49 +120,121 @@ async function githubPutFile(path, base64Content, token, message){
 }
 
 window.uploadTileImage = async function(code, fileInputId){
-  const status = $("gh_img_status");
   try{
     if(!auth.currentUser) return alert("请先登录后台");
     code = (code || "").trim().replace(/\.jpe?g$/i, "");
-    if(!code) return alert("请填写瓷砖编号");
+    if(!code) return alert("没有编号");
     const token = getToken();
-    if(!token) return alert("请先保存 GitHub Token");
+    if(!token) return alert("请先在上方保存 GitHub Token");
     const fileEl = $(fileInputId);
     if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择图片");
     const file = fileEl.files[0];
     if(!file.type || !file.type.startsWith("image/")) return alert("请选择图片文件");
-    if(file.size > 20 * 1024 * 1024) return alert("原图太大（>20MB），请先压缩");
+    if(file.size > 20 * 1024 * 1024) return alert("原图太大（>20MB）");
 
     const path = "images/" + code + ".jpg";
-    if(!confirm("确认上传/替换？\n编号：" + code + "\n路径：" + path + "\n已有同名图会被覆盖")) return;
+    if(!confirm("确认上传/替换？\n编号：" + code + "\n已有同名图会被覆盖")) return;
 
-    if(status) status.textContent = "压缩中…";
     const blob = await fileToJpegBlob(file);
-    if(blob.size > 8 * 1024 * 1024) {
-      if(status) status.textContent = "";
-      return alert("压缩后仍超过 8MB，请用更小的图");
-    }
-    if(status) status.textContent = "上传中…（" + Math.round(blob.size/1024) + " KB）";
+    if(blob.size > 8 * 1024 * 1024) return alert("压缩后仍超过 8MB");
     const b64 = await blobToBase64(blob);
     const result = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
-    const tip = result.replaced ? "已替换原有图片" : "已新增图片";
-    if(status) status.textContent = "成功：" + tip + " → " + path;
-    alert("成功！\n" + tip + "\n" + path + "\n约 1 分钟后强制刷新前台即可看到");
+    alert("成功！\n" + (result.replaced ? "已替换" : "已新增") + "\n" + path + "\n约1分钟后前台刷新可见");
   }catch(e){
     console.error(e);
-    if(status) status.textContent = "失败";
     const msg = (e && e.message) ? e.message : String(e);
-    if(/401|Bad credentials|Requires authentication/i.test(msg)){
-      alert("Token 无效或过期，请重新生成并保存");
-    } else if(/403|resource not accessible|Permission/i.test(msg)){
-      alert("Token 权限不足：请给 tile-images 仓库 Contents Read and write");
-    } else {
-      alert(msg);
-    }
+    if(/401|Bad credentials/i.test(msg)) alert("Token 无效或过期");
+    else if(/403|Permission|not accessible/i.test(msg)) alert("Token 权限不足，需要 Contents Read and write");
+    else alert(msg);
   }
 };
 
-/** 删除错误入库的库存记录 */
+window.searchForImage = async function(){
+  const input = $("img_search");
+  const result = $("img_search_result");
+  if(!result) return;
+  const raw = (input && input.value || "").trim();
+  result.innerHTML = "";
+  if(!raw){
+    result.innerHTML = '<div style="color:#666;font-size:13px;">请输入编号或规格</div>';
+    return;
+  }
+  result.innerHTML = '<div style="color:#666;font-size:13px;">搜索中…</div>';
+
+  const keyword = raw.toLowerCase();
+  const seen = new Set();
+  const list = [];
+
+  function addSnap(snap){
+    snap.forEach(function(d){
+      if(seen.has(d.id)) return;
+      seen.add(d.id);
+      list.push({ id: d.id, data: d.data() });
+    });
+  }
+
+  try {
+    const variants = Array.from(new Set([raw, keyword, raw.toUpperCase()]));
+    for(let i=0;i<variants.length;i++){
+      const v = variants[i];
+      addSnap(await getDocs(query(collection(db, "inventory"), where("code", "==", v))));
+      addSnap(await getDocs(query(collection(db, "inventory"), where("spec", "==", v))));
+    }
+  } catch(e){
+    console.error(e);
+  }
+
+  if(list.length === 0){
+    try {
+      const snap = await getDocs(query(collection(db, "inventory"), limit(800)));
+      snap.forEach(function(d){
+        const item = d.data();
+        const code = String(item.code || "").toLowerCase();
+        const spec = String(item.spec || "").toLowerCase();
+        if(code.includes(keyword) || spec.includes(keyword) || d.id.toLowerCase().includes(keyword)){
+          if(seen.has(d.id)) return;
+          seen.add(d.id);
+          list.push({ id: d.id, data: item });
+        }
+      });
+    } catch(e){
+      console.error(e);
+    }
+  }
+
+  const byCode = {};
+  list.forEach(function(row){
+    const code = String(row.data.code || "").trim();
+    if(!code) return;
+    if(!byCode[code]) byCode[code] = row;
+  });
+  const codes = Object.keys(byCode);
+  if(codes.length === 0){
+    result.innerHTML = '<div style="color:#666;font-size:13px;">未找到库存</div>';
+    return;
+  }
+
+  result.innerHTML = "";
+  codes.forEach(function(code, idx){
+    const row = byCode[code];
+    const item = row.data;
+    const fid = "img_file_" + idx;
+    const card = document.createElement("div");
+    card.style.cssText = "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px;";
+    card.innerHTML =
+      '<div style="font-weight:600;font-size:15px;margin-bottom:4px;">' + code + '</div>' +
+      '<div style="font-size:13px;color:#666;margin-bottom:8px;">规格 ' + (item.spec||"-") + ' · 色号 ' + (item.color||"-") + ' · 仓库 ' + (item.warehouse||"-") + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
+      '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:200px;">' +
+      '<button type="button" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换图片</button>' +
+      '</div>';
+    card.querySelector("button").onclick = function(){
+      window.uploadTileImage(code, fid);
+    };
+    result.appendChild(card);
+  });
+};
+
 window.deleteInventoryItem = async function(id){
   try{
     if(!auth.currentUser) return alert("请先登录后台");
@@ -201,7 +252,7 @@ window.deleteInventoryItem = async function(id){
       "\n色号：" + (data.color || "-") +
       "\n仓库：" + (data.warehouse || "-") +
       "\n数量：" + stock;
-    if(reserved > 0) tip += "\n\n注意：还有留货 " + reserved + "，删除后留货信息也会消失！";
+    if(reserved > 0) tip += "\n\n注意：还有留货 " + reserved + "，删除后留货也会消失！";
     tip += "\n\n此操作不可恢复。";
     if(!confirm(tip)) return;
 
@@ -248,7 +299,6 @@ function hookSearchIn(){
       setTimeout(injectDeleteButtons, 400);
     };
     window.searchIn.__deleteHooked = true;
-    console.log("delete button hooked on searchIn");
     return true;
   };
   if(tryHook()) return;
@@ -256,12 +306,28 @@ function hookSearchIn(){
   const t = setInterval(function(){ n++; if(tryHook() || n > 60) clearInterval(t); }, 200);
 }
 
+function bindImageSearch(){
+  const btn = $("img_search_btn");
+  const input = $("img_search");
+  if(btn && !btn.__bound){
+    btn.__bound = true;
+    btn.onclick = function(){ window.searchForImage(); };
+  }
+  if(input && !input.__bound){
+    input.__bound = true;
+    input.addEventListener("keydown", function(e){
+      if(e.key === "Enter") window.searchForImage();
+    });
+  }
+}
+
 function boot(){
-  bindFilesUI();
+  bindTokenUI();
+  bindImageSearch();
   hookSearchIn();
-  console.log("image_upload.js ready (files upload + inventory delete)");
+  console.log("image_upload.js ready: search-then-upload in 文件 + delete in 入库");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-setInterval(bindFilesUI, 1500);
+setInterval(function(){ bindTokenUI(); bindImageSearch(); }, 1500);
