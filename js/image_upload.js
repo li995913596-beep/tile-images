@@ -1,9 +1,9 @@
 /**
- * 图片上传/替换到 GitHub
- * 流程：入库页搜索 → 在结果卡片上上传/替换
- * Token 在「文件」页设置，只存在本机浏览器
+ * 文件页：上传/替换图片到 GitHub
+ * 入库页：删除错误库存记录
  */
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+import { doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const GH_OWNER = "li995913596-beep";
 const GH_REPO = "tile-images";
@@ -19,11 +19,11 @@ function setToken(t){
   try { localStorage.setItem(TOKEN_KEY, (t || "").trim()); } catch(e){}
 }
 
-function bindTokenUI(){
+function bindFilesUI(){
   const input = $("gh_token_input");
   const save = $("gh_token_save");
   const clear = $("gh_token_clear");
-  if(!save) return;
+  const btn = $("gh_img_upload_btn");
 
   if(input && getToken()) input.placeholder = "已保存 Token（更换请重新粘贴）";
 
@@ -43,6 +43,13 @@ function bindTokenUI(){
       setToken("");
       if(input){ input.value = ""; input.placeholder = "粘贴 GitHub Token"; }
       alert("已清除");
+    };
+  }
+  if(btn && !btn.__bound){
+    btn.__bound = true;
+    btn.onclick = function(){
+      const code = (($("gh_img_code") && $("gh_img_code").value) || "").trim();
+      window.uploadTileImage(code, "gh_img_file");
     };
   }
 }
@@ -134,12 +141,13 @@ async function githubPutFile(path, base64Content, token, message){
 }
 
 window.uploadTileImage = async function(code, fileInputId){
+  const status = $("gh_img_status");
   try{
     if(!auth.currentUser) return alert("请先登录后台");
     code = (code || "").trim().replace(/\.jpe?g$/i, "");
-    if(!code) return alert("没有编号，无法上传");
+    if(!code) return alert("请填写瓷砖编号");
     const token = getToken();
-    if(!token) return alert("请先到「文件」页保存 GitHub Token");
+    if(!token) return alert("请先保存 GitHub Token");
     const fileEl = $(fileInputId);
     if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择图片");
     const file = fileEl.files[0];
@@ -149,14 +157,21 @@ window.uploadTileImage = async function(code, fileInputId){
     const path = "images/" + code + ".jpg";
     if(!confirm("确认上传/替换？\n编号：" + code + "\n路径：" + path + "\n已有同名图会被覆盖")) return;
 
+    if(status) status.textContent = "压缩中…";
     const blob = await fileToJpegBlob(file);
-    if(blob.size > 8 * 1024 * 1024) return alert("压缩后仍超过 8MB，请用更小的图");
+    if(blob.size > 8 * 1024 * 1024) {
+      if(status) status.textContent = "";
+      return alert("压缩后仍超过 8MB，请用更小的图");
+    }
+    if(status) status.textContent = "上传中…（" + Math.round(blob.size/1024) + " KB）";
     const b64 = await blobToBase64(blob);
     const result = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
     const tip = result.replaced ? "已替换原有图片" : "已新增图片";
+    if(status) status.textContent = "成功：" + tip + " → " + path;
     alert("成功！\n" + tip + "\n" + path + "\n约 1 分钟后强制刷新前台即可看到");
   }catch(e){
     console.error(e);
+    if(status) status.textContent = "失败";
     const msg = (e && e.message) ? e.message : String(e);
     if(/401|Bad credentials|Requires authentication/i.test(msg)){
       alert("Token 无效或过期，请重新生成并保存");
@@ -168,28 +183,56 @@ window.uploadTileImage = async function(code, fileInputId){
   }
 };
 
-function injectUploadPanels(){
+/** 删除错误入库的库存记录 */
+window.deleteInventoryItem = async function(id){
+  try{
+    if(!auth.currentUser) return alert("请先登录后台");
+    if(!id) return alert("记录无效");
+    const ref = doc(db, "inventory", id);
+    const snap = await getDoc(ref);
+    if(!snap.exists()) return alert("记录不存在，可能已删除");
+    const data = snap.data() || {};
+    const code = data.code || id;
+    const stock = Number(data.stock || 0);
+    const list = Array.isArray(data.reservedList) ? data.reservedList : [];
+    const reserved = list.reduce(function(s, r){ return s + Number(r && r.qty || 0); }, 0);
+
+    let tip = "确定删除这条库存？\n编号：" + code +
+      "\n色号：" + (data.color || "-") +
+      "\n仓库：" + (data.warehouse || "-") +
+      "\n数量：" + stock;
+    if(reserved > 0) tip += "\n\n注意：还有留货 " + reserved + "，删除后留货信息也会消失！";
+    tip += "\n\n此操作不可恢复。";
+    if(!confirm(tip)) return;
+
+    await deleteDoc(ref);
+    alert("已删除：" + code);
+    if($("in_search") && $("in_search").value.trim() && typeof window.searchIn === "function"){
+      window.searchIn();
+    }
+  }catch(e){
+    console.error(e);
+    alert("删除失败：" + ((e && e.message) || e));
+  }
+};
+
+function injectDeleteButtons(){
   const root = $("in_result");
   if(!root) return;
   root.querySelectorAll("input[id^='edit_code_']").forEach(function(input){
     const id = input.id.replace("edit_code_", "");
-    if(root.querySelector('[data-upload-for="'+id.replace(/"/g,"")+'"]')) return;
+    if(root.querySelector('[data-delete-for="'+id.replace(/"/g,"")+'"]')) return;
     const panel = input.closest("div[style*='margin-top:10px']") || input.parentElement;
     if(!panel) return;
     const wrap = document.createElement("div");
-    wrap.setAttribute("data-upload-for", id);
-    wrap.style.cssText = "margin-top:10px;padding:10px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;";
-    const fid = "edit_img_" + id;
-    const code = (input.value || "").trim();
-    wrap.innerHTML = '<span style="font-size:13px;color:#166534;font-weight:600;">📷 上传/替换图片</span>' +
-      '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:180px;">' +
-      '<button type="button" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换</button>' +
-      '<span style="font-size:12px;color:#888;">编号 ' + code + ' · 有图则覆盖</span>';
-    wrap.querySelector("button").onclick = function(){
-      const codeEl = $("edit_code_"+id);
-      const c = (codeEl && codeEl.value ? codeEl.value : input.value || "").trim();
-      window.uploadTileImage(c, fid);
-    };
+    wrap.setAttribute("data-delete-for", id);
+    wrap.style.cssText = "margin-top:8px;";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "删除这条库存";
+    btn.style.cssText = "padding:6px 12px;border:none;border-radius:8px;background:#dc2626;color:#fff;cursor:pointer;font-size:13px;";
+    btn.onclick = function(){ window.deleteInventoryItem(id); };
+    wrap.appendChild(btn);
     (panel.parentElement || panel).appendChild(wrap);
   });
 }
@@ -197,15 +240,15 @@ function injectUploadPanels(){
 function hookSearchIn(){
   const tryHook = function(){
     if(typeof window.searchIn !== "function") return false;
-    if(window.searchIn.__ghUploadHooked) return true;
+    if(window.searchIn.__deleteHooked) return true;
     const orig = window.searchIn;
     window.searchIn = async function(){
       await orig.apply(this, arguments);
-      setTimeout(injectUploadPanels, 50);
-      setTimeout(injectUploadPanels, 400);
+      setTimeout(injectDeleteButtons, 50);
+      setTimeout(injectDeleteButtons, 400);
     };
-    window.searchIn.__ghUploadHooked = true;
-    console.log("GitHub upload hooked on searchIn");
+    window.searchIn.__deleteHooked = true;
+    console.log("delete button hooked on searchIn");
     return true;
   };
   if(tryHook()) return;
@@ -214,11 +257,11 @@ function hookSearchIn(){
 }
 
 function boot(){
-  bindTokenUI();
+  bindFilesUI();
   hookSearchIn();
-  console.log("image_upload.js bound OK");
+  console.log("image_upload.js ready (files upload + inventory delete)");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-setInterval(bindTokenUI, 1500);
+setInterval(bindFilesUI, 1500);
