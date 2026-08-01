@@ -1,1 +1,1 @@
-PLACEHOLDER
+{{file:/home/workdir/artifacts/admin.js}}
