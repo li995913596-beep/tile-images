@@ -8,7 +8,6 @@ const firebaseConfig = {
   projectId: "kucunguanli-13d73",
 };
 
-// 避免 CDN admin 与本地模块重复 initializeApp 报错
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
