@@ -1,6 +1,5 @@
 /**
- * 后台图片上传/替换到 GitHub（不占 Firebase）
- * Token 只存在本机浏览器
+ * 后台图片上传/替换到 GitHub（绑定 admin.html 里已有的上传区域）
  */
 import { auth } from "./firebase.js";
 
@@ -18,70 +17,40 @@ function setToken(t){
   try { localStorage.setItem(TOKEN_KEY, (t || "").trim()); } catch(e){}
 }
 
-function ensureUploadUI(){
-  const admin = $("adminSection");
-  if(!admin) return;
-  if($("gh_upload_box")) return;
-
-  const box = document.createElement("div");
-  box.id = "gh_upload_box";
-  box.className = "card";
-  box.style.cssText = "margin-bottom:12px;border:1px solid #bbf7d0;background:#f0fdf4;";
-  box.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px;color:#166534;">📷 上传 / 替换图片（GitHub）</div>
-    <div style="font-size:12px;color:#666;margin-bottom:10px;">
-      图片存到仓库 <b>images/编号.jpg</b>。已有同名图片会<strong>直接覆盖替换</strong>。不占用 Firebase。
-    </div>
-
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">① 先保存 GitHub Token（只需一次）</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
-      <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token"
-        style="flex:1;min-width:200px;padding:8px;border:1px solid #ddd;border-radius:8px;">
-      <button type="button" id="gh_token_save" style="padding:8px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;">保存 Token</button>
-      <button type="button" id="gh_token_clear" style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;">清除</button>
-      <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;">生成 Token</a>
-    </div>
-    <div style="font-size:12px;color:#888;margin-bottom:12px;">
-      Fine-grained：只选仓库 tile-images，Permissions → Contents = Read and write
-    </div>
-
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">② 上传或替换图片</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-      <input id="gh_img_code" placeholder="瓷砖编号 例如 NB6003" style="width:160px;padding:8px;border:1px solid #ddd;border-radius:8px;">
-      <input id="gh_img_file" type="file" accept="image/*" style="font-size:13px;max-width:220px;">
-      <button type="button" id="gh_img_upload_btn" style="padding:8px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传 / 替换</button>
-    </div>
-    <div id="gh_img_status" style="font-size:12px;color:#666;margin-top:8px;"></div>
-  `;
-
-  const nav = admin.querySelector(".nav-card") || admin.querySelector(".card");
-  if(nav && nav.parentNode){
-    nav.parentNode.insertBefore(box, nav.nextSibling);
-  } else {
-    admin.insertBefore(box, admin.firstChild);
-  }
-
+function bindUploadUI(){
   const input = $("gh_token_input");
+  const save = $("gh_token_save");
+  const clear = $("gh_token_clear");
+  const btn = $("gh_img_upload_btn");
+  if(!btn) return;
+
   if(input && getToken()) input.placeholder = "已保存 Token（如需更换请重新粘贴）";
 
-  $("gh_token_save").onclick = () => {
-    const v = ($("gh_token_input").value || "").trim();
-    if(!v) return alert("请先粘贴 Token");
-    setToken(v);
-    $("gh_token_input").value = "";
-    $("gh_token_input").placeholder = "已保存 Token（如需更换请重新粘贴）";
-    alert("Token 已保存在本机浏览器");
-  };
-  $("gh_token_clear").onclick = () => {
-    setToken("");
-    $("gh_token_input").value = "";
-    $("gh_token_input").placeholder = "粘贴 GitHub Token";
-    alert("已清除");
-  };
-  $("gh_img_upload_btn").onclick = () => {
-    const code = ($("gh_img_code").value || "").trim();
-    window.uploadTileImage(code, "gh_img_file");
-  };
+  if(save && !save.__bound){
+    save.__bound = true;
+    save.onclick = () => {
+      const v = (input && input.value || "").trim();
+      if(!v) return alert("请先粘贴 Token");
+      setToken(v);
+      if(input){ input.value = ""; input.placeholder = "已保存 Token（如需更换请重新粘贴）"; }
+      alert("Token 已保存在本机浏览器");
+    };
+  }
+  if(clear && !clear.__bound){
+    clear.__bound = true;
+    clear.onclick = () => {
+      setToken("");
+      if(input){ input.value = ""; input.placeholder = "粘贴 GitHub Token"; }
+      alert("已清除");
+    };
+  }
+  if(btn && !btn.__bound){
+    btn.__bound = true;
+    btn.onclick = () => {
+      const code = (($("gh_img_code") && $("gh_img_code").value) || "").trim();
+      window.uploadTileImage(code, "gh_img_file");
+    };
+  }
 }
 
 async function fileToJpegBlob(file){
@@ -167,7 +136,7 @@ async function githubPutFile(path, base64Content, token, message){
     const t = await res.text();
     throw new Error("上传失败：" + res.status + " " + t.slice(0, 300));
   }
-  return { result: await res.json(), replaced: !!sha };
+  return { replaced: !!sha };
 }
 
 window.uploadTileImage = async function(code, fileInputId){
@@ -177,7 +146,7 @@ window.uploadTileImage = async function(code, fileInputId){
     code = (code || "").trim().replace(/\.jpe?g$/i, "");
     if(!code) return alert("请填写瓷砖编号");
     const token = getToken();
-    if(!token) return alert("请先在上方保存 GitHub Token");
+    if(!token) return alert("请先保存 GitHub Token");
     const fileEl = $(fileInputId);
     if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择图片");
     const file = fileEl.files[0];
@@ -197,7 +166,7 @@ window.uploadTileImage = async function(code, fileInputId){
     const b64 = await blobToBase64(blob);
     const { replaced } = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
     const tip = replaced ? "已替换原有图片" : "已新增图片";
-    if(status) status.textContent = "成功：" + tip + " → " + path + "（约1分钟后前台可见）";
+    if(status) status.textContent = "成功：" + tip + " → " + path;
     alert("成功！\n" + tip + "\n" + path + "\n约 1 分钟后强制刷新前台即可看到");
   }catch(e){
     console.error(e);
@@ -218,7 +187,7 @@ function injectUploadPanels(){
   if(!root) return;
   root.querySelectorAll("input[id^='edit_code_']").forEach(input => {
     const id = input.id.replace("edit_code_", "");
-    if(root.querySelector('[data-upload-for="'+id.replace(/"/g,'')+'"]')) return;
+    if(root.querySelector('[data-upload-for="'+id.replace(/"/g,"")+'"]')) return;
     const panel = input.closest("div[style*='margin-top:10px']") || input.parentElement;
     if(!panel) return;
     const wrap = document.createElement("div");
@@ -256,15 +225,11 @@ function hookSearchIn(){
 }
 
 function boot(){
-  ensureUploadUI();
+  bindUploadUI();
   hookSearchIn();
+  console.log("image_upload.js bound OK");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-
-setInterval(() => {
-  if($("adminSection") && $("adminSection").style.display !== "none") ensureUploadUI();
-}, 1000);
-
-console.log("image_upload.js ready: upload + replace on GitHub");
+setInterval(bindUploadUI, 1500);
