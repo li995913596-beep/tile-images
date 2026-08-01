@@ -53,7 +53,6 @@ window.searchData = async function(){
     });
   }
 
-  // ① 快速通道：按编号 / 规格精确查询
   try {
     const variants = [...new Set([raw, keyword, raw.toUpperCase()])];
 
@@ -68,7 +67,6 @@ window.searchData = async function(){
     console.error("精确查询失败，改走模糊搜索:", e);
   }
 
-  // ② 精确没命中时：模糊搜索
   if (list.length === 0) {
     const q = query(
       collection(db, "inventory"),
@@ -113,8 +111,6 @@ window.searchData = async function(){
   }
 };
 
-/* ================= 桌面版 ================= */
-
 function buildDesktop(list){
 
   const resultDiv = document.getElementById("result");
@@ -132,9 +128,7 @@ function buildDesktop(list){
   `;
 
   list.forEach(item=>{
-    const codeImg = item.code || "";
-    const localImg = window.location.origin + "/images/" + codeImg + ".jpg";
-    const imageUrl = "https://firebasestorage.googleapis.com/v0/b/kucunguanli-13d73.appspot.com/o/" + encodeURIComponent("images/" + codeImg + ".jpg") + "?alt=media";
+    const imageUrl = window.location.origin + "/images/" + (item.code || "") + ".jpg";
 
     const reserveText = item.reserved > 0
       ? `${item.reserved}${item.reserveDetail ? "<br><span style=\"font-size:12px;color:#c0392b;\">" + item.reserveDetail + "</span>" : ""}`
@@ -143,8 +137,7 @@ function buildDesktop(list){
     resultDiv.innerHTML+=`
       <div class="table-row">
         <div class="img-col" onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy" data-local="${localImg}"
-          onerror="if(!this.dataset.tried){this.dataset.tried=1;this.src=this.dataset.local;}else{this.style.display='none'}">
+          <img src="${imageUrl}" loading="lazy" onerror="this.style.display='none'">
         </div>
         <div>${item.code}</div>
         <div>${item.spec||"-"}</div>
@@ -159,7 +152,6 @@ function buildDesktop(list){
   });
 }
 
-/* ================= 手机版 ================= */
 function buildMobile(list){
 
   const resultDiv = document.getElementById("result");
@@ -167,9 +159,7 @@ function buildMobile(list){
 
   list.forEach(item=>{
 
-    const codeImg = item.code || "";
-    const localImg = window.location.origin + "/images/" + codeImg + ".jpg";
-    const imageUrl = "https://firebasestorage.googleapis.com/v0/b/kucunguanli-13d73.appspot.com/o/" + encodeURIComponent("images/" + codeImg + ".jpg") + "?alt=media";
+    const imageUrl = window.location.origin + "/images/" + (item.code || "") + ".jpg";
 
     let bgColor = "#f3f4f6";
 
@@ -258,8 +248,7 @@ function buildMobile(list){
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
             style="width:58px;height:58px;border-radius:8px;object-fit:cover;"
-            data-local="${localImg}"
-            onerror="if(!this.dataset.tried){this.dataset.tried=1;this.src=this.dataset.local;}else{this.style.display='none'}">
+            onerror="this.style.display='none'">
         </div>
 
         <div style="flex:1;">
@@ -310,7 +299,6 @@ function buildMobile(list){
     `;
   });
 }
-/* ================= DOM 绑定 ================= */
 
 document.addEventListener("DOMContentLoaded", () => {
 
