@@ -1,5 +1,5 @@
 /**
- * 文件页：搜索 → 在结果上上传/替换图片
+ * 文件页：搜索 → 在结果上上传/替换图片（显示现有图片预览）
  * 入库页：删除错误库存
  */
 import { auth, db } from "./firebase.js";
@@ -219,18 +219,36 @@ window.searchForImage = async function(){
     const row = byCode[code];
     const item = row.data;
     const fid = "img_file_" + idx;
+    const imgUrl = window.location.origin + "/images/" + encodeURIComponent(code) + ".jpg?t=" + Date.now();
     const card = document.createElement("div");
-    card.style.cssText = "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px;";
-    card.innerHTML =
+    card.style.cssText = "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;";
+
+    const thumb = document.createElement("div");
+    thumb.style.cssText = "flex-shrink:0;width:72px;height:72px;border-radius:10px;overflow:hidden;background:#f3f4f6;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;";
+    const img = document.createElement("img");
+    img.src = imgUrl;
+    img.alt = code;
+    img.style.cssText = "width:72px;height:72px;object-fit:cover;display:block;";
+    img.onerror = function(){
+      thumb.innerHTML = '<span style="font-size:11px;color:#9ca3af;text-align:center;padding:4px;">暂无图片</span>';
+    };
+    thumb.appendChild(img);
+
+    const body = document.createElement("div");
+    body.style.cssText = "flex:1;min-width:0;";
+    body.innerHTML =
       '<div style="font-weight:600;font-size:15px;margin-bottom:4px;">' + code + '</div>' +
-      '<div style="font-size:13px;color:#666;margin-bottom:8px;">规格 ' + (item.spec||"-") + ' · 色号 ' + (item.color||"-") + ' · 仓库 ' + (item.warehouse||"-") + '</div>' +
+      '<div style="font-size:12px;color:#888;margin-bottom:8px;">同编号共用一张图 · 规格 ' + (item.spec||"-") + '</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
-      '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:200px;">' +
-      '<button type="button" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换图片</button>' +
+        '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:200px;">' +
+        '<button type="button" class="btn-upload-img" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换图片</button>' +
       '</div>';
-    card.querySelector("button").onclick = function(){
+    body.querySelector(".btn-upload-img").onclick = function(){
       window.uploadTileImage(code, fid);
     };
+
+    card.appendChild(thumb);
+    card.appendChild(body);
     result.appendChild(card);
   });
 };
