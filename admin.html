@@ -33,43 +33,8 @@
     <button type="button" onclick="showTab('reserve')">留货</button>
     <button type="button" onclick="showTab('log')">日志</button>
     <button type="button" onclick="showTab('stats')">统计</button>
+    <button type="button" onclick="showTab('files')">文件</button>
     <button type="button" id="btnLogout">退出</button>
-  </div>
-
-  <!-- 图片上传区域：登录后可见 -->
-  <!-- upload-ui -->
-  <div id="gh_upload_box" class="card" style="margin-bottom:12px;border:1px solid #bbf7d0;background:#f0fdf4;">
-    <div style="font-weight:700;margin-bottom:6px;color:#166534;">📷 上传 / 替换图片（GitHub）</div>
-    <div style="font-size:12px;color:#666;margin-bottom:10px;">
-      图片存到仓库 <b>images/编号.jpg</b>。已有同名图片会<strong>直接覆盖替换</strong>。不占用 Firebase。
-    </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">① 先保存 GitHub Token（只需一次）</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
-      <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token"
-        style="flex:1;min-width:200px;padding:8px;border:1px solid #ddd;border-radius:8px;">
-      <button type="button" id="gh_token_save" style="padding:8px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;">保存 Token</button>
-      <button type="button" id="gh_token_clear" style="padding:8px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;">清除</button>
-      <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;">生成 Token</a>
-    </div>
-    <div style="font-size:12px;color:#888;margin-bottom:12px;">
-      Fine-grained：只选仓库 tile-images，Permissions → Contents = Read and write
-    </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">② 上传或替换图片</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-      <input id="gh_img_code" placeholder="瓷砖编号 例如 NB6003" style="width:160px;padding:8px;border:1px solid #ddd;border-radius:8px;">
-      <input id="gh_img_file" type="file" accept="image/*" style="font-size:13px;max-width:220px;">
-      <button type="button" id="gh_img_upload_btn" style="padding:8px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传 / 替换</button>
-    </div>
-    <div id="gh_img_status" style="font-size:12px;color:#666;margin-top:8px;"></div>
-  </div>
-
-  <div class="card">
-    <h3>库存文件管理</h3>
-    <div class="file-row">
-      <input type="file" id="excelFile" accept=".xlsx,.xls">
-      <button type="button" onclick="handleImport()">导入库存</button>
-      <button type="button" class="btn-secondary" onclick="exportInventory()">导出当前库存</button>
-    </div>
   </div>
 
   <div id="tab_in" class="tab card"></div>
@@ -77,6 +42,39 @@
   <div id="tab_reserve" class="tab card" style="display:none;"></div>
   <div id="tab_log" class="tab card" style="display:none;"></div>
   <div id="tab_stats" class="tab card" style="display:none;"></div>
+
+  <!-- 文件与图片管理（单独一栏） -->
+  <div id="tab_files" class="tab card" style="display:none;padding:16px 18px;">
+    <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">文件与图片管理</h3>
+
+    <div id="gh_upload_box" style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
+      <div style="font-weight:600;margin-bottom:6px;color:#166534;font-size:14px;">📷 上传 / 替换图片</div>
+      <div style="font-size:12px;color:#666;margin-bottom:10px;">
+        存到 GitHub 的 <b>images/编号.jpg</b>，已有同名图会直接覆盖。不占 Firebase。
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+        <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token（只需保存一次）"
+          style="flex:1;min-width:200px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <button type="button" id="gh_token_save" style="padding:7px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;font-size:13px;">保存 Token</button>
+        <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;padding:0 4px;">生成 Token</a>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <input id="gh_img_code" placeholder="编号 例如 NB6003" style="width:150px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <input id="gh_img_file" type="file" accept="image/*" style="font-size:13px;">
+        <button type="button" id="gh_img_upload_btn" style="padding:7px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">上传 / 替换</button>
+      </div>
+      <div id="gh_img_status" style="font-size:12px;color:#666;margin-top:8px;"></div>
+    </div>
+
+    <div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
+      <div style="font-weight:600;margin-bottom:10px;color:#1f2937;font-size:14px;">📦 库存文件</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input type="file" id="excelFile" accept=".xlsx,.xls" style="font-size:13px;">
+        <button type="button" onclick="handleImport()" style="padding:7px 16px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;font-size:13px;">导入库存</button>
+        <button type="button" onclick="exportInventory()" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;font-size:13px;">导出当前库存</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
