@@ -16,7 +16,6 @@
 
 <div class="container">
 
-<!-- 登录 -->
 <div id="loginSection" class="card">
   <h2>管理员登录</h2>
   <input id="email" placeholder="邮箱">
@@ -24,7 +23,6 @@
   <button id="btnLogin">登录</button>
 </div>
 
-<!-- 后台 -->
 <div id="adminSection" style="display:none;">
 
   <div class="card nav-card">
@@ -46,23 +44,19 @@
   <div id="tab_files" class="tab card" style="display:none;padding:16px 18px;">
     <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">文件与图片管理</h3>
 
-    <div id="gh_upload_box" style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
-      <div style="font-weight:600;margin-bottom:6px;color:#166534;font-size:14px;">📷 上传 / 替换图片</div>
+    <div style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
+      <div style="font-weight:600;margin-bottom:6px;color:#166534;font-size:14px;">🔑 GitHub Token（上传图片用，只需保存一次）</div>
       <div style="font-size:12px;color:#666;margin-bottom:10px;">
-        存到 GitHub 的 <b>images/编号.jpg</b>，已有同名图会直接覆盖。不占 Firebase。
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
-        <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token（只需保存一次）"
-          style="flex:1;min-width:200px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
-        <button type="button" id="gh_token_save" style="padding:7px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;font-size:13px;">保存 Token</button>
-        <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;padding:0 4px;">生成 Token</a>
+        Token 只存在本机浏览器。上传/替换图片请到「入库」搜索商品后操作。
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <input id="gh_img_code" placeholder="编号 例如 NB6003" style="width:150px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
-        <input id="gh_img_file" type="file" accept="image/*" style="font-size:13px;">
-        <button type="button" id="gh_img_upload_btn" style="padding:7px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">上传 / 替换</button>
+        <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token"
+          style="flex:1;min-width:200px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <button type="button" id="gh_token_save" style="padding:7px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;font-size:13px;">保存 Token</button>
+        <button type="button" id="gh_token_clear" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;">清除</button>
+        <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;padding:0 4px;">生成 Token</a>
       </div>
-      <div id="gh_img_status" style="font-size:12px;color:#666;margin-top:8px;"></div>
+      <div style="font-size:12px;color:#888;margin-top:8px;">Fine-grained：选 tile-images 仓库，Contents = Read and write</div>
     </div>
 
     <div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
