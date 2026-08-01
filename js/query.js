@@ -93,6 +93,8 @@ window.searchData = async function(){
         color.includes(keyword) ||
         warehouse.includes(keyword)
       ){
+        if(seen.has(doc.id)) return;
+        seen.add(doc.id);
         const { total, detail } = getReserveInfo(item);
         list.push({...item, reserved: total, reserveDetail: detail});
       }
@@ -130,8 +132,9 @@ function buildDesktop(list){
   `;
 
   list.forEach(item=>{
-    const imageUrl = window.location.origin +
-      "/images/" + item.code + ".jpg";
+    const codeImg = item.code || "";
+    const localImg = window.location.origin + "/images/" + codeImg + ".jpg";
+    const imageUrl = "https://firebasestorage.googleapis.com/v0/b/kucunguanli-13d73.appspot.com/o/" + encodeURIComponent("images/" + codeImg + ".jpg") + "?alt=media";
 
     const reserveText = item.reserved > 0
       ? `${item.reserved}${item.reserveDetail ? "<br><span style=\"font-size:12px;color:#c0392b;\">" + item.reserveDetail + "</span>" : ""}`
@@ -140,8 +143,8 @@ function buildDesktop(list){
     resultDiv.innerHTML+=`
       <div class="table-row">
         <div class="img-col" onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy"
-          onerror="this.style.display='none'">
+          <img src="${imageUrl}" loading="lazy" data-local="${localImg}"
+          onerror="if(!this.dataset.tried){this.dataset.tried=1;this.src=this.dataset.local;}else{this.style.display='none'}">
         </div>
         <div>${item.code}</div>
         <div>${item.spec||"-"}</div>
@@ -164,8 +167,9 @@ function buildMobile(list){
 
   list.forEach(item=>{
 
-    const imageUrl = window.location.origin +
-      "/images/" + item.code + ".jpg";
+    const codeImg = item.code || "";
+    const localImg = window.location.origin + "/images/" + codeImg + ".jpg";
+    const imageUrl = "https://firebasestorage.googleapis.com/v0/b/kucunguanli-13d73.appspot.com/o/" + encodeURIComponent("images/" + codeImg + ".jpg") + "?alt=media";
 
     let bgColor = "#f3f4f6";
 
@@ -254,7 +258,8 @@ function buildMobile(list){
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}"
             style="width:58px;height:58px;border-radius:8px;object-fit:cover;"
-            onerror="this.style.display='none'">
+            data-local="${localImg}"
+            onerror="if(!this.dataset.tried){this.dataset.tried=1;this.src=this.dataset.local;}else{this.style.display='none'}">
         </div>
 
         <div style="flex:1;">
