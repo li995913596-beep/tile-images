@@ -29,7 +29,7 @@ function bindTokenUI(){
 
   if(save && !save.__bound){
     save.__bound = true;
-    save.onclick = () => {
+    save.onclick = function(){
       const v = (input && input.value || "").trim();
       if(!v) return alert("请先粘贴 Token");
       setToken(v);
@@ -39,7 +39,7 @@ function bindTokenUI(){
   }
   if(clear && !clear.__bound){
     clear.__bound = true;
-    clear.onclick = () => {
+    clear.onclick = function(){
       setToken("");
       if(input){ input.value = ""; input.placeholder = "粘贴 GitHub Token"; }
       alert("已清除");
@@ -51,10 +51,10 @@ async function fileToJpegBlob(file){
   if((file.type === "image/jpeg" || file.type === "image/jpg") && file.size <= 2 * 1024 * 1024){
     return file;
   }
-  return await new Promise((resolve, reject) => {
+  return await new Promise(function(resolve, reject){
     const img = new Image();
     const url = URL.createObjectURL(file);
-    img.onload = () => {
+    img.onload = function(){
       try {
         const canvas = document.createElement("canvas");
         const maxW = 1600;
@@ -62,7 +62,7 @@ async function fileToJpegBlob(file){
         if(w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        canvas.toBlob((b) => {
+        canvas.toBlob(function(b){
           URL.revokeObjectURL(url);
           if(b) resolve(b); else reject(new Error("图片转换失败"));
         }, "image/jpeg", 0.85);
@@ -71,15 +71,15 @@ async function fileToJpegBlob(file){
         reject(err);
       }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("图片读取失败")); };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("图片读取失败")); };
     img.src = url;
   });
 }
 
 function blobToBase64(blob){
-  return new Promise((resolve, reject) => {
+  return new Promise(function(resolve, reject){
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = function(){
       const s = String(reader.result || "");
       const i = s.indexOf(",");
       resolve(i >= 0 ? s.slice(i + 1) : s);
@@ -91,7 +91,7 @@ function blobToBase64(blob){
 
 async function githubGetSha(path, token){
   const encPath = path.split("/").map(encodeURIComponent).join("/");
-  const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encPath}?ref=${GH_BRANCH}`, {
+  const res = await fetch("https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + encPath + "?ref=" + GH_BRANCH, {
     headers: {
       "Accept": "application/vnd.github+json",
       "Authorization": "Bearer " + token,
@@ -114,9 +114,9 @@ async function githubPutFile(path, base64Content, token, message){
     content: base64Content,
     branch: GH_BRANCH
   };
-  if(sha) body.sha = sha; // 覆盖已有图片
+  if(sha) body.sha = sha;
   const encPath = path.split("/").map(encodeURIComponent).join("/");
-  const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encPath}`, {
+  const res = await fetch("https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + encPath, {
     method: "PUT",
     headers: {
       "Accept": "application/vnd.github+json",
@@ -152,8 +152,8 @@ window.uploadTileImage = async function(code, fileInputId){
     const blob = await fileToJpegBlob(file);
     if(blob.size > 8 * 1024 * 1024) return alert("压缩后仍超过 8MB，请用更小的图");
     const b64 = await blobToBase64(blob);
-    const { replaced } = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
-    const tip = replaced ? "已替换原有图片" : "已新增图片";
+    const result = await githubPutFile(path, b64, token, "upload image " + code + ".jpg");
+    const tip = result.replaced ? "已替换原有图片" : "已新增图片";
     alert("成功！\n" + tip + "\n" + path + "\n约 1 分钟后强制刷新前台即可看到");
   }catch(e){
     console.error(e);
@@ -171,7 +171,7 @@ window.uploadTileImage = async function(code, fileInputId){
 function injectUploadPanels(){
   const root = $("in_result");
   if(!root) return;
-  root.querySelectorAll("input[id^='edit_code_']").forEach(input => {
+  root.querySelectorAll("input[id^='edit_code_']").forEach(function(input){
     const id = input.id.replace("edit_code_", "");
     if(root.querySelector('[data-upload-for="'+id.replace(/"/g,"")+'"]')) return;
     const panel = input.closest("div[style*='margin-top:10px']") || input.parentElement;
@@ -185,7 +185,7 @@ function injectUploadPanels(){
       '<input type="file" id="'+fid+'" accept="image/*" style="font-size:12px;max-width:180px;">' +
       '<button type="button" style="padding:6px 14px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">上传/替换</button>' +
       '<span style="font-size:12px;color:#888;">编号 ' + code + ' · 有图则覆盖</span>';
-    wrap.querySelector("button").onclick = () => {
+    wrap.querySelector("button").onclick = function(){
       const codeEl = $("edit_code_"+id);
       const c = (codeEl && codeEl.value ? codeEl.value : input.value || "").trim();
       window.uploadTileImage(c, fid);
@@ -195,7 +195,7 @@ function injectUploadPanels(){
 }
 
 function hookSearchIn(){
-  const tryHook = () => {
+  const tryHook = function(){
     if(typeof window.searchIn !== "function") return false;
     if(window.searchIn.__ghUploadHooked) return true;
     const orig = window.searchIn;
@@ -210,15 +210,15 @@ function hookSearchIn(){
   };
   if(tryHook()) return;
   let n = 0;
-  const t = setInterval(() => { n++; if(tryHook() || n > 60) clearInterval(t); }, 200);
+  const t = setInterval(function(){ n++; if(tryHook() || n > 60) clearInterval(t); }, 200);
 }
 
 function boot(){
-  bindUploadUI();
+  bindTokenUI();
   hookSearchIn();
   console.log("image_upload.js bound OK");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-setInterval(bindUploadUI, 1500);
+setInterval(bindTokenUI, 1500);
