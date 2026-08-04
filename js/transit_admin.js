@@ -1,8 +1,6 @@
 /**
  * 后台在途管理
- * 一个柜子多种砖 = 同一柜号多行记录（每行一个型号）
- * 色号可空，仅型号/编号必填
- * 装箱单空柜号/提单号 = 同上，导入时自动填充
+ * 一个柜子多种砖 = 同一柜号多行；色号可空；装箱单空柜号/提单号自动同上
  */
 import { auth, db } from "./firebase.js";
 import {
@@ -15,9 +13,9 @@ function $(id){ return document.getElementById(id); }
 function fmtTime(v){
   if(!v) return "-";
   try {
-    const d = v.toDate ? v.toDate() : new Date(v);
+    var d = v.toDate ? v.toDate() : new Date(v);
     if(isNaN(d.getTime())) return "-";
-    const p = function(n){ return String(n).padStart(2, "0"); };
+    function p(n){ return String(n).padStart(2, "0"); }
     return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
   } catch(e){ return "-"; }
 }
@@ -28,16 +26,14 @@ function normHeader(h){
 
 function esc(s){
   var t = String(s == null ? "" : s);
-  t = t.split("&").join("&" + "amp;");
-  t = t.split('"').join("&" + "quot;");
-  t = t.split("<").join("&" + "lt;");
-  t = t.split(">").join("&" + "gt;");
-  // fix: use actual < > characters
-  t = String(s == null ? "" : s);
-  t = t.split("&").join("&" + "amp;");
-  t = t.split('"').join("&" + "quot;");
-  t = t.split("<").join("&" + "lt;");
-  t = t.split(">").join("&" + "gt;");
+  var amp = String.fromCharCode(38);
+  var lt = String.fromCharCode(60);
+  var gt = String.fromCharCode(62);
+  var quot = String.fromCharCode(34);
+  t = t.split(amp).join(amp + "amp;");
+  t = t.split(quot).join(amp + "quot;");
+  t = t.split(lt).join(amp + "lt;");
+  t = t.split(gt).join(amp + "gt;");
   return t;
 }
 
@@ -88,8 +84,7 @@ window.importTransitExcel = async function(){
     if(typeof XLSX === "undefined") return alert("XLSX 未加载，请强制刷新页面 (Ctrl+Shift+R)");
 
     var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array", cellDates: true });
-    var sheetName = wb.SheetNames[0];
-    var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
+    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
     if(!rows.length) return alert("Excel 没有数据行");
 
     var lastBl = "", lastContainer = "", lastEta = "";
@@ -98,20 +93,11 @@ window.importTransitExcel = async function(){
 
     for(var i = 0; i < rows.length; i++){
       var item = rowFromExcel(rows[i]);
-
-      if(item.blNo) lastBl = item.blNo;
-      else item.blNo = lastBl;
-
-      if(item.containerNo) lastContainer = item.containerNo;
-      else item.containerNo = lastContainer;
-
-      if(item.eta) lastEta = item.eta;
-      else item.eta = lastEta;
-
+      if(item.blNo) lastBl = item.blNo; else item.blNo = lastBl;
+      if(item.containerNo) lastContainer = item.containerNo; else item.containerNo = lastContainer;
+      if(item.eta) lastEta = item.eta; else item.eta = lastEta;
       if(!item.code){ skip++; continue; }
-
       if(item.color != null) item.color = String(item.color).trim();
-
       try {
         await addDoc(collection(db, "in_transit"), Object.assign({}, item, {
           createdAt: serverTimestamp(),
