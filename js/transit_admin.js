@@ -2,6 +2,7 @@
  * 后台在途管理
  * 一个柜子多种砖 = 同一柜号多行记录（每行一个型号）
  * 色号可空，仅型号/编号必填
+ * 装箱单空柜号/提单号 = 同上，导入时自动填充
  */
 import { auth, db } from "./firebase.js";
 import {
@@ -41,7 +42,7 @@ var HEADER_MAP = {
   "规格": "spec", "spec": "spec", "size": "spec",
   "备注": "remark", "remark": "remark", "note": "remark",
   "数量": "qty", "qty": "qty", "quantity": "qty",
-  "预计到港日期": "eta", "预计到港": "eta", "到港日期": "eta", "eta": "eta",
+  "预计到港日期": "eta", "预计到港": "eta", "到港日期": "eta", "到港": "eta", "eta": "eta",
   "吸水率": "absorption", "牌子": "brand", "品牌": "brand",
   "颜色": "colorName", "重量": "weight", "片数": "pieces"
 };
@@ -76,24 +77,54 @@ window.importTransitExcel = async function(){
   try {
     if(!auth.currentUser) return alert("请先登录");
     var fileEl = $("transitExcel");
-    if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择 Excel");
-    if(typeof XLSX === "undefined") return alert("XLSX 未加载，请刷新页面");
-    var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array" });
-    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-    if(!rows.length) return alert("无数据行");
+    if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择 Excel 文件");
+    if(typeof XLSX === "undefined") return alert("XLSX 未加载，请强制刷新页面 (Ctrl+Shift+R)");
+
+    var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array", cellDates: true });
+    var sheetName = wb.SheetNames[0];
+    var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
+    if(!rows.length) return alert("Excel 没有数据行");
+
+    // 装箱单：提单号/柜号只在第一行写，下面空着表示同上 → 自动往下填
+    var lastBl = "", lastContainer = "", lastEta = "";
     var ok = 0, skip = 0;
+    var errors = [];
+
     for(var i = 0; i < rows.length; i++){
       var item = rowFromExcel(rows[i]);
+
+      if(item.blNo) lastBl = item.blNo;
+      else item.blNo = lastBl;
+
+      if(item.containerNo) lastContainer = item.containerNo;
+      else item.containerNo = lastContainer;
+
+      if(item.eta) lastEta = item.eta;
+      else item.eta = lastEta;
+
       if(!item.code){ skip++; continue; }
+
+      if(item.color != null) item.color = String(item.color).trim();
+
       try {
         await addDoc(collection(db, "in_transit"), Object.assign({}, item, {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         }));
         ok++;
-      } catch(e){ console.error(e); skip++; }
+      } catch(e){
+        console.error("row", i+2, e);
+        skip++;
+        if(errors.length < 3) errors.push((e && e.message) || String(e));
+      }
     }
-    alert("导入完成：成功 " + ok + " 条" + (skip ? "，跳过 " + skip + " 条" : "") + "\n说明：同一柜号可有多行（多种砖）");
+
+    var msg = "导入完成：成功 " + ok + " 条";
+    if(skip) msg += "，跳过 " + skip + " 条";
+    msg += "\n（空柜号/提单号已按「同上」自动填充）";
+    if(errors.length) msg += "\n错误示例：" + errors.join("；");
+    if(ok === 0 && errors.length) msg += "\n若是权限错误，请在 Firebase 规则允许 in_transit 写入";
+    alert(msg);
     fileEl.value = "";
     if(window.reloadTransitAdmin) window.reloadTransitAdmin();
   } catch(e){
@@ -123,7 +154,7 @@ window.addTransitManual = async function(){
       updatedAt: serverTimestamp()
     };
     await addDoc(collection(db, "in_transit"), item);
-    alert("已新增\n同一柜号可继续新增其他型号（一个柜子多种砖 = 多行同柜号）");
+    alert("已新增\n同一柜号可继续新增其他型号");
     ["tm_code", "tm_color", "tm_spec", "tm_remark", "tm_qty"].forEach(function(id){
       if($(id)) $(id).value = "";
     });
