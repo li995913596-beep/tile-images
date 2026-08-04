@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>在途货物 / In Transit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .transit-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+  .transit-filters input, .transit-filters select {
+    padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;
+  }
+  .transit-card {
+    background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+    padding:14px; margin-bottom:10px;
+  }
+  .transit-card .code { font-weight:700; font-size:16px; margin-bottom:4px; }
+  .transit-card .meta { font-size:13px; color:#555; line-height:1.6; }
+  .badge {
+    display:inline-block; padding:2px 8px; border-radius:999px;
+    font-size:12px; font-weight:600; margin-right:6px;
+  }
+  .badge-zt { background:#dbeafe; color:#1d4ed8; }
+  .badge-dg { background:#fef3c7; color:#b45309; }
+  .badge-rk { background:#e5e7eb; color:#374151; }
+  .badge-qx { background:#fee2e2; color:#b91c1c; }
+  .reserve-box {
+    margin-top:8px; padding:8px 10px; background:#fff7ed;
+    border:1px solid #fed7aa; border-radius:8px; font-size:13px; color:#9a3412;
+  }
+  .updated { font-size:12px; color:#9ca3af; margin-top:6px; }
+  .empty { color:#666; padding:20px; text-align:center; }
+</style>
+</head>
+<body>
+
+<header>
+  在途货物 / In Transit
+  <div style="cursor:pointer" onclick="location.href='index.html'">🏠</div>
+</header>
+
+<div class="container">
+  <div class="card" style="margin-bottom:12px;">
+    <h2 style="margin:0 0 10px;font-size:18px;">在途货物</h2>
+    <div class="transit-filters">
+      <input id="tSearch" placeholder="搜索编号 / 柜号 / 提单号" style="flex:1;min-width:180px;">
+      <select id="tStatus">
+        <option value="active">在途 + 已到港</option>
+        <option value="在途">仅在途</option>
+        <option value="已到港">仅已到港</option>
+        <option value="history">历史（已入库/取消）</option>
+        <option value="all">全部</option>
+      </select>
+      <button type="button" id="tBtnSearch" style="padding:8px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;">查询</button>
+      <button type="button" id="tBtnAll" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">显示全部</button>
+    </div>
+    <div id="tHint" style="font-size:12px;color:#888;"></div>
+  </div>
+  <div id="tResult"></div>
+</div>
+
+<script type="module" src="js/transit.js"></script>
+</body>
+</html>
