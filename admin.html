@@ -31,6 +31,7 @@
     <button type="button" onclick="showTab('reserve')">留货</button>
     <button type="button" onclick="showTab('log')">日志</button>
     <button type="button" onclick="showTab('stats')">统计</button>
+    <button type="button" onclick="showTab('transit')">在途</button>
     <button type="button" onclick="showTab('files')">文件</button>
     <button type="button" id="btnLogout">退出</button>
   </div>
@@ -40,6 +41,54 @@
   <div id="tab_reserve" class="tab card" style="display:none;"></div>
   <div id="tab_log" class="tab card" style="display:none;"></div>
   <div id="tab_stats" class="tab card" style="display:none;"></div>
+
+  <div id="tab_transit" class="tab card" style="display:none;padding:16px 18px;">
+    <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">在途货物管理</h3>
+
+    <div style="padding:14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:14px;">
+      <div style="font-weight:600;margin-bottom:8px;color:#1e40af;font-size:14px;">📥 Excel 导入装箱单</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px;">
+        表头支持：提单号 柜号 型号 色号 规格 备注 数量 预计到港日期 吸水率 牌子 颜色 重量 片数<br>
+        导入后默认状态为「在途」。型号 = 库存编号。
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <input type="file" id="transitExcel" accept=".xlsx,.xls" style="font-size:13px;">
+        <button type="button" id="btnTransitImport" style="padding:7px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;">导入在途</button>
+      </div>
+    </div>
+
+    <div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:14px;">
+      <div style="font-weight:600;margin-bottom:8px;color:#1f2937;font-size:14px;">✏️ 手动新增</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <input id="tm_bl" placeholder="提单号" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_container" placeholder="柜号" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_code" placeholder="型号/编号*" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_color" placeholder="色号" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_spec" placeholder="规格" style="width:100px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_qty" type="number" placeholder="数量" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_eta" placeholder="预计到港" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_remark" placeholder="备注" style="width:140px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <select id="tm_status" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+          <option value="在途">在途</option>
+          <option value="已到港">已到港</option>
+        </select>
+        <button type="button" id="btnTransitAdd" style="padding:7px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;">新增</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+      <input id="transitSearch" placeholder="搜索编号/柜号/提单" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
+      <select id="transitFilter" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
+        <option value="active">在途+已到港</option>
+        <option value="在途">仅在途</option>
+        <option value="已到港">仅已到港</option>
+        <option value="history">历史</option>
+        <option value="all">全部</option>
+      </select>
+      <button type="button" id="btnTransitReload" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">刷新</button>
+    </div>
+    <div id="transitList"></div>
+  </div>
 
   <div id="tab_files" class="tab card" style="display:none;padding:16px 18px;">
     <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">文件与图片管理</h3>
@@ -81,6 +130,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module" src="js/admin.js?v=20260801f"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
+<script type="module" src="js/transit_admin.js?v=20260804a"></script>
 
 </body>
 </html>
