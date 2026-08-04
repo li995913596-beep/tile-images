@@ -44,12 +44,14 @@
 
   <div id="tab_transit" class="tab card" style="display:none;padding:16px 18px;">
     <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">在途货物管理</h3>
+    <div style="font-size:12px;color:#666;margin-bottom:12px;padding:8px 10px;background:#f8fafc;border-radius:8px;">
+      一个柜子多种砖：同一柜号新增多行即可。色号可空。Excel 一行 = 一种型号。
+    </div>
 
     <div style="padding:14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#1e40af;font-size:14px;">📥 Excel 导入装箱单</div>
       <div style="font-size:12px;color:#666;margin-bottom:8px;">
-        表头支持：提单号 柜号 型号 色号 规格 备注 数量 预计到港日期 吸水率 牌子 颜色 重量 片数<br>
-        导入后默认状态为「在途」。型号 = 库存编号。
+        表头：提单号 柜号 型号 色号 规格 备注 数量 预计到港日期 …（型号必填，色号可空）
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <input type="file" id="transitExcel" accept=".xlsx,.xls" style="font-size:13px;">
@@ -58,12 +60,12 @@
     </div>
 
     <div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:14px;">
-      <div style="font-weight:600;margin-bottom:8px;color:#1f2937;font-size:14px;">✏️ 手动新增</div>
+      <div style="font-weight:600;margin-bottom:8px;color:#1f2937;font-size:14px;">✏️ 手动新增（同柜多型号：柜号填一样，再点新增）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
         <input id="tm_bl" placeholder="提单号" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_container" placeholder="柜号" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_code" placeholder="型号/编号*" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
-        <input id="tm_color" placeholder="色号" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_color" placeholder="色号(可空)" style="width:90px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_spec" placeholder="规格" style="width:100px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_qty" type="number" placeholder="数量" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_eta" placeholder="预计到港" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
@@ -92,7 +94,6 @@
 
   <div id="tab_files" class="tab card" style="display:none;padding:16px 18px;">
     <h3 style="margin:0 0 14px;font-size:16px;color:#1f2937;">文件与图片管理</h3>
-
     <div style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:6px;color:#166534;font-size:14px;">🔑 GitHub Token（只需保存一次）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
@@ -102,7 +103,6 @@
         <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;">生成 Token</a>
       </div>
     </div>
-
     <div style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#166534;font-size:14px;">📷 上传 / 替换图片（先搜索再操作）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
@@ -111,7 +111,6 @@
       </div>
       <div id="img_search_result"></div>
     </div>
-
     <div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
       <div style="font-weight:600;margin-bottom:10px;color:#1f2937;font-size:14px;">📦 库存文件</div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
@@ -130,7 +129,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module" src="js/admin.js?v=20260801f"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
-<script type="module" src="js/transit_admin.js?v=20260804b"></script>
+<script type="module" src="js/transit_admin.js?v=20260804c"></script>
 
 </body>
 </html>
