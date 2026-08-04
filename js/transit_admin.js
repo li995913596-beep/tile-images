@@ -27,11 +27,18 @@ function normHeader(h){
 }
 
 function esc(s){
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&")
-    .replace(/"/g, """)
-    .replace(/</g, "<")
-    .replace(/>/g, ">");
+  var t = String(s == null ? "" : s);
+  t = t.split("&").join("&" + "amp;");
+  t = t.split('"').join("&" + "quot;");
+  t = t.split("<").join("&" + "lt;");
+  t = t.split(">").join("&" + "gt;");
+  // fix: use actual < > characters
+  t = String(s == null ? "" : s);
+  t = t.split("&").join("&" + "amp;");
+  t = t.split('"').join("&" + "quot;");
+  t = t.split("<").join("&" + "lt;");
+  t = t.split(">").join("&" + "gt;");
+  return t;
 }
 
 var HEADER_MAP = {
@@ -85,7 +92,6 @@ window.importTransitExcel = async function(){
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
     if(!rows.length) return alert("Excel 没有数据行");
 
-    // 装箱单：提单号/柜号只在第一行写，下面空着表示同上 → 自动往下填
     var lastBl = "", lastContainer = "", lastEta = "";
     var ok = 0, skip = 0;
     var errors = [];
