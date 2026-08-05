@@ -32,9 +32,15 @@ function fmtTime(v){
   } catch(e){ return ""; }
 }
 
+function pad2(n){ return String(n).padStart(2, "0"); }
+
 function fmtEtaCN(eta){
   if(eta == null || eta === "") return "";
+  if(Object.prototype.toString.call(eta) === "[object Date]" && !isNaN(eta.getTime())){
+    return eta.getFullYear() + "年" + (eta.getMonth()+1) + "月" + eta.getDate() + "日";
+  }
   var s = String(eta).trim();
+  if(!s) return "";
   var d = null;
   if(/^\d+(\.\d+)?$/.test(s)){
     var n = Number(s);
@@ -43,11 +49,34 @@ function fmtEtaCN(eta){
     }
   }
   if(!d){
-    var m = s.match(/^(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
+    var m = s.match(/^(\d{4})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
     if(m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
-  if(!d || isNaN(d.getTime())) return s;
+  if(!d){
+    var t = Date.parse(s);
+    if(!isNaN(t)) d = new Date(t);
+  }
+  if(!d || isNaN(d.getTime())){
+    if(/年.*月.*日/.test(s)) return s;
+    return s.length > 24 ? s.slice(0, 16) : s;
+  }
   return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+}
+
+function fmtColor(c){
+  if(c == null || c === "") return "";
+  if(Object.prototype.toString.call(c) === "[object Date]" && !isNaN(c.getTime())){
+    return c.getFullYear() + "-" + pad2(c.getMonth()+1) + "-" + pad2(c.getDate());
+  }
+  var s = String(c).trim();
+  if(/GMT|UTC|标准时间|[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{4}/.test(s)){
+    var t = Date.parse(s);
+    if(!isNaN(t)){
+      var d = new Date(t);
+      return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate());
+    }
+  }
+  return s;
 }
 
 function groupByBL(list){
@@ -253,7 +282,7 @@ export function renderAdminList(list){
       tr.innerHTML =
         '<td class="ta-cno">' + cnoHtml + "</td>" +
         '<td class="ta-code">' + esc(item.code || "") + "</td>" +
-        "<td>" + esc(item.color || "") + "</td>" +
+        "<td>" + esc(fmtColor(item.color)) + "</td>" +
         "<td>" + esc(item.spec || "") + "</td>" +
         '<td class="ta-qty">' + (item.qty != null && item.qty !== "" ? item.qty : "-") + "</td>" +
         "<td>" + esc(item.status || "在途") +
