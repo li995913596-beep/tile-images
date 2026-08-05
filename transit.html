@@ -1,1 +1,106 @@
-PLACEHOLDER2
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>在途货物 / In Transit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .transit-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+  .transit-filters input, .transit-filters select {
+    padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;
+  }
+  .empty { color:#666; padding:20px; text-align:center; }
+
+  .bl-section {
+    background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+    margin-bottom:12px; overflow:hidden;
+  }
+  .bl-head {
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+    padding:12px 14px; cursor:pointer; background:#f8fafc;
+    user-select:none;
+  }
+  .bl-head:hover { background:#f1f5f9; }
+  .bl-head.open { background:#eff6ff; border-bottom:1px solid #e5e7eb; }
+  .bl-toggle { font-size:12px; color:#64748b; width:14px; }
+  .bl-title { font-weight:700; font-size:15px; color:#1e293b; }
+  .bl-meta { font-size:12px; color:#64748b; }
+  .bl-eta { font-size:13px; font-weight:700; color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; }
+  .bl-updated { font-size:12px; color:#64748b; }
+  .tip-line { display:block; margin:6px 0 0; font-size:12px; color:#9a3412; line-height:1.5; }
+  .stale-banner { display:none; margin:8px 0 0; padding:10px 12px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; color:#9a3412; font-size:13px; line-height:1.5; }
+
+  .bl-body { padding:0; overflow-x:auto; }
+  .bl-table {
+    width:100%; border-collapse:collapse; font-size:13px;
+    min-width:640px;
+  }
+  .bl-table th {
+    text-align:left; padding:8px 10px; background:#f1f5f9;
+    color:#475569; font-weight:600; border-bottom:1px solid #e2e8f0;
+    white-space:nowrap;
+  }
+  .bl-table td {
+    padding:8px 10px; border-bottom:1px solid #f1f5f9;
+    vertical-align:middle; color:#334155;
+  }
+  .bl-table tr:hover td { background:#fafafa; }
+  .bl-table tr.row-new-container td { border-top:1px solid #e2e8f0; }
+
+  .td-code { font-weight:600; color:#0f172a; }
+  .td-cno { color:#64748b; font-size:12px; white-space:nowrap; }
+  .td-qty {
+    text-align:right; min-width:72px;
+  }
+  .qty-pill {
+    display:inline-block;
+    font-size:15px; font-weight:700;
+    padding:5px 12px; border-radius:10px;
+    color:#fff; min-width:36px; text-align:center;
+  }
+  .td-remark { max-width:140px; color:#64748b; font-size:12px; }
+  .td-res { color:#9a3412; font-size:12px; max-width:160px; }
+
+  .badge {
+    display:inline-block; padding:2px 8px; border-radius:999px;
+    font-size:12px; font-weight:600;
+  }
+  .badge-zt { background:#dbeafe; color:#1d4ed8; }
+  .badge-dg { background:#fef3c7; color:#b45309; }
+  .badge-rk { background:#e5e7eb; color:#374151; }
+  .badge-qx { background:#fee2e2; color:#b91c1c; }
+</style>
+</head>
+<body>
+
+<header>
+ 在途货物 / In Transit
+  <div style="cursor:pointer" onclick="location.href='index.html'">🏠</div>
+</header>
+
+<div class="container">
+  <div class="card" style="margin-bottom:12px;">
+    <h2 style="margin:0 0 4px;font-size:18px;">在途货物</h2>
+    <div id="tTip" class="tip-line">数据由管理员手动更新；若更新时间超过 1 周，信息可能不准确，请询问管理员。</div>
+    <div id="tStale" class="stale-banner"></div>
+    <div class="transit-filters" style="margin-top:12px;">
+      <input id="tSearch" placeholder="搜索编号 / 柜号 / 提单号" style="flex:1;min-width:180px;">
+      <select id="tStatus">
+        <option value="active">在途 + 已到港</option>
+        <option value="在途">仅在途</option>
+        <option value="已到港">仅已到港</option>
+        <option value="history">历史（已入库/取消）</option>
+        <option value="all">全部</option>
+      </select>
+      <button type="button" id="tBtnSearch" style="padding:8px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;">查询</button>
+      <button type="button" id="tBtnAll" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">显示全部</button>
+    </div>
+    <div id="tHint" style="font-size:12px;color:#888;margin-top:6px;"></div>
+  </div>
+  <div id="tResult"></div>
+</div>
+
+<script type="module" src="js/transit.js?v=20260805d"></script>
+</body>
+</html>
