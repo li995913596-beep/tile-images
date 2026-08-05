@@ -1,12 +1,13 @@
 /**
- * 后台在途管理
- * 一个柜子多种砖 = 同一柜号多行；色号可空；装箱单空柜号/提单号自动同上
+ * 后台在途管理 — 按提单分组表格
+ * 1A 柜号只在同柜首行  2B 默认只展开第一个提单  3A+B 数量加粗+浅绿底
  */
 import { auth, db } from "./firebase.js";
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
   query, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { renderAdminList } from "./transit_render.js";
 
 function $(id){ return document.getElementById(id); }
 
@@ -62,8 +63,12 @@ function rowFromExcel(obj){
     var v = obj[k];
     if(v == null) v = "";
     if(field === "qty" || field === "pieces"){
-      var n = Number(String(v).replace(/,/g, ""));
+      var n = Number(String(v).replace(/,/g, "").replace(/[^\d.-]/g, ""));
       out[field] = isNaN(n) ? 0 : n;
+      if(field === "qty" && isNaN(Number(String(v).replace(/,/g, "")))){
+        var raw = String(v).trim();
+        if(raw && !out.remark) out.remark = raw;
+      }
     } else if(field === "eta" && typeof v === "number" && window.XLSX && XLSX.SSF){
       try {
         var d = XLSX.SSF.parse_date_code(v);
@@ -217,92 +222,6 @@ async function loadList(){
     return tb - ta;
   });
   return list;
-}
-
-function renderAdminList(list){
-  var box = $("transitList");
-  if(!box) return;
-  var filter = ($("transitFilter") && $("transitFilter").value) || "active";
-  var kw = (($("transitSearch") && $("transitSearch").value) || "").trim().toLowerCase();
-
-  var filtered = list.filter(function(item){
-    var st = item.status || "在途";
-    if(filter === "active" && st !== "在途" && st !== "已到港") return false;
-    if(filter === "history" && st !== "已入库" && st !== "取消") return false;
-    if(filter !== "active" && filter !== "history" && filter !== "all" && st !== filter) return false;
-    if(!kw) return true;
-    var blob = [item.code, item.spec, item.color, item.containerNo, item.blNo]
-      .map(function(x){ return String(x || "").toLowerCase(); }).join(" ");
-    return blob.indexOf(kw) >= 0;
-  });
-
-  if(!filtered.length){
-    box.innerHTML = '<div style="color:#666;padding:12px;">暂无数据。同一柜号可新增多行（多种砖）。</div>';
-    return;
-  }
-
-  box.innerHTML = "";
-  filtered.forEach(function(item){
-    var id = item.id;
-    var reserves = Array.isArray(item.reservations) ? item.reservations : [];
-    var card = document.createElement("div");
-    card.style.cssText = "border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;";
-
-    var opts = ["在途", "已到港", "已入库", "取消"].map(function(s){
-      return '<option value="' + s + '"' + (item.status === s ? " selected" : "") + ">" + s + "</option>";
-    }).join("");
-
-    card.innerHTML =
-      '<div style="font-weight:700;font-size:15px;margin-bottom:6px;">' + esc(item.code) +
-      ' <span style="font-weight:400;color:#666;font-size:13px;">规格 ' + esc(item.spec) +
-      ' · 色号 ' + (item.color ? esc(item.color) : "无") +
-      ' · 数量 ' + (item.qty != null ? item.qty : "-") + '</span></div>' +
-      '<div style="font-size:13px;color:#555;margin-bottom:8px;">柜号 ' + esc(item.containerNo) +
-      ' · 提单 ' + esc(item.blNo) + ' · 更新 ' + fmtTime(item.updatedAt) + '</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">' +
-      '<label style="font-size:13px;">状态 <select data-field="status" style="padding:4px 6px;">' + opts + '</select></label>' +
-      '<label style="font-size:13px;">到港 <input data-field="eta" value="' + esc(item.eta) + '" style="width:120px;padding:4px 6px;"></label>' +
-      '<label style="font-size:13px;">备注 <input data-field="remark" value="' + esc(item.remark) + '" style="min-width:140px;padding:4px 6px;"></label>' +
-      '<button type="button" class="btn-save-fields" style="padding:5px 12px;border:none;border-radius:6px;background:#2f7dd1;color:#fff;cursor:pointer;">保存</button>' +
-      '<button type="button" class="btn-del" style="padding:5px 12px;border:none;border-radius:6px;background:#dc2626;color:#fff;cursor:pointer;">删除</button>' +
-      '</div>' +
-      '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">预定（数量+客户名）</div>' +
-      '<div id="res_box_' + id + '"></div>' +
-      '<div style="margin-top:6px;display:flex;gap:8px;">' +
-      '<button type="button" class="btn-add-res" style="padding:4px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">+ 添加预定</button>' +
-      '<button type="button" class="btn-save-res" style="padding:4px 10px;border:none;border-radius:6px;background:#16a34a;color:#fff;cursor:pointer;">保存预定</button>' +
-      '</div>';
-
-    var resBox = card.querySelector("#res_box_" + id);
-    reserves.forEach(function(r){
-      var div = document.createElement("div");
-      div.setAttribute("data-res-row", "1");
-      div.style.cssText = "display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;";
-      div.innerHTML =
-        '<input class="res-qty" type="number" value="' + Number(r.qty || 0) + '" style="width:80px;padding:4px 6px;">' +
-        '<input class="res-customer" value="' + esc(r.customer) + '" style="flex:1;min-width:100px;padding:4px 6px;">' +
-        '<button type="button" style="padding:4px 8px;">删</button>';
-      div.querySelector("button").onclick = function(){ div.remove(); };
-      resBox.appendChild(div);
-    });
-
-    card.querySelector(".btn-save-fields").onclick = async function(){
-      try {
-        await updateDoc(doc(db, "in_transit", id), {
-          status: card.querySelector('[data-field="status"]').value,
-          eta: card.querySelector('[data-field="eta"]').value.trim(),
-          remark: card.querySelector('[data-field="remark"]').value.trim(),
-          updatedAt: serverTimestamp()
-        });
-        alert("已保存");
-        if(window.reloadTransitAdmin) window.reloadTransitAdmin();
-      } catch(e){ alert((e && e.message) || e); }
-    };
-    card.querySelector(".btn-del").onclick = function(){ window.deleteTransitItem(id); };
-    card.querySelector(".btn-add-res").onclick = function(){ window.addResRow(id); };
-    card.querySelector(".btn-save-res").onclick = function(){ window.saveTransitReservations(id); };
-    box.appendChild(card);
-  });
 }
 
 window.reloadTransitAdmin = async function(){
