@@ -1,6 +1,6 @@
 /**
  * 前台：在途货物 — 按提单分组表格
- * 预计到港醒目；更新超过 1 周顶部提示询问管理员
+ * 预计到港中文；色号不被长日期刷屏；顶部常驻过期说明
  */
 import { db } from "./firebase.js";
 import {
@@ -9,19 +9,24 @@ import {
 
 function $(id){ return document.getElementById(id); }
 
+function pad2(n){ return String(n).padStart(2, "0"); }
+
 function fmtTime(v){
   if(!v) return "";
   try {
     var d = v.toDate ? v.toDate() : new Date(v);
     if(isNaN(d.getTime())) return "";
-    function p(n){ return String(n).padStart(2, "0"); }
-    return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
   } catch(e){ return ""; }
 }
 
 function fmtEtaCN(eta){
   if(eta == null || eta === "") return "";
+  if(Object.prototype.toString.call(eta) === "[object Date]" && !isNaN(eta.getTime())){
+    return eta.getFullYear() + "年" + (eta.getMonth()+1) + "月" + eta.getDate() + "日";
+  }
   var s = String(eta).trim();
+  if(!s) return "";
   var d = null;
   if(/^\d+(\.\d+)?$/.test(s)){
     var n = Number(s);
@@ -30,11 +35,34 @@ function fmtEtaCN(eta){
     }
   }
   if(!d){
-    var m = s.match(/^(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
+    var m = s.match(/^(\d{4})[-\/年.](\d{1,2})[-\/月.](\d{1,2})/);
     if(m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
-  if(!d || isNaN(d.getTime())) return s;
+  if(!d){
+    var t = Date.parse(s);
+    if(!isNaN(t)) d = new Date(t);
+  }
+  if(!d || isNaN(d.getTime())){
+    if(/年.*月.*日/.test(s)) return s;
+    return s.length > 24 ? s.slice(0, 16) : s;
+  }
   return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+}
+
+function fmtColor(c){
+  if(c == null || c === "") return "";
+  if(Object.prototype.toString.call(c) === "[object Date]" && !isNaN(c.getTime())){
+    return c.getFullYear() + "-" + pad2(c.getMonth()+1) + "-" + pad2(c.getDate());
+  }
+  var s = String(c).trim();
+  if(/GMT|UTC|标准时间|[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{4}/.test(s)){
+    var t = Date.parse(s);
+    if(!isNaN(t)){
+      var d = new Date(t);
+      return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate());
+    }
+  }
+  return s;
 }
 
 function esc(s){
@@ -109,8 +137,13 @@ function groupByBL(list){
 }
 
 function renderStaleBanner(list){
-  var el = $("tStale");
-  if(!el) return;
+  var tip = $("tTip");
+  var warn = $("tStale");
+  if(tip){
+    tip.style.display = "block";
+    tip.textContent = "数据由管理员手动更新；若更新时间超过 1 周，信息可能不准确，请询问管理员。";
+  }
+  if(!warn) return;
   var week = 7 * 24 * 60 * 60 * 1000;
   var now = Date.now();
   var oldest = 0;
@@ -123,18 +156,18 @@ function renderStaleBanner(list){
     if(t && (!oldest || t < oldest)) oldest = t;
   });
   if(!hasActive || !oldest){
-    el.style.display = "none";
-    el.innerHTML = "";
+    warn.style.display = "none";
+    warn.innerHTML = "";
     return;
   }
   if(now - oldest > week){
     var days = Math.floor((now - oldest) / (24 * 60 * 60 * 1000));
-    el.style.display = "block";
-    el.innerHTML =
-      "⚠️ 部分在途数据上次更新已超过 <b>" + days + " 天</b>，信息可能不准确，请联系管理员确认最新装柜/到港情况。";
+    warn.style.display = "block";
+    warn.innerHTML =
+      "⚠️ 部分在途数据上次更新已超过 <b>" + days + " 天</b>，请联系管理员确认最新装柜/到港情况。";
   } else {
-    el.style.display = "none";
-    el.innerHTML = "";
+    warn.style.display = "none";
+    warn.innerHTML = "";
   }
 }
 
@@ -216,7 +249,7 @@ function renderGroups(list){
       tr.innerHTML =
         '<td class="td-cno">' + (showC ? esc(cNo || "-") : "") + "</td>" +
         '<td class="td-code">' + esc(item.code || "") + "</td>" +
-        "<td>" + esc(item.color || "") + "</td>" +
+        "<td>" + esc(fmtColor(item.color)) + "</td>" +
         "<td>" + esc(item.spec || "") + "</td>" +
         '<td class="td-qty">' + (item.qty != null && item.qty !== "" ? item.qty : "-") + "</td>" +
         "<td>" + statusBadge(item.status) + "</td>" +
