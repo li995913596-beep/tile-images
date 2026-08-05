@@ -7,7 +7,7 @@ import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
   query, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { renderAdminList } from "./transit_render.js?v=20260805b";
+import { renderAdminList } from "./transit_render.js?v=20260805c";
 
 function $(id){ return document.getElementById(id); }
 
@@ -69,13 +69,25 @@ function rowFromExcel(obj){
         var raw = String(v).trim();
         if(raw && !out.remark) out.remark = raw;
       }
-    } else if(field === "eta" && typeof v === "number" && window.XLSX && XLSX.SSF){
-      try {
-        var d = XLSX.SSF.parse_date_code(v);
-        out.eta = d ? (d.y + "-" + String(d.m).padStart(2,"0") + "-" + String(d.d).padStart(2,"0")) : String(v);
-      } catch(e){ out.eta = String(v); }
+    } else if(field === "eta"){
+      if(typeof v === "number" && v > 20000 && v < 80000 && window.XLSX && XLSX.SSF){
+        try {
+          var d = XLSX.SSF.parse_date_code(v);
+          out.eta = d ? (d.y + "-" + String(d.m).padStart(2,"0") + "-" + String(d.d).padStart(2,"0")) : String(v);
+        } catch(e){ out.eta = String(v); }
+      } else if(Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v.getTime())){
+        out.eta = v.getFullYear() + "-" + String(v.getMonth()+1).padStart(2,"0") + "-" + String(v.getDate()).padStart(2,"0");
+      } else {
+        out.eta = String(v == null ? "" : v).trim();
+      }
+    } else if(field === "color" || field === "code" || field === "spec" || field === "remark" || field === "blNo" || field === "containerNo" || field === "brand" || field === "colorName" || field === "absorption" || field === "weight"){
+      if(Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v.getTime())){
+        out[field] = v.getFullYear() + "-" + String(v.getMonth()+1).padStart(2,"0") + "-" + String(v.getDate()).padStart(2,"0");
+      } else {
+        out[field] = String(v == null ? "" : v).trim();
+      }
     } else {
-      out[field] = String(v).trim();
+      out[field] = String(v == null ? "" : v).trim();
     }
   });
   return out;
@@ -88,7 +100,7 @@ window.importTransitExcel = async function(){
     if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请先选择 Excel 文件");
     if(typeof XLSX === "undefined") return alert("XLSX 未加载，请强制刷新页面 (Ctrl+Shift+R)");
 
-    var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array", cellDates: true });
+    var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array", cellDates: false });
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
     if(!rows.length) return alert("Excel 没有数据行");
 
