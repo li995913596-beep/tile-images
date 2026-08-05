@@ -7,7 +7,7 @@ import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
   query, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { renderAdminList } from "./transit_render.js?v=20260805c";
+import { renderAdminList } from "./transit_render.js?v=20260805d";
 
 function $(id){ return document.getElementById(id); }
 
