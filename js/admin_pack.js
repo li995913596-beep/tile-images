@@ -1,6 +1,6 @@
 /**
- * 包装信息扩展：每箱片数已有，补一箱多重(boxWeight)、包装(packaging)
- * 全部可空；主页由 query.js 自动拼接显示
+ * 包装信息扩展：一箱多重(boxWeight)、包装(packaging)
+ * 在 CDN admin 加载后强制往「新增」表单和「编辑」面板注入字段
  */
 import { db } from "./firebase.js";
 import {
@@ -8,11 +8,32 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
-function escAttr(s){
-  return String(s ?? "").replace(/&/g,"&").replace(/"/g,""").replace(/</g,"<").replace(/>/g,">");
+
+/** 新增表单：在「每箱片数」后面插入「一箱多重 / 包装」 */
+function ensureNewPackFields(){
+  var ppb = $("new_piecesPerBox");
+  if(!ppb) return;
+  if($("new_boxWeight")) return;
+
+  var wrap = document.createElement("div");
+  wrap.id = "new_pack_fields";
+  wrap.innerHTML =
+    '<div style="margin-top:8px;">一箱多重kg（可空）</div>' +
+    '<input id="new_boxWeight" type="number" step="0.01">' +
+    '<div style="margin-top:8px;">包装（可空）</div>' +
+    '<input id="new_packaging" placeholder="如纸箱">';
+
+  var next = ppb.nextSibling;
+  while(next && next.nodeType === 3) next = next.nextSibling;
+  if(next && next.parentNode === ppb.parentNode){
+    ppb.parentNode.insertBefore(wrap, next);
+  } else {
+    ppb.parentNode.appendChild(wrap);
+  }
+  console.log("admin_pack: 已注入新增表单 一箱多重/包装");
 }
 
-/** 在已渲染的编辑面板里注入「一箱多重 / 包装」输入框 */
+/** 编辑面板：在每箱片数后注入 */
 function injectEditPackFields(root){
   if(!root) return;
   root.querySelectorAll("[id^='edit_ppb_']").forEach(function(ppb){
@@ -26,11 +47,8 @@ function injectEditPackFields(root){
       '<input id="edit_bw_' + id + '" type="number" step="0.01" style="width:70px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">' +
       '<span style="font-size:12px;color:#666;">包装</span>' +
       '<input id="edit_pack_' + id + '" placeholder="如纸箱" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">';
-    if(btn){
-      ppb.parentNode.insertBefore(frag, btn);
-    } else {
-      ppb.parentNode.appendChild(frag);
-    }
+    if(btn) ppb.parentNode.insertBefore(frag, btn);
+    else ppb.parentNode.appendChild(frag);
     getDoc(doc(db, "inventory", id)).then(function(snap){
       if(!snap.exists()) return;
       var d = snap.data();
@@ -40,17 +58,6 @@ function injectEditPackFields(root){
       if(pk && d.packaging) pk.value = d.packaging;
     }).catch(function(){});
   });
-}
-
-/** 新增表单追加字段 */
-function ensureNewPackFields(){
-  var qty = $("new_qty");
-  if(!qty || $("new_boxWeight")) return;
-  var box = document.createElement("div");
-  box.innerHTML =
-    '<div>一箱多重kg（可空）</div><input id="new_boxWeight" type="number" step="0.01">' +
-    '<div>包装（可空）</div><input id="new_packaging" placeholder="如纸箱">';
-  qty.parentNode.insertBefore(box, qty);
 }
 
 window.saveEdit = async function(id){
@@ -249,6 +256,15 @@ function boot(){
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-setInterval(function(){ ensureNewPackFields(); watchInResult(); patchExport(); patchImport(); }, 2000);
 
-console.log("admin_pack.js ready");
+var tries = 0;
+var timer = setInterval(function(){
+  tries++;
+  ensureNewPackFields();
+  watchInResult();
+  patchExport();
+  patchImport();
+  if(($("new_boxWeight") && $("new_piecesPerBox")) || tries > 30) clearInterval(timer);
+}, 500);
+
+console.log("admin_pack.js ready v20260806b");
