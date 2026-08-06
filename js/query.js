@@ -22,6 +22,19 @@ function getReserveInfo(item){
   return { total, detail };
 }
 
+function formatPackLine(item){
+  var parts = [];
+  if(item.piecesPerBox != null && item.piecesPerBox !== "" && Number(item.piecesPerBox) > 0){
+    parts.push(Number(item.piecesPerBox) + "片/箱");
+  }
+  if(item.boxWeight != null && item.boxWeight !== "" && Number(item.boxWeight) > 0){
+    parts.push(Number(item.boxWeight) + "kg");
+  }
+  var pack = (item.packaging || "").toString().trim();
+  if(pack) parts.push(pack);
+  return parts.length ? parts.join(" · ") : "";
+}
+
 /* ================= 搜索函数 ================= */
 
 window.searchData = async function(){
@@ -139,7 +152,7 @@ function buildDesktop(list){
         <div class="img-col" onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}" loading="lazy" onerror="this.style.display='none'">
         </div>
-        <div>${item.code}</div>
+        <div>${item.code}${formatPackLine(item) ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${formatPackLine(item)}</div>` : ""}</div>
         <div>${item.spec||"-"}</div>
         <div>${item.color||"-"}</div>
         <div class="${item.stock<10?'low-stock':''}">
@@ -260,6 +273,7 @@ function buildMobile(list){
           <div style="font-size:13px;color:#555;margin-top:2px;">
             ${item.spec || "-"} | 色号 ${item.color}
           </div>
+          ${formatPackLine(item) ? `<div style="font-size:12px;color:#64748b;margin-top:3px;">${formatPackLine(item)}</div>` : ""}
 
           <div style="margin-top:6px;">
             ${reserveHtml}
