@@ -4,7 +4,8 @@ import {
   getDocs,
   query,
   where,
-  limit
+  limit,
+  startAfter
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* 汇总留货数量 + 客户明细 */
@@ -53,69 +54,89 @@ window.searchData = async function(){
     return;
   }
 
+  resultDiv.innerHTML = "<div style='padding:16px;color:#666;font-size:14px;'>搜索中…</div>";
+
   let list = [];
   const seen = new Set();
 
-  function addDocs(snap){
-    snap.forEach(doc=>{
-      if(seen.has(doc.id)) return;
-      seen.add(doc.id);
-      const item = doc.data();
-      const { total, detail } = getReserveInfo(item);
-      list.push({...item, reserved: total, reserveDetail: detail});
-    });
+  function addItem(docSnap){
+    if(seen.has(docSnap.id)) return;
+    seen.add(docSnap.id);
+    const item = docSnap.data();
+    if(item.hidden) return;
+    const { total, detail } = getReserveInfo(item);
+    list.push({...item, _id: docSnap.id, reserved: total, reserveDetail: detail});
   }
 
+  // 1) 精确匹配编号 / 规格
   try {
     const variants = [...new Set([raw, keyword, raw.toUpperCase()])];
-
     for (const v of variants) {
       const qCode = query(collection(db, "inventory"), where("code", "==", v));
-      addDocs(await getDocs(qCode));
-
+      (await getDocs(qCode)).forEach(addItem);
       const qSpec = query(collection(db, "inventory"), where("spec", "==", v));
-      addDocs(await getDocs(qSpec));
+      (await getDocs(qSpec)).forEach(addItem);
     }
   } catch (e) {
-    console.error("精确查询失败，改走模糊搜索:", e);
+    console.error("精确查询失败:", e);
   }
 
-  if (list.length === 0) {
-    const q = query(
-      collection(db, "inventory"),
-      limit(1000)
-    );
-
-    const snap = await getDocs(q);
-
-    snap.forEach(doc=>{
-      const item = doc.data();
-
-      const fullId = doc.id.toLowerCase();
-      const code = String(item.code || "").toLowerCase();
-      const spec = String(item.spec || "").toLowerCase();
-      const color = String(item.color || "").toLowerCase();
-      const warehouse = String(item.warehouse || "").toLowerCase();
-
-      if(
-        fullId.includes(keyword) ||
-        code.includes(keyword) ||
-        spec.includes(keyword) ||
-        color.includes(keyword) ||
-        warehouse.includes(keyword)
-      ){
-        if(seen.has(doc.id)) return;
-        seen.add(doc.id);
-        const { total, detail } = getReserveInfo(item);
-        list.push({...item, reserved: total, reserveDetail: detail});
-      }
-    });
+  // 2) 始终做模糊匹配：编号/规格/色号/仓库/文档ID 包含关键词
+  //    分页拉全量，避免只扫前 1000 条漏掉 NB62206 这类
+  try {
+    let lastDoc = null;
+    const pageSize = 500;
+    let pages = 0;
+    const maxPages = 40; // 最多约 20000 条，防止异常死循环
+    while (pages < maxPages) {
+      pages++;
+      const qAll = lastDoc
+        ? query(collection(db, "inventory"), limit(pageSize), startAfter(lastDoc))
+        : query(collection(db, "inventory"), limit(pageSize));
+      const snap = await getDocs(qAll);
+      if (snap.empty) break;
+      snap.forEach(docSnap => {
+        const item = docSnap.data();
+        const fullId = docSnap.id.toLowerCase();
+        const code = String(item.code || "").toLowerCase();
+        const spec = String(item.spec || "").toLowerCase();
+        const color = String(item.color || "").toLowerCase();
+        const warehouse = String(item.warehouse || "").toLowerCase();
+        if (
+          fullId.includes(keyword) ||
+          code.includes(keyword) ||
+          spec.includes(keyword) ||
+          color.includes(keyword) ||
+          warehouse.includes(keyword)
+        ) {
+          addItem(docSnap);
+        }
+      });
+      lastDoc = snap.docs[snap.docs.length - 1];
+      if (snap.size < pageSize) break;
+    }
+  } catch (e) {
+    console.error("模糊搜索失败:", e);
   }
 
   if(list.length===0){
     resultDiv.innerHTML="未找到库存 / No Inventory Found";
     return;
   }
+
+  // 排序：编号完全相等 > 编号包含关键词 > 其它；同组按编号
+  list.sort((a, b) => {
+    const ca = String(a.code || "").toLowerCase();
+    const cb = String(b.code || "").toLowerCase();
+    const score = (c) => {
+      if (c === keyword || c === raw.toLowerCase()) return 0;
+      if (c.includes(keyword)) return 1;
+      return 2;
+    };
+    const sa = score(ca), sb = score(cb);
+    if (sa !== sb) return sa - sb;
+    return ca.localeCompare(cb, "zh-CN");
+  });
 
   if(window.innerWidth <= 768){
     buildMobile(list);
@@ -322,6 +343,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultDiv = document.getElementById("result");
 
   btnSearch.addEventListener("click", window.searchData);
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      window.searchData();
+    }
+  });
 
   btnRefresh.addEventListener("click", () => {
     searchInput.value = "";
