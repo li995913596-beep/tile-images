@@ -1,5 +1,5 @@
 /**
- * 在途扩展：整票/整柜批量改状态
+ * 在途扩展：整票/整柜批量改状态 + 多人预定提示
  */
 import { db } from "./firebase.js";
 import {
@@ -138,12 +138,51 @@ function injectBulkStatusUI(){
   });
 }
 
+function enhanceReserveUI(){
+  var box = document.getElementById("transitList");
+  if(!box) return;
+  box.querySelectorAll("[id^='res_box_']").forEach(function(resBox){
+    if(resBox.__enhanced) return;
+    resBox.__enhanced = true;
+    var parent = resBox.parentNode;
+    if(!parent) return;
+    if(!parent.querySelector(".res-hint")){
+      var hint = document.createElement("div");
+      hint.className = "res-hint";
+      hint.style.cssText = "font-size:12px;color:#64748b;margin:0 0 6px;";
+      hint.textContent = "支持多人预定：点「+ 添加预定」继续加客户，全部填完后点「保存预定」。";
+      parent.insertBefore(hint, resBox);
+    }
+    resBox.querySelectorAll("[data-res-row]").forEach(function(row, i){
+      if(row.querySelector(".res-idx")) return;
+      var sp = document.createElement("span");
+      sp.className = "res-idx";
+      sp.style.cssText = "font-size:11px;color:#64748b;min-width:36px;";
+      sp.textContent = "#" + (i + 1);
+      row.style.alignItems = "center";
+      row.insertBefore(sp, row.firstChild);
+    });
+    if(!resBox.querySelector("[data-res-row]")){
+      var id = (resBox.id || "").replace("res_box_", "");
+      if(id && window.addResRow) window.addResRow(id);
+    }
+  });
+  box.querySelectorAll(".btn-add-res").forEach(function(btn){
+    if(btn.__styled) return;
+    btn.__styled = true;
+    btn.style.cssText = (btn.style.cssText || "") + ";background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:5px 12px;border-radius:6px;font-weight:600;cursor:pointer;";
+    if(!(btn.textContent || "").includes("多人")){
+      btn.textContent = "+ 添加预定（多人）";
+    }
+  });
+}
+
 function renderAdminList(list){
   _renderAdminList(list);
-  setTimeout(injectBulkStatusUI, 0);
-  setTimeout(injectBulkStatusUI, 200);
+  setTimeout(function(){ injectBulkStatusUI(); enhanceReserveUI(); }, 0);
+  setTimeout(function(){ injectBulkStatusUI(); enhanceReserveUI(); }, 200);
 }
 window.renderAdminList = renderAdminList;
 export { renderAdminList };
 
-console.log("transit_status.js ready: bulk status by BL/container");
+console.log("transit_status.js ready: bulk status + multi reserve");
