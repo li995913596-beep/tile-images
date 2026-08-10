@@ -7,7 +7,7 @@ import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
   query, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { renderAdminList } from "./transit_status.js?v=20260810a";
+import { renderAdminList } from "./transit_status.js?v=20260810b";
 
 function $(id){ return document.getElementById(id); }
 
@@ -178,38 +178,54 @@ window.saveTransitReservations = async function(id){
   try {
     if(!auth.currentUser) return alert("请先登录");
     var box = $("res_box_" + id);
-    if(!box) return;
+    if(!box) return alert("找不到预定编辑区，请先点「编辑」展开");
     var list = [];
+    var incomplete = 0;
     box.querySelectorAll("[data-res-row]").forEach(function(row){
       var qtyEl = row.querySelector(".res-qty");
       var cusEl = row.querySelector(".res-customer");
       var qty = Number((qtyEl && qtyEl.value) || 0);
       var customer = ((cusEl && cusEl.value) || "").trim();
-      if(qty > 0 && customer) list.push({ qty: qty, customer: customer });
+      if(qty > 0 && customer){
+        list.push({ qty: qty, customer: customer });
+      } else if(qty > 0 || customer){
+        incomplete++;
+      }
     });
+    if(incomplete) return alert("有 " + incomplete + " 行预定不完整（数量和客户名都要填）");
+    var total = list.reduce(function(s, r){ return s + Number(r.qty || 0); }, 0);
+    var tip = list.length
+      ? ("共 " + list.length + " 人预定，合计 " + total + "：\n" + list.map(function(r){ return r.customer + " ×" + r.qty; }).join("\n"))
+      : "将清空该编号的全部预定";
+    if(!confirm("确认保存预定？\n" + tip)) return;
     await updateDoc(doc(db, "in_transit", id), {
       reservations: list,
       updatedAt: serverTimestamp()
     });
-    alert("预定已保存");
+    alert(list.length ? ("预定已保存（" + list.length + " 人）") : "已清空预定");
     if(window.reloadTransitAdmin) window.reloadTransitAdmin();
   } catch(e){
+    console.error(e);
     alert("保存失败：" + ((e && e.message) || e));
   }
 };
 
 window.addResRow = function(id){
   var box = $("res_box_" + id);
-  if(!box) return;
+  if(!box) return alert("请先点「编辑」展开预定区域");
   var div = document.createElement("div");
   div.setAttribute("data-res-row", "1");
-  div.style.cssText = "display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;";
+  div.style.cssText = "display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;align-items:center;";
+  var n = box.querySelectorAll("[data-res-row]").length + 1;
   div.innerHTML =
-    '<input class="res-qty" type="number" placeholder="数量" style="width:80px;padding:4px 6px;">' +
-    '<input class="res-customer" placeholder="客户名" style="flex:1;min-width:100px;padding:4px 6px;">' +
-    '<button type="button" style="padding:4px 8px;">删</button>';
+    '<span style="font-size:11px;color:#64748b;min-width:36px;">#' + n + "</span>" +
+    '<input class="res-qty" type="number" placeholder="数量" style="width:80px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;">' +
+    '<input class="res-customer" placeholder="客户名 / 业务员" style="flex:1;min-width:120px;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;">' +
+    '<button type="button" style="padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;">删</button>';
   div.querySelector("button").onclick = function(){ div.remove(); };
   box.appendChild(div);
+  var cus = div.querySelector(".res-customer");
+  if(cus) cus.focus();
 };
 
 window.deleteTransitItem = async function(id){
@@ -264,8 +280,8 @@ function ensureTransitUI(){
   });
   var filter = $("transitFilter");
   if(filter && !filter.__bound){
-    filter.__bound = true;
     filter.onchange = function(){ window.reloadTransitAdmin(); };
+    filter.__bound = true;
   }
   var search = $("transitSearch");
   if(search && !search.__bound){
