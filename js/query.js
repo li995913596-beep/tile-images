@@ -3,7 +3,6 @@ import {
   collection,
   getDocs,
   query,
-  where,
   limit,
   startAfter
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -36,10 +35,72 @@ function formatPackLine(item){
   return parts.length ? parts.join(" · ") : "";
 }
 
-/* ================= 搜索函数 ================= */
+/* ================= 内存缓存：少读 Firebase + 搜索更快 ================= */
+/** 缓存有效期 5 分钟：过期后下一次搜索再拉一次全库 */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let invCache = null;   // { items, loadedAt }
+let invLoading = null; // 进行中的 Promise，避免并发重复拉取
+
+async function fetchAllInventory(){
+  const pageSize = 500;
+  const maxPages = 40;
+  let lastDoc = null;
+  const items = [];
+  for (let pages = 0; pages < maxPages; pages++) {
+    const qAll = lastDoc
+      ? query(collection(db, "inventory"), limit(pageSize), startAfter(lastDoc))
+      : query(collection(db, "inventory"), limit(pageSize));
+    const snap = await getDocs(qAll);
+    if (snap.empty) break;
+    snap.forEach(docSnap => {
+      const item = docSnap.data();
+      if (item.hidden) return;
+      const { total, detail } = getReserveInfo(item);
+      items.push({
+        ...item,
+        _id: docSnap.id,
+        reserved: total,
+        reserveDetail: detail,
+        _code: String(item.code || "").toLowerCase(),
+        _spec: String(item.spec || "").toLowerCase(),
+        _color: String(item.color || "").toLowerCase(),
+        _warehouse: String(item.warehouse || "").toLowerCase(),
+        _fullId: String(docSnap.id).toLowerCase()
+      });
+    });
+    lastDoc = snap.docs[snap.docs.length - 1];
+    if (snap.size < pageSize) break;
+  }
+  return items;
+}
+
+/** force=true 强制重新从 Firebase 拉；否则优先用内存缓存 */
+async function getInventory(force){
+  const now = Date.now();
+  if (!force && invCache && (now - invCache.loadedAt) < CACHE_TTL_MS) {
+    return invCache.items;
+  }
+  if (invLoading) return invLoading;
+  invLoading = (async () => {
+    try {
+      const items = await fetchAllInventory();
+      invCache = { items, loadedAt: Date.now() };
+      console.log("库存缓存已更新，共", items.length, "条，有效", CACHE_TTL_MS / 60000, "分钟");
+      return items;
+    } finally {
+      invLoading = null;
+    }
+  })();
+  return invLoading;
+}
+
+window.clearInventoryCache = function(){
+  invCache = null;
+};
+
+/* ================= 搜索：有缓存时纯前端过滤，几乎不耗额度 ================= */
 
 window.searchData = async function(){
-
   const searchInput = document.getElementById("searchInput");
   const resultDiv = document.getElementById("result");
 
@@ -49,78 +110,34 @@ window.searchData = async function(){
   const keyword = raw.toLowerCase();
   resultDiv.innerHTML = "";
 
-  if(!raw){
+  if (!raw) {
     resultDiv.innerHTML = "请输入编号或规格 / Please enter Code or Size";
     return;
   }
 
-  resultDiv.innerHTML = "<div style='padding:16px;color:#666;font-size:14px;'>搜索中…</div>";
+  const hasCache = invCache && (Date.now() - invCache.loadedAt) < CACHE_TTL_MS;
+  resultDiv.innerHTML = hasCache
+    ? "<div style='padding:16px;color:#666;font-size:14px;'>搜索中…</div>"
+    : "<div style='padding:16px;color:#666;font-size:14px;'>首次加载库存数据，稍候…</div>";
 
   let list = [];
-  const seen = new Set();
-
-  function addItem(docSnap){
-    if(seen.has(docSnap.id)) return;
-    seen.add(docSnap.id);
-    const item = docSnap.data();
-    if(item.hidden) return;
-    const { total, detail } = getReserveInfo(item);
-    list.push({...item, _id: docSnap.id, reserved: total, reserveDetail: detail});
-  }
-
-  // 1) 精确匹配编号 / 规格
   try {
-    const variants = [...new Set([raw, keyword, raw.toUpperCase()])];
-    for (const v of variants) {
-      const qCode = query(collection(db, "inventory"), where("code", "==", v));
-      (await getDocs(qCode)).forEach(addItem);
-      const qSpec = query(collection(db, "inventory"), where("spec", "==", v));
-      (await getDocs(qSpec)).forEach(addItem);
-    }
+    const all = await getInventory(false);
+    list = all.filter(item =>
+      item._fullId.includes(keyword) ||
+      item._code.includes(keyword) ||
+      item._spec.includes(keyword) ||
+      item._color.includes(keyword) ||
+      item._warehouse.includes(keyword)
+    );
   } catch (e) {
-    console.error("精确查询失败:", e);
+    console.error("搜索失败:", e);
+    resultDiv.innerHTML = "搜索失败，请稍后重试";
+    return;
   }
 
-  // 2) 始终做模糊匹配：编号/规格/色号/仓库/文档ID 包含关键词
-  //    分页拉全量，避免只扫前 1000 条漏掉 NB62206 这类
-  try {
-    let lastDoc = null;
-    const pageSize = 500;
-    let pages = 0;
-    const maxPages = 40; // 最多约 20000 条，防止异常死循环
-    while (pages < maxPages) {
-      pages++;
-      const qAll = lastDoc
-        ? query(collection(db, "inventory"), limit(pageSize), startAfter(lastDoc))
-        : query(collection(db, "inventory"), limit(pageSize));
-      const snap = await getDocs(qAll);
-      if (snap.empty) break;
-      snap.forEach(docSnap => {
-        const item = docSnap.data();
-        const fullId = docSnap.id.toLowerCase();
-        const code = String(item.code || "").toLowerCase();
-        const spec = String(item.spec || "").toLowerCase();
-        const color = String(item.color || "").toLowerCase();
-        const warehouse = String(item.warehouse || "").toLowerCase();
-        if (
-          fullId.includes(keyword) ||
-          code.includes(keyword) ||
-          spec.includes(keyword) ||
-          color.includes(keyword) ||
-          warehouse.includes(keyword)
-        ) {
-          addItem(docSnap);
-        }
-      });
-      lastDoc = snap.docs[snap.docs.length - 1];
-      if (snap.size < pageSize) break;
-    }
-  } catch (e) {
-    console.error("模糊搜索失败:", e);
-  }
-
-  if(list.length===0){
-    resultDiv.innerHTML="未找到库存 / No Inventory Found";
+  if (list.length === 0) {
+    resultDiv.innerHTML = "未找到库存 / No Inventory Found";
     return;
   }
 
@@ -138,9 +155,9 @@ window.searchData = async function(){
     return ca.localeCompare(cb, "zh-CN");
   });
 
-  if(window.innerWidth <= 768){
+  if (window.innerWidth <= 768) {
     buildMobile(list);
-  }else{
+  } else {
     buildDesktop(list);
   }
 };
@@ -336,24 +353,29 @@ function buildMobile(list){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-
   const btnSearch = document.getElementById("btnSearch");
   const btnRefresh = document.getElementById("btnRefresh");
   const searchInput = document.getElementById("searchInput");
   const resultDiv = document.getElementById("result");
 
-  btnSearch.addEventListener("click", window.searchData);
+  if (btnSearch) btnSearch.addEventListener("click", window.searchData);
 
-  searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      window.searchData();
-    }
-  });
+  if (searchInput) {
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        window.searchData();
+      }
+    });
+  }
 
-  btnRefresh.addEventListener("click", () => {
-    searchInput.value = "";
-    resultDiv.innerHTML = "";
-  });
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      if (searchInput) searchInput.value = "";
+      if (resultDiv) resultDiv.innerHTML = "";
+    });
+  }
 
+  // 页面打开后后台预加载库存，第一次搜索也会更快
+  getInventory(false).catch(e => console.warn("预加载库存失败:", e));
 });
