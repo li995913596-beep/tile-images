@@ -36,8 +36,8 @@ function formatPackLine(item){
 }
 
 /* ================= 内存缓存：少读 Firebase + 搜索更快 ================= */
-/** 缓存有效期 5 分钟：过期后下一次搜索再拉一次全库 */
-const CACHE_TTL_MS = 5 * 60 * 1000;
+/** 缓存有效期 4 小时：白天库存很少变，过期或点「刷新」再拉全库 */
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 let invCache = null;   // { items, loadedAt }
 let invLoading = null; // 进行中的 Promise，避免并发重复拉取
 
@@ -80,12 +80,13 @@ async function getInventory(force){
   if (!force && invCache && (now - invCache.loadedAt) < CACHE_TTL_MS) {
     return invCache.items;
   }
+  if (force) invCache = null;
   if (invLoading) return invLoading;
   invLoading = (async () => {
     try {
       const items = await fetchAllInventory();
       invCache = { items, loadedAt: Date.now() };
-      console.log("库存缓存已更新，共", items.length, "条，有效", CACHE_TTL_MS / 60000, "分钟");
+      console.log("库存缓存已更新，共", items.length, "条，有效", (CACHE_TTL_MS / 3600000), "小时");
       return items;
     } finally {
       invLoading = null;
@@ -370,9 +371,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (btnRefresh) {
-    btnRefresh.addEventListener("click", () => {
+    btnRefresh.addEventListener("click", async () => {
       if (searchInput) searchInput.value = "";
-      if (resultDiv) resultDiv.innerHTML = "";
+      if (resultDiv) {
+        resultDiv.innerHTML = "<div style='padding:16px;color:#666;font-size:14px;'>正在从服务器刷新库存…</div>";
+      }
+      try {
+        window.clearInventoryCache();
+        const items = await getInventory(true);
+        if (resultDiv) {
+          resultDiv.innerHTML = "<div style='padding:16px;color:#16a34a;font-size:14px;'>库存已刷新（共 " + items.length + " 条），有效约 4 小时。请重新查询。</div>";
+        }
+      } catch (e) {
+        console.error(e);
+        if (resultDiv) {
+          resultDiv.innerHTML = "<div style='padding:16px;color:#b91c1c;font-size:14px;'>刷新失败，请稍后重试</div>";
+        }
+      }
     });
   }
 
