@@ -87,6 +87,7 @@ async function getInventory(force){
       const items = await fetchAllInventory();
       invCache = { items, loadedAt: Date.now() };
       console.log("库存缓存已更新，共", items.length, "条，有效", (CACHE_TTL_MS / 3600000), "小时");
+      try { showReserveOverdueBanner(items); } catch(e){ console.warn(e); }
       return items;
     } finally {
       invLoading = null;
@@ -98,6 +99,57 @@ async function getInventory(force){
 window.clearInventoryCache = function(){
   invCache = null;
 };
+
+function parseReserveAt(at){
+  if(at == null || at === "") return null;
+  try {
+    if(at.toDate) return at.toDate();
+    var d = new Date(at);
+    return isNaN(d.getTime()) ? null : d;
+  } catch(e){ return null; }
+}
+
+function collectOverdueReserves(items){
+  var overdue = [];
+  (items || []).forEach(function(item){
+    (item.reservedList || []).forEach(function(r){
+      if(!r || !(Number(r.qty || 0) > 0)) return;
+      var d = parseReserveAt(r.at);
+      if(!d) return;
+      var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if(days >= 30){
+        overdue.push({
+          code: item.code || "",
+          customer: r.customer || "未填",
+          qty: r.qty,
+          days: days
+        });
+      }
+    });
+  });
+  overdue.sort(function(a, b){ return b.days - a.days; });
+  return overdue;
+}
+
+function showReserveOverdueBanner(items){
+  var el = document.getElementById("reserveBanner");
+  if(!el) return;
+  var overdue = collectOverdueReserves(items);
+  if(!overdue.length){
+    el.style.display = "none";
+    el.innerHTML = "";
+    return;
+  }
+  var lines = overdue.slice(0, 8).map(function(o){
+    return "· " + o.code + " / " + o.customer + " ×" + o.qty + "（已留 " + o.days + " 天）";
+  }).join("<br>");
+  if(overdue.length > 8) lines += "<br>…还有 " + (overdue.length - 8) + " 笔";
+  el.style.display = "block";
+  el.innerHTML =
+    '<div style="font-weight:700;margin-bottom:6px;">⚠ 有 ' + overdue.length +
+    ' 笔留货已超过 30 天，请联系管理员处理</div>' +
+    '<div style="font-size:13px;opacity:0.95;">' + lines + "</div>";
+}
 
 /* ================= 搜索：有缓存时纯前端过滤，几乎不耗额度 ================= */
 
@@ -391,6 +443,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 页面打开后后台预加载库存，第一次搜索也会更快
-  getInventory(false).catch(e => console.warn("预加载库存失败:", e));
+  // 页面打开后后台预加载库存，并检查超期留货横幅
+  getInventory(false)
+    .then(function(items){ try { showReserveOverdueBanner(items); } catch(e){} })
+    .catch(e => console.warn("预加载库存失败:", e));
 });
