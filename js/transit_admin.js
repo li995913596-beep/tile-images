@@ -265,11 +265,95 @@ window.reloadTransitAdmin = async function(){
   }
 };
 
+window.exportTransit = async function(){
+  try {
+    if(typeof XLSX === "undefined") return alert("XLSX 未加载，请强制刷新页面");
+    var list = await loadList();
+    var filter = ($("transitFilter") && $("transitFilter").value) || "active";
+    var kw = (($("transitSearch") && $("transitSearch").value) || "").trim().toLowerCase();
+    var filtered = list.filter(function(item){
+      var st = item.status || "在途";
+      if(filter === "active" && st !== "在途" && st !== "已到港") return false;
+      if(filter === "history" && st !== "已入库" && st !== "取消") return false;
+      if(filter !== "active" && filter !== "history" && filter !== "all" && st !== filter) return false;
+      if(kw){
+        var hay = [item.blNo, item.containerNo, item.code, item.color, item.spec, item.remark]
+          .map(function(x){ return String(x || "").toLowerCase(); }).join(" ");
+        if(hay.indexOf(kw) < 0) return false;
+      }
+      return true;
+    });
+    if(!filtered.length) return alert("当前筛选条件下没有可导出的在途记录");
+    function fmtEta(v){
+      if(v == null || v === "") return "";
+      try {
+        if(v && v.toDate) v = v.toDate();
+        var d = (v instanceof Date) ? v : new Date(v);
+        if(!isNaN(d.getTime()) && d.getFullYear() > 1990){
+          function p(n){ return String(n).padStart(2,"0"); }
+          return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+        }
+      } catch(e){}
+      return String(v);
+    }
+    function fmtRes(arr){
+      if(!Array.isArray(arr) || !arr.length) return "";
+      return arr.map(function(r){
+        return (r.customer || "") + "×" + (r.qty || 0);
+      }).join("；");
+    }
+    function fmtUp(v){
+      if(!v) return "";
+      try {
+        var d = v.toDate ? v.toDate() : new Date(v);
+        if(isNaN(d.getTime())) return "";
+        function p(n){ return String(n).padStart(2,"0"); }
+        return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      } catch(e){ return ""; }
+    }
+    var rows = filtered.map(function(item){
+      return {
+        "提单号": item.blNo || "",
+        "柜号": item.containerNo || "",
+        "型号": item.code || "",
+        "色号": item.color || "",
+        "规格": item.spec || "",
+        "数量": Number(item.qty || 0),
+        "状态": item.status || "在途",
+        "预计到港": fmtEta(item.eta),
+        "备注": item.remark || "",
+        "预定": fmtRes(item.reservations),
+        "吸水率": item.absorption || "",
+        "牌子": item.brand || "",
+        "颜色": item.colorName || "",
+        "重量": item.weight || "",
+        "片数": item.pieces || "",
+        "更新时间": fmtUp(item.updatedAt)
+      };
+    });
+    rows.sort(function(a, b){
+      return String(a["提单号"]).localeCompare(String(b["提单号"]), "zh-CN")
+        || String(a["柜号"]).localeCompare(String(b["柜号"]), "zh-CN")
+        || String(a["型号"]).localeCompare(String(b["型号"]), "zh-CN");
+    });
+    var headers = ["提单号","柜号","型号","色号","规格","数量","状态","预计到港","备注","预定","吸水率","牌子","颜色","重量","片数","更新时间"];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows, { header: headers }), "在途货物");
+    var name = "在途货物_" + new Date().toISOString().split("T")[0] + ".xlsx";
+    XLSX.writeFile(wb, name);
+    alert("导出成功！共 " + rows.length + " 条\n（按当前筛选/搜索）");
+  } catch(e){
+    console.error(e);
+    alert("导出失败：" + ((e && e.message) || e));
+  }
+};
+
 function ensureTransitUI(){
   var pairs = [
     ["btnTransitImport", function(){ window.importTransitExcel(); }],
     ["btnTransitAdd", function(){ window.addTransitManual(); }],
-    ["btnTransitReload", function(){ window.reloadTransitAdmin(); }]
+    ["btnTransitReload", function(){ window.reloadTransitAdmin(); }],
+    ["btnTransitExport", function(){ window.exportTransit(); }]
   ];
   pairs.forEach(function(pair){
     var el = $(pair[0]);
