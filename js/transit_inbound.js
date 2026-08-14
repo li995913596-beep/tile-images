@@ -9,6 +9,16 @@ import {
 
 function $(id){ return document.getElementById(id); }
 
+/** 规格统一：600*1200*9.0 -> 600x1200（去掉厚度，* 改 x） */
+function normalizeSpec(s){
+  s = String(s == null ? "" : s).trim();
+  if(!s) return "";
+  s = s.replace(/[＊×✕✖*]/g, "x").replace(/X/g, "x").replace(/\s+/g, "");
+  var parts = s.split("x").filter(function(p){ return p !== ""; });
+  if(parts.length >= 2) return parts[0] + "x" + parts[1];
+  return s;
+}
+
 function esc(s){
   return String(s == null ? "" : s);
 }
@@ -93,7 +103,7 @@ window.loadInboundPreview = async function(){
       html += '<tr style="border-bottom:1px solid #f1f5f9;">' +
         '<td style="padding:6px;"><input id="ib_code_' + idx + '" value="' + esc(it.code||"") + '" style="width:100px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_color_' + idx + '" value="' + esc(it.color||"") + '" style="width:80px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
-        '<td style="padding:6px;"><input id="ib_spec_' + idx + '" value="' + esc(it.spec||"") + '" style="width:90px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
+        '<td style="padding:6px;"><input id="ib_spec_' + idx + '" value="' + esc(normalizeSpec(it.spec||"")) + '" style="width:90px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_qty_' + idx + '" type="number" step="0.01" value="' + esc(it.qty||0) + '" style="width:70px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_dmgbox_' + idx + '" type="number" step="0.01" min="0" value="0" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_dmgpc_' + idx + '" type="number" step="1" min="0" value="0" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
@@ -103,7 +113,7 @@ window.loadInboundPreview = async function(){
         '</tr>';
     });
     html += '</tbody></table></div>';
-    html += '<div style="margin-top:10px;font-size:12px;color:#64748b;">共 ' + rows.length + ' 行。实入 = 数量 − 损坏箱 − 损坏片÷片/箱。包装默认取箱单「牌子」。整柜一次入完。</div>';
+    html += '<div style="margin-top:10px;font-size:12px;color:#64748b;">共 ' + rows.length + ' 行。规格自动规范成 600x1200。实入 = 数量 − 损坏。包装默认取箱单「牌子」。</div>';
     box.innerHTML = html;
   } catch(e){
     console.error(e);
@@ -123,7 +133,7 @@ window.confirmInboundContainer = async function(){
   for(var i = 0; i < inboundCache.length; i++){
     var code = (($("ib_code_"+i) && $("ib_code_"+i).value) || "").trim();
     var color = (($("ib_color_"+i) && $("ib_color_"+i).value) || "").trim();
-    var spec = (($("ib_spec_"+i) && $("ib_spec_"+i).value) || "").trim();
+    var spec = normalizeSpec((($("ib_spec_"+i) && $("ib_spec_"+i).value) || "").trim());
     var qty = Number(($("ib_qty_"+i) && $("ib_qty_"+i).value) || 0);
     var dmgBox = Number(($("ib_dmgbox_"+i) && $("ib_dmgbox_"+i).value) || 0);
     var dmgPc = Number(($("ib_dmgpc_"+i) && $("ib_dmgpc_"+i).value) || 0);
@@ -275,7 +285,7 @@ function boot(){
     if(hookShowTab() || n > 50) clearInterval(t);
   }, 200);
   setInterval(bindInboundUI, 2000);
-  console.log("transit_inbound.js ready v20260814h");
+  console.log("transit_inbound.js ready v20260814i");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
