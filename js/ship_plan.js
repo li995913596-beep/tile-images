@@ -1,5 +1,5 @@
 /**
- * 出货计划
+ * 出货计划：搜索显示库存/留货/可出，防误出留货
  */
 import { db } from "./firebase.js";
 import {
@@ -30,13 +30,31 @@ async function searchInventoryLikeFrontend(raw){
     seen.add(docSnap.id);
     var item = docSnap.data();
     if(item.hidden) return;
+    var rlist = Array.isArray(item.reservedList) ? item.reservedList : [];
+    var reserved = 0;
+    var detailParts = [];
+    for(var ri = 0; ri < rlist.length; ri++){
+      var r = rlist[ri];
+      if(!r) continue;
+      var rq = Number(r.qty || 0);
+      reserved += rq;
+      if(r.customer || rq){
+        detailParts.push((r.customer || "未填客户") + "(" + rq + ")");
+      }
+    }
+    var stock = Number(item.stock || 0);
+    var available = stock - reserved;
+    if(available < 0) available = 0;
     list.push({
       id: docSnap.id,
       code: item.code || "",
       spec: item.spec || "",
       color: item.color || "",
       warehouse: item.warehouse || "",
-      stock: Number(item.stock || 0)
+      stock: stock,
+      reserved: reserved,
+      reserveDetail: detailParts.join("、"),
+      available: available
     });
   }
 
@@ -114,7 +132,7 @@ function renderSearchResults(items){
   }
   box.innerHTML = items.map(function(item, idx){
     var st = warehouseStyle(item.warehouse);
-    var stockColor = item.stock === 0 ? "#ef4444" : (item.stock < 10 ? "#f59e0b" : "#16a34a");
+    var availColor = item.available <= 0 ? "#ef4444" : (item.available < 10 ? "#f59e0b" : "#16a34a");
     return (
       '<div style="background:' + st.bg + ';padding:12px 14px;border-radius:12px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">' +
         '<div style="flex:1;min-width:160px;">' +
@@ -125,7 +143,11 @@ function renderSearchResults(items){
         '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
           '<span style="font-size:12px;padding:4px 10px;border-radius:999px;background:' + st.tag + ';color:' + st.tc + ';font-weight:600;">' +
             esc(item.warehouse || "-") + '</span>' +
-          '<span style="font-size:15px;font-weight:700;color:' + stockColor + ';">库存 ' + item.stock + '</span>' +
+          '<span style="font-size:13px;color:#64748b;">库存 ' + item.stock + '</span>' +
+          (item.reserved > 0
+            ? '<span style="font-size:13px;font-weight:700;color:#b45309;" title="' + esc(item.reserveDetail || "") + '">留货 ' + item.reserved + (item.reserveDetail ? " · " + esc(item.reserveDetail) : "") + '</span>'
+            : '<span style="font-size:12px;color:#94a3b8;">无留货</span>') +
+          '<span style="font-size:15px;font-weight:700;color:' + availColor + ';">可出 ' + item.available + '</span>' +
           '<input id="sp_qty_' + idx + '" type="number" min="0" step="0.01" placeholder="出货数" style="width:88px;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px;">' +
           '<button type="button" data-sp-add="' + idx + '" style="padding:6px 14px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">加入计划</button>' +
         '</div>' +
@@ -142,8 +164,12 @@ function renderSearchResults(items){
       var qtyEl = $("sp_qty_" + i);
       var qty = Number(qtyEl && qtyEl.value);
       if(!qty || qty <= 0) return alert("请填写出货数量");
-      if(qty > item.stock){
-        if(!confirm("出货数量 " + qty + " 大于库存 " + item.stock + "，仍要加入？")) return;
+      if(qty > item.available){
+        var msg = "出货数量 " + qty + " 大于可出 " + item.available +
+          "（库存 " + item.stock + "，留货 " + item.reserved +
+          (item.reserveDetail ? "：" + item.reserveDetail : "") + "）。\n" +
+          "强行加入可能把别人的留货出掉，确定？";
+        if(!confirm(msg)) return;
       }
       planLines.push({
         id: item.id,
@@ -152,6 +178,8 @@ function renderSearchResults(items){
         color: item.color,
         warehouse: item.warehouse,
         stock: item.stock,
+        reserved: item.reserved,
+        available: item.available,
         qty: qty
       });
       renderPlanLines();
@@ -176,6 +204,7 @@ function renderPlanLines(){
         '<span>色号 <b>' + esc(line.color || "-") + '</b></span>' +
         '<span style="font-size:12px;padding:2px 8px;border-radius:999px;background:#e5e7eb;">' + esc(line.warehouse || "-") + '</span>' +
         '<span style="font-weight:700;color:#0f766e;">× ' + line.qty + '</span>' +
+        (line.reserved > 0 ? '<span style="font-size:12px;color:#b45309;">(留货' + line.reserved + '/可出' + line.available + ')</span>' : '') +
         '<button type="button" data-sp-del="' + idx + '" style="margin-left:auto;padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;">移除</button>' +
       '</div>'
     );
@@ -288,7 +317,7 @@ function buildShipPlanUI(){
   tab.dataset.built = "1";
   tab.innerHTML =
     '<h3 style="margin:0 0 12px;font-size:16px;color:#1f2937;">出货计划</h3>' +
-    '<p style="font-size:13px;color:#666;margin:0 0 14px;line-height:1.5;">搜索库存选砖（显示仓库/色号/数量，无图片）→ 填客户与付款 → 生成文案一键复制。不扣库存。</p>' +
+    '<p style="font-size:13px;color:#666;margin:0 0 14px;line-height:1.5;">搜索显示：库存 / 留货（含客户）/ 可出（库存−留货）。加入时超过可出会强提醒。不扣库存。</p>' +
     '<div style="display:grid;gap:12px;margin-bottom:14px;">' +
       '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">' +
         '<label style="font-size:13px;">日期 <input id="sp_date" value="' + todayStr() + '" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;width:130px;"></label>' +
@@ -378,7 +407,7 @@ function boot(){
     if(n > 80) clearInterval(t);
   }, 250);
   setInterval(ensureShipVisible, 800);
-  console.log("ship_plan.js ready v20260814d");
+  console.log("ship_plan.js ready v20260814f");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
