@@ -68,7 +68,7 @@
         <input id="tm_container" placeholder="柜号" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_code" placeholder="型号/编号*" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_color" placeholder="色号(可空)" style="width:90px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
-        <input id="tm_spec" placeholder="规格" style="width:100px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
+        <input id="tm_spec" placeholder="规格 如 600x1200" style="width:100px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_qty" type="number" placeholder="数量" style="width:80px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_eta" placeholder="预计到港" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
         <input id="tm_remark" placeholder="备注" style="width:140px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;">
@@ -83,7 +83,7 @@
     <div style="padding:14px;border-radius:12px;background:#fef3c7;border:1px solid #fcd34d;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#92400e;font-size:14px;">📦 整柜一键入库</div>
       <div style="font-size:12px;color:#78716c;margin-bottom:10px;line-height:1.5;">
-        卸货后选柜号 + 仓库，可改编号/色号/规格/数量；可填损坏箱数和损坏片数（实入=数量−损坏）。片数/箱重从箱单带入；包装默认取箱单「牌子」。整柜一次入完，行状态变「已入库」。
+        卸货后选柜号 + 仓库。规格自动规范成 600x1200（去掉厚度）。包装默认取箱单「牌子」。整柜一次入完。
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
         <select id="inbound_container" style="min-width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
@@ -157,7 +157,7 @@
 <script type="module" src="https://cdn.jsdelivr.net/gh/li995913596-beep/tile-images@201b31cfc9a8fcd1b0f1ed6e9bd2f8a89598f9bf/js/ship_plan.js"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
 <script type="module" src="js/transit_admin.js?v=20260813a"></script>
-<script type="module" src="js/transit_inbound.js?v=20260814h"></script>
+<script type="module" src="js/transit_inbound.js?v=20260814i"></script>
 
 </body>
 </html>
