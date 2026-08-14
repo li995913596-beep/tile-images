@@ -80,6 +80,29 @@
       </div>
     </div>
 
+    <div style="padding:14px;border-radius:12px;background:#fef3c7;border:1px solid #fcd34d;margin-bottom:14px;">
+      <div style="font-weight:600;margin-bottom:8px;color:#92400e;font-size:14px;">📦 整柜一键入库</div>
+      <div style="font-size:12px;color:#78716c;margin-bottom:10px;line-height:1.5;">
+        卸货后选柜号 + 仓库，可改编号/色号/规格/数量；可填损坏箱数和损坏片数（实入=数量−损坏）。片数/箱重从箱单带入。整柜一次入完，行状态变「已入库」。
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+        <select id="inbound_container" style="min-width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
+          <option value="">请选择柜号</option>
+        </select>
+        <button type="button" id="btnInboundLoadContainers" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">刷新柜号</button>
+        <select id="inbound_warehouse" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
+          <option value="">选择仓库</option>
+          <option value="k38">k38</option>
+          <option value="k39">k39</option>
+          <option value="1">1</option>
+          <option value="c9">c9</option>
+        </select>
+        <button type="button" id="btnInboundPreview" style="padding:7px 14px;border:none;border-radius:8px;background:#d97706;color:#fff;cursor:pointer;font-weight:600;">加载明细</button>
+        <button type="button" id="btnInboundConfirm" style="padding:7px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">确认整柜入库</button>
+      </div>
+      <div id="inbound_preview"></div>
+    </div>
+
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
       <input id="transitSearch" placeholder="搜索编号/柜号/提单" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
       <select id="transitFilter" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
@@ -130,10 +153,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="js/admin.js?v=20260814f"></script>
+<script type="module" src="js/admin.js?v=20260814g"></script>
 <script type="module" src="https://cdn.jsdelivr.net/gh/li995913596-beep/tile-images@201b31cfc9a8fcd1b0f1ed6e9bd2f8a89598f9bf/js/ship_plan.js"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
 <script type="module" src="js/transit_admin.js?v=20260813a"></script>
+<script type="module" src="js/transit_inbound.js?v=20260814g"></script>
 
 </body>
 </html>
