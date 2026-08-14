@@ -99,11 +99,11 @@ window.loadInboundPreview = async function(){
         '<td style="padding:6px;"><input id="ib_dmgpc_' + idx + '" type="number" step="1" min="0" value="0" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_ppb_' + idx + '" type="number" step="0.01" value="' + esc(ppb) + '" style="width:60px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
         '<td style="padding:6px;"><input id="ib_wt_' + idx + '" type="number" step="0.01" value="' + esc(wt) + '" style="width:70px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
-        '<td style="padding:6px;"><input id="ib_pack_' + idx + '" value="" placeholder="可空" style="width:70px;padding:5px;border:1px solid #d1d5db;border-radius:6px;"></td>' +
+        '<td style="padding:6px;"><input id="ib_pack_' + idx + '" value="' + esc(it.brand || it.packaging || "") + '" placeholder="可空" style="width:70px;padding:5px;border:1px solid #d1d5db;border-radius:6px;" title="默认用箱单牌子"></td>' +
         '</tr>';
     });
     html += '</tbody></table></div>';
-    html += '<div style="margin-top:10px;font-size:12px;color:#64748b;">共 ' + rows.length + ' 行。实入 = 数量 − 损坏箱 − 损坏片÷片/箱。整柜一次入完。</div>';
+    html += '<div style="margin-top:10px;font-size:12px;color:#64748b;">共 ' + rows.length + ' 行。实入 = 数量 − 损坏箱 − 损坏片÷片/箱。包装默认取箱单「牌子」。整柜一次入完。</div>';
     box.innerHTML = html;
   } catch(e){
     console.error(e);
@@ -130,6 +130,10 @@ window.confirmInboundContainer = async function(){
     var ppbRaw = ($("ib_ppb_"+i) && $("ib_ppb_"+i).value);
     var wtRaw = ($("ib_wt_"+i) && $("ib_wt_"+i).value);
     var pack = (($("ib_pack_"+i) && $("ib_pack_"+i).value) || "").trim();
+    if(!pack){
+      var src = inboundCache[i] && inboundCache[i].item;
+      if(src) pack = String(src.brand || src.packaging || "").trim();
+    }
     var ppb = (ppbRaw !== "" && ppbRaw != null) ? Number(ppbRaw) : null;
     var boxWeight = (wtRaw !== "" && wtRaw != null) ? Number(wtRaw) : null;
     if(!code) return alert("第 " + (i+1) + " 行编号不能为空");
@@ -271,7 +275,7 @@ function boot(){
     if(hookShowTab() || n > 50) clearInterval(t);
   }, 200);
   setInterval(bindInboundUI, 2000);
-  console.log("transit_inbound.js ready v20260814g");
+  console.log("transit_inbound.js ready v20260814h");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
