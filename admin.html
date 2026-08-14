@@ -28,6 +28,7 @@
   <div class="card nav-card">
     <button type="button" onclick="showTab('in')">入库</button>
     <button type="button" onclick="showTab('out')">出库</button>
+    <button type="button" onclick="showTab('ship')">出货计划</button>
     <button type="button" onclick="showTab('reserve')">留货</button>
     <button type="button" onclick="showTab('log')">日志</button>
     <button type="button" onclick="showTab('stats')">统计</button>
@@ -38,6 +39,7 @@
 
   <div id="tab_in" class="tab card"></div>
   <div id="tab_out" class="tab card" style="display:none;"></div>
+  <div id="tab_ship" class="tab card" style="display:none;padding:16px 18px;"></div>
   <div id="tab_reserve" class="tab card" style="display:none;"></div>
   <div id="tab_log" class="tab card" style="display:none;"></div>
   <div id="tab_stats" class="tab card" style="display:none;"></div>
@@ -128,7 +130,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="js/admin.js?v=20260812a"></script>
+<script type="module" src="js/admin.js?v=20260814a"></script>
+<script type="module" src="js/admin_ship_plan.js?v=20260814a"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
 <script type="module" src="js/transit_admin.js?v=20260813a"></script>
 
