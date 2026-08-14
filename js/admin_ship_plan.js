@@ -9,7 +9,6 @@ import {
 
 function $(id){ return document.getElementById(id); }
 
-/** @type {Array<{id:string,code:string,spec:string,color:string,warehouse:string,stock:number,qty:number}>} */
 var planLines = [];
 
 function todayStr(){
@@ -18,14 +17,9 @@ function todayStr(){
 }
 
 function esc(s){
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, """);
+  return String(s == null ? "" : s);
 }
 
-/** 与前台一致：精确 + 全库模糊分页 */
 async function searchInventoryLikeFrontend(raw){
   var keyword = raw.trim().toLowerCase();
   if(!keyword) return [];
@@ -48,9 +42,11 @@ async function searchInventoryLikeFrontend(raw){
   }
 
   try {
-    var variants = [...new Set([raw.trim(), keyword, raw.trim().toUpperCase()])];
-    for(var i = 0; i < variants.length; i++){
-      var v = variants[i];
+    var variants = [raw.trim(), keyword, raw.trim().toUpperCase()];
+    var uniq = [];
+    variants.forEach(function(v){ if(uniq.indexOf(v) < 0) uniq.push(v); });
+    for(var i = 0; i < uniq.length; i++){
+      var v = uniq[i];
       (await getDocs(query(collection(db, "inventory"), where("code", "==", v)))).forEach(add);
       (await getDocs(query(collection(db, "inventory"), where("spec", "==", v)))).forEach(add);
     }
@@ -395,7 +391,7 @@ function boot(){
     if(n > 80) clearInterval(t);
   }, 250);
   setInterval(ensureShipVisible, 800);
-  console.log("admin_ship_plan.js ready v20260814b");
+  console.log("admin_ship_plan.js ready v20260814c");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
