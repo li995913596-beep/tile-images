@@ -174,7 +174,7 @@ function renderPreview(){
       var hit = row.candidates.filter(function(c){ return c.id === row.invId; })[0];
       if(hit){
         var st = Number(hit.data.stock || 0), rs = reservedTotal(hit.data), av = Math.max(0, st - rs);
-        stockInfo = st + " / " + rs + " / <b style="color:" + (av > 0 ? "#16a34a" : "#ef4444") + ";">" + av + "</b>";
+        stockInfo = st + " / " + rs + " / <b style=\"color:" + (av > 0 ? "#16a34a" : "#ef4444") + ";\">" + av + "</b>";
       }
     }
     html += '<tr style="background:' + bg + ';border-bottom:1px solid #f1f5f9;">' +
@@ -407,7 +407,7 @@ function boot(){
       setTimeout(enhanceOutTab, 300);
     }
   }, true);
-  console.log('out_from_plan.js ready v20260815b');
+  console.log('out_from_plan.js ready v20260815c');
 }
 
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
