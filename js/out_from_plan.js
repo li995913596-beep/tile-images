@@ -1,6 +1,7 @@
 /**
  * 出库页增强：常规出库 + 计划识别出库
- * 计划出库：可出上限=库存（含留货）；动用留货时二次确认
+ * 本系统 stock=可售；留货在 reservedList（留货时已从 stock 扣除）
+ * 可出 = 可售 + 留货；动用留货时二次确认
  */
 import { db, auth } from "./firebase.js";
 import {
@@ -28,11 +29,11 @@ function reservedTotal(item){
 }
 
 function freeQty(item){
-  return Math.max(0, Number(item.stock || 0) - reservedTotal(item));
+  return Math.max(0, Number(item.stock || 0));
 }
 
 function maxShipQty(item){
-  return Math.max(0, Number(item.stock || 0));
+  return Math.max(0, Number(item.stock || 0) + reservedTotal(item));
 }
 
 function hasActiveReserve(reservedList){
@@ -196,7 +197,7 @@ function renderPreview(){
   var html = "<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;font-size:13px;min-width:760px;'>";
   html += "<thead><tr style='background:#f1f5f9;text-align:left;'>";
   html += "<th style='padding:8px;'>#</th><th style='padding:8px;'>编号</th><th style='padding:8px;'>色号</th><th style='padding:8px;'>计划数</th>";
-  html += "<th style='padding:8px;'>仓库（可选）</th><th style='padding:8px;'>库存/留货/可出</th><th style='padding:8px;'>出库数</th><th style='padding:8px;'>状态</th><th style='padding:8px;'></th></tr></thead><tbody>";
+  html += "<th style='padding:8px;'>仓库（可选）</th><th style='padding:8px;'>可售/留货/可出</th><th style='padding:8px;'>出库数</th><th style='padding:8px;'>状态</th><th style='padding:8px;'></th></tr></thead><tbody>";
   previewRows.forEach(function(row, idx){
     var bg = row.ok ? "#fff" : "#fef2f2";
     var opts = (row.candidates || []).map(function(c){
@@ -212,13 +213,12 @@ function renderPreview(){
     if(row.invId && row.candidates){
       var hit = row.candidates.filter(function(c){ return c.id === row.invId; })[0];
       if(hit){
-        var st = Number(hit.data.stock || 0);
-        var rs = reservedTotal(hit.data);
         var free = freeQty(hit.data);
+        var rs = reservedTotal(hit.data);
         var av = maxShipQty(hit.data);
-        stockInfo = st + " / 留" + rs + " / 可出" + av;
+        stockInfo = "可售" + free + " / 留" + rs + " / 可出" + av;
         if(row.ok && row.qty > free && rs > 0){
-          statusExtra = "将动用留货" + Number((row.qty - free).toFixed(2));
+          statusExtra = "将动用留货" + Number((Math.min(row.qty, av) - Math.min(row.qty, free)).toFixed(2));
         }
       }
     }
@@ -234,7 +234,7 @@ function renderPreview(){
     }
     html += "<td style='padding:8px;font-size:12px;'>" + stockInfo + "</td>";
     html += "<td style='padding:8px;'><input data-opf-qty='" + idx + "' type='number' step='0.01' min='0' value='" + esc(row.qty) + "' style='width:80px;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;'" + (row.ok ? "" : " disabled") + "></td>";
-    html += "<td style='padding:8px;font-size:12px;color:" + (row.ok ? (statusExtra.indexOf("留货") >= 0 ? "#d97706" : "#16a34a") : "#b91c1c") + ";'>" + esc(statusExtra) + "</td>";
+    html += "<td style='padding:8px;font-size:12px;color:" + (row.ok ? (String(statusExtra).indexOf("留货") >= 0 ? "#d97706" : "#16a34a") : "#b91c1c") + ";'>" + esc(statusExtra) + "</td>";
     html += "<td style='padding:8px;'><button type='button' data-opf-del='" + idx + "' style='padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;font-size:12px;'>删</button></td></tr>";
   });
   html += "</tbody></table></div>";
@@ -249,7 +249,7 @@ function renderPreview(){
         var av = maxShipQty(hit.data);
         if(row.qty > av) row.qty = av;
         row.ok = av > 0 && row.qty > 0;
-        row.error = row.ok ? "" : (av <= 0 ? "库存为 0" : "超过库存");
+        row.error = row.ok ? "" : (av <= 0 ? "无可出数量" : "超过可出");
       }
       renderPreview();
     };
@@ -262,7 +262,7 @@ function renderPreview(){
       if(!hit) return;
       var av = maxShipQty(hit.data);
       var q = Number(inp.value) || 0;
-      if(q > av){ alert("不能超过库存 " + av); q = av; }
+      if(q > av){ alert("不能超过可出 " + av); q = av; }
       if(q < 0) q = 0;
       row.qty = q; row.ok = q > 0 && av > 0; row.error = q <= 0 ? "数量需大于 0" : "";
       renderPreview();
@@ -299,7 +299,7 @@ window.opfParsePreview = async function(){
       row.invId = candidates[0].id; row.candidates = candidates;
       var av = maxShipQty(candidates[0].data);
       if(av <= 0){
-        row.ok = false; row.error = "库存为 0"; row.qty = 0;
+        row.ok = false; row.error = "无可出数量"; row.qty = 0;
       } else {
         if(row.qty > av) row.qty = av;
         row.ok = row.qty > 0;
@@ -310,7 +310,7 @@ window.opfParsePreview = async function(){
   }
   renderPreview();
   var okN = previewRows.filter(function(r){ return r.ok; }).length;
-  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length - okN ? "，异常 " + (previewRows.length - okN) + " 行（红底，可删）" : "") + "\n说明：留货也可出，确认时若动用留货会再提醒一次");
+  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length - okN ? "，异常 " + (previewRows.length - okN) + " 行（红底，可删）" : "") + "\n说明：可出=可售+留货；动用留货时会二次确认");
 };
 
 window.opfConfirmOut = async function(){
@@ -335,7 +335,7 @@ window.opfConfirmOut = async function(){
     if(!snap.exists()) return alert("第 " + (i + 1) + " 行库存已不存在，请重新识别");
     var data = snap.data();
     var av = maxShipQty(data);
-    if(r.qty > av) return alert(data.code + " 库存仅 " + av + "，请改小数量");
+    if(r.qty > av) return alert(data.code + " 可出仅 " + av + "，请改小数量");
     var free = freeQty(data);
     var fromRes = Math.max(0, Number((r.qty - free).toFixed(4)));
     summary.push((i + 1) + ". " + data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " × " + r.qty);
@@ -346,7 +346,7 @@ window.opfConfirmOut = async function(){
   }
   if(!confirm("确认按计划出库？\n客户：" + (logCustomer || "未填") + "\n共 " + lines.length + " 行\n\n" + summary.join("\n"))) return;
   if(reserveWarnings.length){
-    if(!confirm("⚠️ 以下行会动用留货（不限客户）：\n\n" + reserveWarnings.join("\n") + "\n\n确认继续出库？")) return;
+    if(!confirm("以下行会动用留货（不限客户）：\n\n" + reserveWarnings.join("\n") + "\n\n确认继续出库？")) return;
   }
   var btn = $("opf_btn_confirm");
   if(btn){ btn.disabled = true; btn.textContent = "出库中…"; }
@@ -361,14 +361,17 @@ window.opfConfirmOut = async function(){
         var data = s2.data();
         var qty = Number(L.qty) || 0;
         var stock = Number(data.stock || 0);
-        if(qty <= 0 || qty > stock){ fail.push(L.plan.code + ": 库存不足"); continue; }
+        var maxQ = maxShipQty(data);
+        if(qty <= 0 || qty > maxQ){ fail.push(L.plan.code + ": 可出不足"); continue; }
         var free = freeQty(data);
-        var fromRes = Math.max(0, Number((qty - free).toFixed(4)));
+        var fromFree = Math.min(qty, free);
+        var fromRes = Math.max(0, Number((qty - fromFree).toFixed(4)));
         var list = Array.isArray(data.reservedList) ? data.reservedList.map(function(x){
           return { customer: (x && x.customer) || "", qty: Number((x && x.qty) || 0), time: x && x.time ? x.time : null };
         }) : [];
         if(fromRes > 0) list = deductReserveFifo(list, fromRes);
-        var newStock = Number((stock - qty).toFixed(4));
+        var newStock = Number((stock - fromFree).toFixed(4));
+        if(newStock < 0) newStock = 0;
         if(newStock <= 0 && !hasActiveReserve(list)){
           await deleteDoc(ref);
         } else {
@@ -399,7 +402,7 @@ window.opfConfirmOut = async function(){
 
 function buildPlanPanelHtml(){
   return "<div style='padding:14px;border-radius:12px;background:#f0fdfa;border:1px solid #99f6e4;margin-bottom:12px;'>" +
-    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>粘贴出货计划 → 识别明细。可出上限=库存（含留货）。若出库会动用留货，确认时会二次提醒。</div>" +
+    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>粘贴出货计划。可出=可售+留货。动用留货时会二次提醒。</div>" +
     "<textarea id='opf_text' rows='10' placeholder='在此粘贴出货计划全文' style='width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;line-height:1.45;font-family:ui-monospace,monospace;resize:vertical;'></textarea>" +
     "<div style='margin-top:10px;'><button type='button' id='opf_btn_parse' style='padding:8px 16px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;'>识别预览</button></div></div>" +
     "<div style='padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;'>" +
@@ -481,7 +484,7 @@ function boot(){
       setTimeout(enhanceOutTab, 300);
     }
   }, true);
-  console.log("out_from_plan.js ready v20260815e");
+  console.log("out_from_plan.js ready v20260815f");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
