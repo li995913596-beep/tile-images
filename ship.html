@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>出货计划 / Shipping Plan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <button type="button" onclick="location.href='index.html'"
+      style="padding:6px 12px;border:none;border-radius:8px;background:#64748b;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+      ← 库存查询
+    </button>
+    <button type="button" onclick="location.href='transit.html'"
+      style="padding:6px 12px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+      在途货物
+    </button>
+    <span>出货计划 / Shipping Plan</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="gear" onclick="location.href='admin.html'">⚙</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="card" style="padding:16px 18px;">
+    <h2 style="margin:0 0 6px;font-size:18px;color:#1f2937;">出货计划</h2>
+    <div id="shipFrontRoot"></div>
+  </div>
+</div>
+
+<script type="module" src="js/ship_plan.js?v=20260815i"></script>
+</body>
+</html>
