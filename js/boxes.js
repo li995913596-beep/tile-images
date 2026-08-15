@@ -1,6 +1,5 @@
 /**
- * 纸箱库存：前台 boxes.html（口令）+ 后台 tab_boxes（已登录）
- * 出入库必须填操作人，写入日志
+ * 纸箱库存：顶部 📦 进入；可查看；编辑需口令（默认 8888，后台可改）
  */
 import { db } from "./firebase.js";
 import {
@@ -11,10 +10,9 @@ import {
 function $(id){ return document.getElementById(id); }
 
 var BOX_BRANDS = ["蒙娜丽莎", "欧神诺"];
-
-/** 前台纸箱页简易口令（只给仓库专人）。改这里后需刷新部署。 */
-var BOX_PIN = "8836";
-var PIN_SESSION_KEY = "tile_boxes_pin_ok";
+var DEFAULT_PIN = "8888";
+var PIN_SESSION_KEY = "tile_boxes_edit_ok";
+var cachedPin = null;
 
 function esc(s){ return String(s == null ? "" : s); }
 
@@ -29,23 +27,46 @@ function boxDocId(brand, spec, warehouse){
   return (b + "__" + s + "__" + w).slice(0, 700);
 }
 
-function isFrontPage(){
-  return !!$("boxesFrontRoot");
-}
-
-function isFrontUnlocked(){
+function isEditUnlocked(){
   try { return sessionStorage.getItem(PIN_SESSION_KEY) === "1"; } catch(e){ return false; }
 }
 
-function setFrontUnlocked(ok){
+function setEditUnlocked(ok){
   try {
     if(ok) sessionStorage.setItem(PIN_SESSION_KEY, "1");
     else sessionStorage.removeItem(PIN_SESSION_KEY);
   } catch(e){}
 }
 
+async function getBoxPin(){
+  if(cachedPin) return cachedPin;
+  try {
+    var snap = await getDoc(doc(db, "settings", "boxes"));
+    if(snap.exists()){
+      var p = String((snap.data() || {}).pin || "").trim();
+      if(p){ cachedPin = p; return cachedPin; }
+    }
+  } catch(e){ console.warn("读取纸箱口令失败，用默认", e); }
+  cachedPin = DEFAULT_PIN;
+  return cachedPin;
+}
+
+async function requireEditAuth(){
+  if(isEditUnlocked()) return true;
+  var pin = await getBoxPin();
+  var input = prompt("编辑纸箱需要口令：");
+  if(input == null) return false;
+  if(String(input).trim() !== pin){
+    alert("口令错误");
+    return false;
+  }
+  setEditUnlocked(true);
+  updateEditLockUI();
+  return true;
+}
+
 function askOperator(actionLabel){
-  var name = prompt((actionLabel || "操作") + " — 请填写操作人姓名：");
+  var name = prompt((actionLabel || "操作") + " — 请填写操作人：");
   if(name == null) return null;
   name = String(name).trim();
   if(!name){
@@ -114,7 +135,7 @@ function renderBoxList(list, hostId){
   var host = $(hostId);
   if(!host) return;
   if(!list.length){
-    host.innerHTML = '<div style="padding:14px;color:#94a3b8;font-size:14px;">暂无纸箱记录，请先新增录入。</div>';
+    host.innerHTML = '<div style="padding:14px;color:#94a3b8;font-size:14px;">暂无纸箱记录。</div>';
     return;
   }
   var grouped = groupByBrand(list);
@@ -172,14 +193,14 @@ window.reloadBoxes = async function(){
     console.error(e);
     hosts.forEach(function(id){
       var el = $(id);
-      if(el) el.innerHTML = '<div style="padding:12px;color:#b91c1c;">加载失败（检查 Firebase 规则是否允许 boxes）</div>';
+      if(el) el.innerHTML = '<div style="padding:12px;color:#b91c1c;">加载失败</div>';
     });
   }
 };
 
 window.boxAdjust = async function(id, dir){
   if(!id) return;
-  if(isFrontPage() && !isFrontUnlocked()) return alert("请先解锁纸箱页");
+  if(!(await requireEditAuth())) return;
   var label = dir === "in" ? "入库" : "出库";
   var operator = askOperator(label);
   if(!operator) return;
@@ -207,7 +228,7 @@ window.boxAdjust = async function(id, dir){
 
 window.boxDelete = async function(id){
   if(!id) return;
-  if(isFrontPage() && !isFrontUnlocked()) return alert("请先解锁纸箱页");
+  if(!(await requireEditAuth())) return;
   var operator = askOperator("删除");
   if(!operator) return;
   if(!confirm("确定删除这条纸箱记录？")) return;
@@ -227,7 +248,7 @@ window.boxDelete = async function(id){
 
 window.boxAdd = async function(prefix){
   prefix = prefix || "bx";
-  if(isFrontPage() && !isFrontUnlocked()) return alert("请先解锁纸箱页");
+  if(!(await requireEditAuth())) return;
   var brandSel = $(prefix + "_brand");
   var brandCustom = $(prefix + "_brand_custom");
   var specEl = $(prefix + "_spec");
@@ -277,6 +298,25 @@ window.boxAdd = async function(prefix){
   }
 };
 
+window.boxSavePin = async function(){
+  var el = $("boxes_pin_new");
+  var p = (el && el.value || "").trim();
+  if(!p) return alert("请输入新口令");
+  if(p.length < 4) return alert("口令至少 4 位");
+  try {
+    await setDoc(doc(db, "settings", "boxes"), {
+      pin: p,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    cachedPin = p;
+    if(el) el.value = "";
+    alert("纸箱编辑口令已更新");
+  } catch(e){
+    console.error(e);
+    alert("保存失败：" + ((e && e.message) || e));
+  }
+};
+
 function bindBrandCustomToggle(prefix){
   var sel = $(prefix + "_brand");
   var custom = $(prefix + "_brand_custom");
@@ -301,58 +341,36 @@ function formHtml(prefix){
         '<button type="button" id="' + prefix + '_add_btn" style="padding:7px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">保存</button>' +
         '<button type="button" id="' + prefix + '_reload_btn" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;">刷新</button>' +
       '</div>' +
-      '<div style="margin-top:8px;font-size:12px;color:#64748b;">出入库会要求填写操作人，并写入日志。同一品牌+规格+仓库自动合并。</div>' +
+      '<div style="margin-top:8px;font-size:12px;color:#64748b;">编辑需口令；出入库需填操作人并记日志。</div>' +
     '</div>'
   );
 }
 
-function showPinGate(){
-  var root = $("boxesFrontRoot");
-  if(!root) return;
-  root.innerHTML =
-    '<div style="max-width:360px;margin:24px auto;padding:20px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;text-align:center;">' +
-      '<div style="font-size:28px;margin-bottom:8px;">📦</div>' +
-      '<div style="font-weight:700;margin-bottom:6px;">纸箱库存（仓库专用）</div>' +
-      '<div style="font-size:13px;color:#64748b;margin-bottom:14px;line-height:1.5;">请输入口令后使用。业务员库存查询页不显示此入口。</div>' +
-      '<input id="boxes_pin_input" type="password" inputmode="numeric" placeholder="口令" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:10px;">' +
-      '<button type="button" id="boxes_pin_btn" style="width:100%;padding:10px;border:none;border-radius:8px;background:#0f766e;color:#fff;font-weight:600;cursor:pointer;">解锁</button>' +
-      '<div id="boxes_pin_err" style="display:none;margin-top:10px;color:#b91c1c;font-size:13px;">口令错误</div>' +
-    '</div>';
-  function tryUnlock(){
-    var v = (($("boxes_pin_input") && $("boxes_pin_input").value) || "").trim();
-    if(v === BOX_PIN){
-      setFrontUnlocked(true);
-      root.dataset.built = "";
-      buildFrontUI();
-    } else {
-      var err = $("boxes_pin_err");
-      if(err) err.style.display = "block";
-    }
-  }
-  var btn = $("boxes_pin_btn");
-  if(btn) btn.onclick = tryUnlock;
-  var inp = $("boxes_pin_input");
-  if(inp){
-    inp.addEventListener("keydown", function(e){
-      if(e.key === "Enter"){ e.preventDefault(); tryUnlock(); }
-    });
-    setTimeout(function(){ try { inp.focus(); } catch(e){} }, 100);
+function updateEditLockUI(){
+  var tip = $("boxes_edit_tip");
+  var btn = $("boxes_lock_btn");
+  if(isEditUnlocked()){
+    if(tip) tip.textContent = "已解锁编辑（本会话）";
+    if(btn){ btn.style.display = "inline-block"; btn.textContent = "锁定编辑"; }
+  } else {
+    if(tip) tip.textContent = "可查看；入库/出库/新增需口令";
+    if(btn) btn.style.display = "none";
   }
 }
 
 function buildFrontUI(){
   var root = $("boxesFrontRoot");
   if(!root) return;
-  if(!isFrontUnlocked()){
-    showPinGate();
-    return;
-  }
   if(root.dataset.built === "1") return;
   root.dataset.built = "1";
   root.innerHTML =
-    '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">' +
-      '<p style="font-size:13px;color:#666;margin:0;line-height:1.5;flex:1;">仓库专用。每次入库/出库需填操作人，日志可查。</p>' +
-      '<button type="button" id="boxes_lock_btn" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#64748b;cursor:pointer;font-size:12px;">锁定</button>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;">' +
+      '<div style="flex:1;">' +
+        '<h2 style="margin:0 0 4px;font-size:18px;color:#1f2937;">纸箱库存</h2>' +
+        '<div id="boxes_edit_tip" style="font-size:13px;color:#64748b;">可查看；入库/出库/新增需口令</div>' +
+      '</div>' +
+      '<button type="button" id="boxes_unlock_btn" style="padding:7px 12px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">解锁编辑</button>' +
+      '<button type="button" id="boxes_lock_btn" style="display:none;padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#64748b;cursor:pointer;font-size:13px;">锁定编辑</button>' +
     '</div>' +
     formHtml("bxf") +
     '<div id="boxesFrontList"></div>';
@@ -361,12 +379,16 @@ function buildFrontUI(){
   if(addBtn) addBtn.onclick = function(){ window.boxAdd("bxf"); };
   var reloadBtn = $("bxf_reload_btn");
   if(reloadBtn) reloadBtn.onclick = function(){ window.reloadBoxes(); };
+  var unlockBtn = $("boxes_unlock_btn");
+  if(unlockBtn) unlockBtn.onclick = async function(){
+    if(await requireEditAuth()) alert("已解锁，可以编辑");
+  };
   var lockBtn = $("boxes_lock_btn");
   if(lockBtn) lockBtn.onclick = function(){
-    setFrontUnlocked(false);
-    root.dataset.built = "";
-    showPinGate();
+    setEditUnlocked(false);
+    updateEditLockUI();
   };
+  updateEditLockUI();
   window.reloadBoxes();
 }
 
@@ -377,7 +399,15 @@ function buildAdminUI(){
   tab.dataset.built = "1";
   tab.innerHTML =
     '<h3 style="margin:0 0 10px;font-size:16px;color:#1f2937;">📦 纸箱库存</h3>' +
-    '<p style="font-size:13px;color:#666;margin:0 0 12px;">后台已登录可直接操作。前台纸箱页需口令，给仓库专人使用。出入库都会记操作人到日志。</p>' +
+    '<p style="font-size:13px;color:#666;margin:0 0 12px;">前台可查看；编辑需口令（默认 8888）。下方可修改口令。</p>' +
+    '<div style="padding:14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;margin-bottom:14px;">' +
+      '<div style="font-weight:600;margin-bottom:8px;color:#9a3412;">编辑口令</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
+        '<input id="boxes_pin_new" type="text" placeholder="新口令（至少4位）" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;min-width:160px;">' +
+        '<button type="button" id="boxes_pin_save" style="padding:7px 14px;border:none;border-radius:8px;background:#ea580c;color:#fff;cursor:pointer;font-weight:600;">保存口令</button>' +
+      '</div>' +
+      '<div style="margin-top:6px;font-size:12px;color:#9a3412;">前台编辑纸箱时使用此口令。改完立即生效。</div>' +
+    '</div>' +
     formHtml("bxa") +
     '<div id="boxesAdminList"></div>';
   bindBrandCustomToggle("bxa");
@@ -385,6 +415,9 @@ function buildAdminUI(){
   if(addBtn) addBtn.onclick = function(){ window.boxAdd("bxa"); };
   var reloadBtn = $("bxa_reload_btn");
   if(reloadBtn) reloadBtn.onclick = function(){ window.reloadBoxes(); };
+  var pinSave = $("boxes_pin_save");
+  if(pinSave) pinSave.onclick = function(){ window.boxSavePin(); };
+  setEditUnlocked(true);
 }
 
 function hookShowTab(){
@@ -412,7 +445,7 @@ function boot(){
     if($("tab_boxes") && $("tab_boxes").style.display === "block") buildAdminUI();
     if(n > 60) clearInterval(t);
   }, 300);
-  console.log("boxes.js ready v20260815k (pin + operator)");
+  console.log("boxes.js ready v20260815m");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
