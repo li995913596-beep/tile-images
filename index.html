@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>瓷砖库存查询系统 / Tile Inventory System</title>
+<title>库存查询</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -13,13 +13,16 @@
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <button type="button" onclick="location.href='transit.html'"
       style="padding:6px 12px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-      在途货物
+      在途
     </button>
     <button type="button" onclick="location.href='ship.html'"
       style="padding:6px 12px;border:none;border-radius:8px;background:#0f766e;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
       出货计划
     </button>
-    <span>瓷砖库存查询系统 / Tile Inventory</span>
+    <button type="button" onclick="location.href='boxes.html'" title="纸箱库存"
+      style="padding:6px 12px;border-radius:8px;background:#f0fdfa;color:#0f766e;font-size:16px;font-weight:600;cursor:pointer;border:1px solid #99f6e4;">
+      📦
+    </button>
   </div>
   <div style="display:flex;align-items:center;gap:14px;">
     <div class="gear" title="卖货分析" onclick="location.href='report.html'" style="opacity:0.55;font-size:16px;">📊</div>
@@ -32,17 +35,17 @@
   <div id="reserveBanner" style="display:none;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,#fef2f2,#fff7ed);border:1px solid #fecaca;color:#9a3412;font-size:14px;line-height:1.5;"></div>
 
   <div class="search-box">
-    <h2>库存查询 / Inventory Search</h2>
+    <h2 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;letter-spacing:0.02em;">库存查询</h2>
 
     <div class="search-row">
       <input 
         id="searchInput" 
-        placeholder="输入编号或规格 / Enter Code or Size">
+        placeholder="输入编号或规格">
     </div>
 
     <div class="search-buttons">
-      <button id="btnSearch">查询 / Search</button>
-      <button id="btnRefresh">刷新 / Reset</button>
+      <button id="btnSearch">查询</button>
+      <button id="btnRefresh">刷新</button>
     </div>
 
   </div>
