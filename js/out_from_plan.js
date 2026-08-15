@@ -1,5 +1,6 @@
 /**
  * 出库页增强：常规出库 + 计划识别出库
+ * 计划出库：可出上限=库存（含留货）；动用留货时二次确认
  */
 import { db, auth } from "./firebase.js";
 import {
@@ -26,10 +27,49 @@ function reservedTotal(item){
   return t;
 }
 
+function freeQty(item){
+  return Math.max(0, Number(item.stock || 0) - reservedTotal(item));
+}
+
+function maxShipQty(item){
+  return Math.max(0, Number(item.stock || 0));
+}
+
 function hasActiveReserve(reservedList){
   if(!reservedList) return false;
   if(Array.isArray(reservedList)) return reservedList.some(function(r){ return r && Number(r.qty || 0) > 0; });
   return false;
+}
+
+function deductReserveFifo(list, need){
+  var remain = Number(need) || 0;
+  if(remain <= 0) return list;
+  var out = [];
+  for(var i = 0; i < list.length; i++){
+    var r = list[i] || {};
+    var q = Number(r.qty || 0);
+    if(remain <= 0 || q <= 0){
+      if(q > 0) out.push({ customer: r.customer || "", qty: q, time: r.time || null });
+      continue;
+    }
+    var take = Math.min(q, remain);
+    var left = Number((q - take).toFixed(4));
+    remain = Number((remain - take).toFixed(4));
+    if(left > 0) out.push({ customer: r.customer || "", qty: left, time: r.time || null });
+  }
+  return out;
+}
+
+function reserveCustomersText(item){
+  var list = Array.isArray(item.reservedList) ? item.reservedList : [];
+  var names = [];
+  for(var i = 0; i < list.length; i++){
+    var r = list[i];
+    if(!r || Number(r.qty || 0) <= 0) continue;
+    var n = String(r.customer || "未填").trim() || "未填";
+    names.push(n + "(" + r.qty + ")");
+  }
+  return names.join("、");
 }
 
 function parseShipPlanText(text){
@@ -161,16 +201,25 @@ function renderPreview(){
     var bg = row.ok ? "#fff" : "#fef2f2";
     var opts = (row.candidates || []).map(function(c){
       var d = c.data;
-      var avail = Math.max(0, Number(d.stock || 0) - reservedTotal(d));
+      var avail = maxShipQty(d);
+      var rs = reservedTotal(d);
       var selected = c.id === row.invId ? " selected" : "";
-      return "<option value='" + esc(c.id) + "'" + selected + ">" + esc(d.warehouse || "-") + "（可出" + avail + "）</option>";
+      var label = esc(d.warehouse || "-") + "（可出" + avail + (rs > 0 ? "，留货" + rs : "") + "）";
+      return "<option value='" + esc(c.id) + "'" + selected + ">" + label + "</option>";
     }).join("");
     var stockInfo = "-";
+    var statusExtra = row.error || "可出";
     if(row.invId && row.candidates){
       var hit = row.candidates.filter(function(c){ return c.id === row.invId; })[0];
       if(hit){
-        var st = Number(hit.data.stock || 0), rs = reservedTotal(hit.data), av = Math.max(0, st - rs);
-        stockInfo = st + " / " + rs + " / 可出" + av;
+        var st = Number(hit.data.stock || 0);
+        var rs = reservedTotal(hit.data);
+        var free = freeQty(hit.data);
+        var av = maxShipQty(hit.data);
+        stockInfo = st + " / 留" + rs + " / 可出" + av;
+        if(row.ok && row.qty > free && rs > 0){
+          statusExtra = "将动用留货" + Number((row.qty - free).toFixed(2));
+        }
       }
     }
     html += "<tr style='background:" + bg + ";border-bottom:1px solid #f1f5f9;'>";
@@ -179,13 +228,13 @@ function renderPreview(){
     html += "<td style='padding:8px;'>" + esc(row.plan.color || "-") + "</td>";
     html += "<td style='padding:8px;'>" + esc(row.plan.qty) + "</td>";
     if(row.candidates && row.candidates.length){
-      html += "<td style='padding:8px;'><select data-opf-wh='" + idx + "' style='padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;max-width:160px;'>" + opts + "</select></td>";
+      html += "<td style='padding:8px;'><select data-opf-wh='" + idx + "' style='padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;max-width:200px;'>" + opts + "</select></td>";
     } else {
       html += "<td style='padding:8px;'><span style='color:#b91c1c;'>无匹配库存</span></td>";
     }
     html += "<td style='padding:8px;font-size:12px;'>" + stockInfo + "</td>";
     html += "<td style='padding:8px;'><input data-opf-qty='" + idx + "' type='number' step='0.01' min='0' value='" + esc(row.qty) + "' style='width:80px;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;'" + (row.ok ? "" : " disabled") + "></td>";
-    html += "<td style='padding:8px;font-size:12px;color:" + (row.ok ? "#16a34a" : "#b91c1c") + ";'>" + esc(row.error || "可出") + "</td>";
+    html += "<td style='padding:8px;font-size:12px;color:" + (row.ok ? (statusExtra.indexOf("留货") >= 0 ? "#d97706" : "#16a34a") : "#b91c1c") + ";'>" + esc(statusExtra) + "</td>";
     html += "<td style='padding:8px;'><button type='button' data-opf-del='" + idx + "' style='padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;font-size:12px;'>删</button></td></tr>";
   });
   html += "</tbody></table></div>";
@@ -197,10 +246,10 @@ function renderPreview(){
       row.invId = sel.value;
       var hit = (row.candidates || []).filter(function(c){ return c.id === row.invId; })[0];
       if(hit){
-        var av = Math.max(0, Number(hit.data.stock || 0) - reservedTotal(hit.data));
+        var av = maxShipQty(hit.data);
         if(row.qty > av) row.qty = av;
         row.ok = av > 0 && row.qty > 0;
-        row.error = row.ok ? "" : (av <= 0 ? "可出为 0" : "超过可出");
+        row.error = row.ok ? "" : (av <= 0 ? "库存为 0" : "超过库存");
       }
       renderPreview();
     };
@@ -211,9 +260,9 @@ function renderPreview(){
       var row = previewRows[i]; if(!row) return;
       var hit = (row.candidates || []).filter(function(c){ return c.id === row.invId; })[0];
       if(!hit) return;
-      var av = Math.max(0, Number(hit.data.stock || 0) - reservedTotal(hit.data));
+      var av = maxShipQty(hit.data);
       var q = Number(inp.value) || 0;
-      if(q > av){ alert("不能超过可出 " + av); q = av; }
+      if(q > av){ alert("不能超过库存 " + av); q = av; }
       if(q < 0) q = 0;
       row.qty = q; row.ok = q > 0 && av > 0; row.error = q <= 0 ? "数量需大于 0" : "";
       renderPreview();
@@ -246,19 +295,22 @@ window.opfParsePreview = async function(){
     if(!candidates.length){
       row.error = "库存无此编号/色号"; row.ok = false;
     } else {
-      candidates.sort(function(a, b){
-        return Math.max(0, Number(b.data.stock||0)-reservedTotal(b.data)) - Math.max(0, Number(a.data.stock||0)-reservedTotal(a.data));
-      });
+      candidates.sort(function(a, b){ return maxShipQty(b.data) - maxShipQty(a.data); });
       row.invId = candidates[0].id; row.candidates = candidates;
-      var av = Math.max(0, Number(candidates[0].data.stock||0) - reservedTotal(candidates[0].data));
-      if(av <= 0){ row.ok = false; row.error = "可出为 0（可能全被留货）"; row.qty = 0; }
-      else { if(row.qty > av) row.qty = av; row.ok = row.qty > 0; row.error = row.ok ? "" : "数量无效"; }
+      var av = maxShipQty(candidates[0].data);
+      if(av <= 0){
+        row.ok = false; row.error = "库存为 0"; row.qty = 0;
+      } else {
+        if(row.qty > av) row.qty = av;
+        row.ok = row.qty > 0;
+        row.error = row.ok ? "" : "数量无效";
+      }
     }
     previewRows.push(row);
   }
   renderPreview();
   var okN = previewRows.filter(function(r){ return r.ok; }).length;
-  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length-okN ? "，异常 " + (previewRows.length-okN) + " 行（红底，可删）" : ""));
+  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length - okN ? "，异常 " + (previewRows.length - okN) + " 行（红底，可删）" : "") + "\n说明：留货也可出，确认时若动用留货会再提醒一次");
 };
 
 window.opfConfirmOut = async function(){
@@ -276,16 +328,26 @@ window.opfConfirmOut = async function(){
   var lines = previewRows.filter(function(r){ return r.ok && r.invId && r.qty > 0; });
   if(!lines.length) return alert("没有可出库的行");
   var summary = [];
+  var reserveWarnings = [];
   for(var i = 0; i < lines.length; i++){
     var r = lines[i];
     var snap = await getDoc(doc(db, "inventory", r.invId));
-    if(!snap.exists()) return alert("第 " + (i+1) + " 行库存已不存在，请重新识别");
+    if(!snap.exists()) return alert("第 " + (i + 1) + " 行库存已不存在，请重新识别");
     var data = snap.data();
-    var av = Math.max(0, Number(data.stock||0) - reservedTotal(data));
-    if(r.qty > av) return alert(data.code + " 可出仅 " + av + "，请改小数量");
-    summary.push((i+1) + ". " + data.code + " 色" + (data.color||"-") + " @" + data.warehouse + " × " + r.qty);
+    var av = maxShipQty(data);
+    if(r.qty > av) return alert(data.code + " 库存仅 " + av + "，请改小数量");
+    var free = freeQty(data);
+    var fromRes = Math.max(0, Number((r.qty - free).toFixed(4)));
+    summary.push((i + 1) + ". " + data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " × " + r.qty);
+    if(fromRes > 0){
+      var who = reserveCustomersText(data) || "有留货";
+      reserveWarnings.push(data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " 将动用留货 " + fromRes + "（现有留货：" + who + "）");
+    }
   }
-  if(!confirm("确认按计划出库？\n客户：" + (logCustomer||"未填") + "\n共 " + lines.length + " 行\n\n" + summary.join("\n"))) return;
+  if(!confirm("确认按计划出库？\n客户：" + (logCustomer || "未填") + "\n共 " + lines.length + " 行\n\n" + summary.join("\n"))) return;
+  if(reserveWarnings.length){
+    if(!confirm("⚠️ 以下行会动用留货（不限客户）：\n\n" + reserveWarnings.join("\n") + "\n\n确认继续出库？")) return;
+  }
   var btn = $("opf_btn_confirm");
   if(btn){ btn.disabled = true; btn.textContent = "出库中…"; }
   var ok = 0, fail = [];
@@ -297,15 +359,30 @@ window.opfConfirmOut = async function(){
         var s2 = await getDoc(ref);
         if(!s2.exists()){ fail.push(L.plan.code + ": 已不存在"); continue; }
         var data = s2.data();
-        var av = Math.max(0, Number(data.stock||0) - reservedTotal(data));
         var qty = Number(L.qty) || 0;
-        if(qty <= 0 || qty > av || qty > Number(data.stock||0)){ fail.push(L.plan.code + ": 可出不足"); continue; }
-        var newStock = Number((Number(data.stock||0) - qty).toFixed(4));
-        if(newStock <= 0 && !hasActiveReserve(data.reservedList)) await deleteDoc(ref);
-        else await updateDoc(ref, { stock: newStock, lastUpdate: serverTimestamp() });
+        var stock = Number(data.stock || 0);
+        if(qty <= 0 || qty > stock){ fail.push(L.plan.code + ": 库存不足"); continue; }
+        var free = freeQty(data);
+        var fromRes = Math.max(0, Number((qty - free).toFixed(4)));
+        var list = Array.isArray(data.reservedList) ? data.reservedList.map(function(x){
+          return { customer: (x && x.customer) || "", qty: Number((x && x.qty) || 0), time: x && x.time ? x.time : null };
+        }) : [];
+        if(fromRes > 0) list = deductReserveFifo(list, fromRes);
+        var newStock = Number((stock - qty).toFixed(4));
+        if(newStock <= 0 && !hasActiveReserve(list)){
+          await deleteDoc(ref);
+        } else {
+          await updateDoc(ref, { stock: newStock, reservedList: list, lastUpdate: serverTimestamp() });
+        }
         await addDoc(collection(db, "logs"), {
-          timestamp: serverTimestamp(), type: "出库", code: data.code, spec: data.spec||"", color: data.color||"",
-          warehouse: data.warehouse||"", qty: qty, customer: logCustomer||""
+          timestamp: serverTimestamp(),
+          type: "出库",
+          code: data.code,
+          spec: data.spec || "",
+          color: data.color || "",
+          warehouse: data.warehouse || "",
+          qty: qty,
+          customer: logCustomer || ""
         });
         ok++;
       } catch(err){
@@ -322,7 +399,7 @@ window.opfConfirmOut = async function(){
 
 function buildPlanPanelHtml(){
   return "<div style='padding:14px;border-radius:12px;background:#f0fdfa;border:1px solid #99f6e4;margin-bottom:12px;'>" +
-    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>把出货计划整段文字粘贴到下方，识别后每行可选仓库，确认批量出库（只扣可售，不动留货）。</div>" +
+    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>粘贴出货计划 → 识别明细。可出上限=库存（含留货）。若出库会动用留货，确认时会二次提醒。</div>" +
     "<textarea id='opf_text' rows='10' placeholder='在此粘贴出货计划全文' style='width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;line-height:1.45;font-family:ui-monospace,monospace;resize:vertical;'></textarea>" +
     "<div style='margin-top:10px;'><button type='button' id='opf_btn_parse' style='padding:8px 16px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;'>识别预览</button></div></div>" +
     "<div style='padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;'>" +
@@ -404,7 +481,7 @@ function boot(){
       setTimeout(enhanceOutTab, 300);
     }
   }, true);
-  console.log("out_from_plan.js ready v20260815c");
+  console.log("out_from_plan.js ready v20260815e");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
