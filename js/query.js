@@ -45,11 +45,80 @@ function formatPackLine(item){
   return parts.length ? parts.join(" · ") : "";
 }
 
-/* ================= 内存缓存：少读 Firebase + 搜索更快 ================= */
-/** 缓存有效期 4 小时：白天库存很少变，过期或点「刷新」再拉全库 */
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+/* ================= 本地缓存：少读 Firebase ================= */
+/** 有效 8 小时；存在 localStorage，关页面还在。打开页不自动拉库，第一次搜索才读。 */
+const CACHE_TTL_MS = 8 * 60 * 60 * 1000;
+const CACHE_KEY = "tile_inv_cache_v1";
 let invCache = null;
 let invLoading = null;
+
+function toIso(v){
+  if(v == null || v === "") return null;
+  try {
+    if(v.toDate) return v.toDate().toISOString();
+    if(typeof v === "string") return v;
+    if(typeof v === "number") return new Date(v).toISOString();
+    return null;
+  } catch(e){ return null; }
+}
+
+function serializeItems(items){
+  return (items || []).map(function(item){
+    var o = {};
+    Object.keys(item).forEach(function(k){
+      if(k === "lastUpdate") return;
+      o[k] = item[k];
+    });
+    if(Array.isArray(item.reservedList)){
+      o.reservedList = item.reservedList.map(function(r){
+        if(!r) return r;
+        return {
+          customer: r.customer || "",
+          qty: Number(r.qty || 0),
+          at: toIso(r.at) || r.at || null
+        };
+      });
+    }
+    return o;
+  });
+}
+
+function loadLocalCache(){
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    var obj = JSON.parse(raw);
+    if(!obj || !Array.isArray(obj.items) || !obj.loadedAt) return null;
+    if((Date.now() - Number(obj.loadedAt)) >= CACHE_TTL_MS) return null;
+    return { items: obj.items, loadedAt: Number(obj.loadedAt) };
+  } catch(e){
+    console.warn("读取本地库存缓存失败", e);
+    return null;
+  }
+}
+
+function saveLocalCache(items, loadedAt){
+  try {
+    var payload = JSON.stringify({
+      loadedAt: loadedAt,
+      items: serializeItems(items)
+    });
+    localStorage.setItem(CACHE_KEY, payload);
+  } catch(e){
+    console.warn("写入本地库存缓存失败（可能超容量）", e);
+    try { localStorage.removeItem(CACHE_KEY); } catch(e2){}
+  }
+}
+
+function ensureMemoryCache(){
+  if(invCache && (Date.now() - invCache.loadedAt) < CACHE_TTL_MS) return invCache;
+  var local = loadLocalCache();
+  if(local){
+    invCache = local;
+    return invCache;
+  }
+  return null;
+}
 
 async function fetchAllInventory(){
   const pageSize = 500;
@@ -85,17 +154,21 @@ async function fetchAllInventory(){
 }
 
 async function getInventory(force){
-  const now = Date.now();
-  if (!force && invCache && (now - invCache.loadedAt) < CACHE_TTL_MS) {
-    return invCache.items;
+  if(!force){
+    var hit = ensureMemoryCache();
+    if(hit) return hit.items;
+  } else {
+    invCache = null;
+    try { localStorage.removeItem(CACHE_KEY); } catch(e){}
   }
-  if (force) invCache = null;
-  if (invLoading) return invLoading;
+  if(invLoading) return invLoading;
   invLoading = (async () => {
     try {
       const items = await fetchAllInventory();
-      invCache = { items, loadedAt: Date.now() };
-      console.log("库存缓存已更新，共", items.length, "条，有效", (CACHE_TTL_MS / 3600000), "小时");
+      const loadedAt = Date.now();
+      invCache = { items, loadedAt };
+      saveLocalCache(items, loadedAt);
+      console.log("库存缓存已更新，共", items.length, "条，本地有效约", (CACHE_TTL_MS / 3600000), "小时");
       try { showReserveOverdueBanner(items); } catch(e){ console.warn(e); }
       return items;
     } finally {
@@ -107,6 +180,7 @@ async function getInventory(force){
 
 window.clearInventoryCache = function(){
   invCache = null;
+  try { localStorage.removeItem(CACHE_KEY); } catch(e){}
 };
 
 function parseReserveAt(at){
@@ -171,7 +245,7 @@ window.searchData = async function(){
     resultDiv.innerHTML = "请输入编号或规格 / Please enter Code or Size";
     return;
   }
-  const hasCache = invCache && (Date.now() - invCache.loadedAt) < CACHE_TTL_MS;
+  const hasCache = !!ensureMemoryCache();
   resultDiv.innerHTML = hasCache
     ? "<div style='padding:16px;color:#666;font-size:14px;'>搜索中…</div>"
     : "<div style='padding:16px;color:#666;font-size:14px;'>首次加载库存数据，稍候…</div>";
@@ -199,81 +273,63 @@ window.searchData = async function(){
   list.sort((a, b) => {
     const ca = String(a.code || "").toLowerCase();
     const cb = String(b.code || "").toLowerCase();
-    const score = (c) => {
-      if (c === keyword || c === raw.toLowerCase()) return 0;
-      if (c.includes(keyword)) return 1;
-      return 2;
-    };
-    const sa = score(ca), sb = score(cb);
-    if (sa !== sb) return sa - sb;
+    const exactA = ca === keyword ? 0 : (ca.startsWith(keyword) ? 1 : 2);
+    const exactB = cb === keyword ? 0 : (cb.startsWith(keyword) ? 1 : 2);
+    if (exactA !== exactB) return exactA - exactB;
     return ca.localeCompare(cb, "zh-CN");
   });
-  if (window.innerWidth <= 768) {
-    buildMobile(list);
-  } else {
-    buildDesktop(list);
-  }
-};
 
-function buildDesktop(list){
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML=`
-    <div class="table-header">
-      <div>图片<br>Image</div>
-      <div>编号<br>Code</div>
-      <div>规格<br>Size</div>
-      <div>色号<br>Color</div>
-      <div>数量<br>Stock</div>
-      <div>仓库<br>Warehouse</div>
-      <div>留货<br>Reserved</div>
-    </div>
-  `;
-  list.forEach(item=>{
-    const imageUrl = window.location.origin + "/images/" + (item.code || "") + ".jpg";
-    const reserveText = item.reserved > 0
-      ? `${item.reserved}${item.reserveDetail ? "<br><span style=\"font-size:12px;color:#c0392b;\">" + item.reserveDetail + "</span>" : ""}`
-      : "0";
-    resultDiv.innerHTML+=`
-      <div class="table-row">
-        <div class="img-col" onclick="openModal('${imageUrl}')">
-          <img src="${imageUrl}" loading="lazy" onerror="this.style.display='none'">
+  const isDesktop = window.innerWidth >= 768;
+
+  if (isDesktop) {
+    let html = `
+      <div class="result-table">
+        <div class="result-header">
+          <div>图片</div>
+          <div>编号</div>
+          <div>规格</div>
+          <div>色号</div>
+          <div>库存</div>
+          <div>留货</div>
+          <div>仓库</div>
         </div>
-        <div>${item.code}${formatPackLine(item) ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${formatPackLine(item)}</div>` : ""}</div>
-        <div>${normalizeSpec(item.spec)||item.spec||"-"}</div>
-        <div>${item.color||"-"}</div>
-        <div class="${item.stock<10?'low-stock':''}">
-          ${item.stock}
-        </div>
-        <div>${item.warehouse||"-"}</div>
-        <div>${reserveText}</div>
-      </div>
     `;
-  });
-}
+    list.forEach(item => {
+      const imageUrl = window.location.origin + "/images/" + item.code + ".jpg";
+      const stockColor = item.stock > 10 ? "#2ecc71" : item.stock > 0 ? "#f39c12" : "#e74c3c";
+      const reserveHtml = item.reserved > 0
+        ? `${item.reserved}${item.reserveDetail ? "<br><span style=\"font-size:12px;color:#c0392b;\">" + item.reserveDetail + "</span>" : ""}`
+        : "0";
+      html += `
+        <div class="result-row">
+          <div onclick="openModal('${imageUrl}')">
+            <img src="${imageUrl}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">
+          </div>
+          <div>${item.code}${formatPackLine(item) ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${formatPackLine(item)}</div>` : ""}</div>
+          <div>${normalizeSpec(item.spec) || item.spec || "-"}</div>
+          <div>${item.color||"-"}</div>
+          <div style="font-weight:700;color:${stockColor}">${item.stock}</div>
+          <div>${reserveHtml}</div>
+          <div>${item.warehouse}</div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    resultDiv.innerHTML = html;
+    return;
+  }
 
-function buildMobile(list){
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML="";
-  list.forEach(item=>{
-    const imageUrl = window.location.origin + "/images/" + (item.code || "") + ".jpg";
-    let bgColor = "#f3f4f6";
-    if(item.warehouse === "k38"){ bgColor = "#e8f1fb"; }
-    else if(item.warehouse === "k39"){ bgColor = "#eaf7f1"; }
-    else if(item.warehouse === "1"){ bgColor = "#f3ecff"; }
-    let warehouseBg = "#e5e7eb";
-    let warehouseColor = "#555";
-    if(item.warehouse === "k38"){ warehouseBg = "#dbeafe"; warehouseColor = "#2563eb"; }
-    else if(item.warehouse === "k39"){ warehouseBg = "#dcfce7"; warehouseColor = "#16a34a"; }
-    else if(item.warehouse === "1"){ warehouseBg = "#ffedd5"; warehouseColor = "#ea580c"; }
-    let stockColor = "#22c55e";
-    if(item.stock == 0){ stockColor = "#ef4444"; }
-    else if(item.stock < 10){ stockColor = "#f59e0b"; }
+  list.forEach(item => {
+    const imageUrl = window.location.origin + "/images/" + item.code + ".jpg";
+    const stockColor = item.stock > 10 ? "#2ecc71" : item.stock > 0 ? "#f39c12" : "#e74c3c";
+    const warehouseBg = "#eef3f8";
+    const warehouseColor = "#2c3e50";
     let reserveHtml = `<span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#e5e7eb;color:#666;">留货 0</span>`;
-    if(item.reserved > 0){
+    if (item.reserved > 0) {
       reserveHtml = `<div style="margin-top:2px;"><span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">留货 ${item.reserved}</span>${item.reserveDetail ? `<div style="margin-top:4px;font-size:12px;color:#c0392b;line-height:1.4;">客户：${item.reserveDetail}</div>` : ""}</div>`;
     }
     resultDiv.innerHTML += `
-      <div style="background:${bgColor};padding:12px;border-radius:14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+      <div class="card" style="display:flex;align-items:center;gap:12px;">
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}" style="width:58px;height:58px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'">
         </div>
@@ -290,7 +346,7 @@ function buildMobile(list){
       </div>
     `;
   });
-}
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   const btnSearch = document.getElementById("btnSearch");
@@ -316,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window.clearInventoryCache();
         const items = await getInventory(true);
         if (resultDiv) {
-          resultDiv.innerHTML = "<div style='padding:16px;color:#16a34a;font-size:14px;'>库存已刷新（共 " + items.length + " 条），有效约 4 小时。请重新查询。</div>";
+          resultDiv.innerHTML = "<div style='padding:16px;color:#16a34a;font-size:14px;'>库存已刷新（共 " + items.length + " 条），本地缓存有效约 8 小时。请重新查询。</div>";
         }
       } catch (e) {
         console.error(e);
@@ -326,7 +382,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-  getInventory(false)
-    .then(function(items){ try { showReserveOverdueBanner(items); } catch(e){} })
-    .catch(e => console.warn("预加载库存失败:", e));
+  // 打开页面不拉 Firebase：仅用本地未过期缓存显示留货提醒
+  try {
+    var localHit = ensureMemoryCache();
+    if(localHit) showReserveOverdueBanner(localHit.items);
+  } catch(e){ console.warn(e); }
+  console.log("query.js ready v20260815h: local 8h cache, no preload");
 });
