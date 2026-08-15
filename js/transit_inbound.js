@@ -1,5 +1,6 @@
 /**
  * 整柜一键入库（在途 → 库存）
+ * v20260815g：日志补 source；成功提示已自动标记已入库
  */
 import { auth, db } from "./firebase.js";
 import {
@@ -9,7 +10,6 @@ import {
 
 function $(id){ return document.getElementById(id); }
 
-/** 规格统一：600*1200*9.0 -> 600x1200（去掉厚度，* 改 x） */
 function normalizeSpec(s){
   s = String(s == null ? "" : s).trim();
   if(!s) return "";
@@ -214,7 +214,9 @@ window.confirmInboundContainer = async function(){
           color: L.color,
           warehouse: wh,
           qty: L.inboundQty,
-          customer: "柜号" + cn + (L.dmgBox || L.dmgPc ? (" 损箱"+L.dmgBox+"损片"+L.dmgPc) : "")
+          customer: "柜号" + cn + (L.dmgBox || L.dmgPc ? (" 损箱"+L.dmgBox+"损片"+L.dmgPc) : ""),
+          source: "整柜入库",
+          fromFree: L.inboundQty
         });
         await updateDoc(doc(db, "in_transit", L.transitId), {
           status: "已入库",
@@ -230,7 +232,7 @@ window.confirmInboundContainer = async function(){
         fail.push(L.code + ": " + ((err && err.message) || err));
       }
     }
-    var msg = "入库完成：成功 " + ok + " 行";
+    var msg = "入库完成：成功 " + ok + " 行（在途已自动标记为「已入库」）";
     if(fail.length) msg += "\n失败：\n" + fail.join("\n");
     alert(msg);
     inboundCache = [];
@@ -285,7 +287,7 @@ function boot(){
     if(hookShowTab() || n > 50) clearInterval(t);
   }, 200);
   setInterval(bindInboundUI, 2000);
-  console.log("transit_inbound.js ready v20260814i");
+  console.log("transit_inbound.js ready v20260815g");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
