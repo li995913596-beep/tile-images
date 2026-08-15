@@ -52,9 +52,7 @@
 
     <div style="padding:14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#1e40af;font-size:14px;">📥 Excel 导入装箱单</div>
-      <div style="font-size:12px;color:#666;margin-bottom:8px;">
-        表头：提单号 柜号 型号 色号 规格 备注 数量 到港/预计到港日期 …（型号必填，色号可空）
-      </div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px;">表头：提单号 柜号 型号 色号 规格 备注 数量 到港/预计到港日期 …（型号必填，色号可空）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <input type="file" id="transitExcel" accept=".xlsx,.xls" style="font-size:13px;">
         <button type="button" id="btnTransitImport" style="padding:7px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;">导入在途</button>
@@ -82,20 +80,12 @@
 
     <div style="padding:14px;border-radius:12px;background:#fef3c7;border:1px solid #fcd34d;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#92400e;font-size:14px;">📦 整柜一键入库</div>
-      <div style="font-size:12px;color:#78716c;margin-bottom:10px;line-height:1.5;">
-        卸货后选柜号 + 仓库。规格自动规范成 600x1200（去掉厚度）。包装默认取箱单「牌子」。整柜一次入完。
-      </div>
+      <div style="font-size:12px;color:#78716c;margin-bottom:10px;line-height:1.5;">卸货后选柜号 + 仓库。规格自动规范成 600x1200。包装默认取箱单「牌子」。整柜一次入完。</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
-        <select id="inbound_container" style="min-width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
-          <option value="">请选择柜号</option>
-        </select>
+        <select id="inbound_container" style="min-width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;"><option value="">请选择柜号</option></select>
         <button type="button" id="btnInboundLoadContainers" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;">刷新柜号</button>
         <select id="inbound_warehouse" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
-          <option value="">选择仓库</option>
-          <option value="k38">k38</option>
-          <option value="k39">k39</option>
-          <option value="1">1</option>
-          <option value="c9">c9</option>
+          <option value="">选择仓库</option><option value="k38">k38</option><option value="k39">k39</option><option value="1">1</option><option value="c9">c9</option>
         </select>
         <button type="button" id="btnInboundPreview" style="padding:7px 14px;border:none;border-radius:8px;background:#d97706;color:#fff;cursor:pointer;font-weight:600;">加载明细</button>
         <button type="button" id="btnInboundConfirm" style="padding:7px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">确认整柜入库</button>
@@ -106,11 +96,7 @@
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
       <input id="transitSearch" placeholder="搜索编号/柜号/提单" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
       <select id="transitFilter" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
-        <option value="active">在途+已到港</option>
-        <option value="在途">仅在途</option>
-        <option value="已到港">仅已到港</option>
-        <option value="history">历史</option>
-        <option value="all">全部</option>
+        <option value="active">在途+已到港</option><option value="在途">仅在途</option><option value="已到港">仅已到港</option><option value="history">历史</option><option value="all">全部</option>
       </select>
       <button type="button" id="btnTransitReload" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;">刷新</button>
       <button type="button" id="btnTransitExport" style="padding:7px 14px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">导出 Excel</button>
@@ -123,8 +109,7 @@
     <div style="padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:6px;color:#166534;font-size:14px;">🔑 GitHub Token（只需保存一次）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token"
-          style="flex:1;min-width:180px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
+        <input id="gh_token_input" type="password" placeholder="粘贴 GitHub Token" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;">
         <button type="button" id="gh_token_save" style="padding:7px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;font-size:13px;">保存 Token</button>
         <a href="https://github.com/settings/tokens?type=beta" target="_blank" style="font-size:12px;color:#2f7dd1;">生成 Token</a>
       </div>
@@ -153,9 +138,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="js/admin.js?v=20260814g"></script>
+<script type="module" src="js/admin.js?v=20260815b"></script>
 <script type="module" src="js/ship_plan.js?v=20260815a"></script>
-<script type="module" src="js/out_from_plan.js?v=20260815a"></script>
+<script type="module" src="js/out_from_plan.js?v=20260815b"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
 <script type="module" src="js/transit_admin.js?v=20260813a"></script>
 <script type="module" src="js/transit_inbound.js?v=20260814i"></script>
