@@ -5,3 +5,4 @@ await import("./admin_reserve_time.js?v=20260812a");
 await import("./ship_plan.js?v=20260815i");
 await import("./out_from_plan.js?v=20260815g");
 await import("./admin_log_tools.js?v=20260815g");
+await import("./boxes.js?v=20260815j");
