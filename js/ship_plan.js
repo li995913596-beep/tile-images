@@ -315,6 +315,7 @@ function generatePlanText(){
     lines.push("အလျားအနံ/规格：" + (line.spec || ""));
     lines.push("အရောင်ကုဒ်色号：" + (line.color || ""));
     lines.push("အရေအတွက်/数量：" + line.qty);
+    lines.push("ဂိုဒေါင်/仓库：" + (line.warehouse || ""));
   });
   if(note) lines.push(note);
   else lines.push("送货单一起带过去");
@@ -493,7 +494,7 @@ function boot(){
     if(n > 80) clearInterval(t);
   }, 250);
   setInterval(ensureShipVisible, 800);
-  console.log("ship_plan.js ready v20260817b (pallet checkbox)");
+  console.log("ship_plan.js ready v20260817c (warehouse in plan)");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
