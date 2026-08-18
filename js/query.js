@@ -247,8 +247,8 @@ window.searchData = async function(){
   }
   const hasCache = !!ensureMemoryCache();
   resultDiv.innerHTML = hasCache
-    ? "<div style='padding:16px;color:#666;font-size:14px;'>搜索中…</div>"
-    : "<div style='padding:16px;color:#666;font-size:14px;'>首次加载库存数据，稍候…</div>";
+    ? "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>搜索中…</div>"
+    : "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>首次加载库存数据，稍候…</div>";
   let list = [];
   try {
     const all = await getInventory(false);
@@ -319,6 +319,8 @@ window.searchData = async function(){
     return;
   }
 
+  // 手机：先清空「搜索中…」，再一次性写入结果，避免残留空位
+  let mobileHtml = "";
   list.forEach(item => {
     const imageUrl = window.location.origin + "/images/" + item.code + ".jpg";
     const stockColor = item.stock > 10 ? "#2ecc71" : item.stock > 0 ? "#f39c12" : "#e74c3c";
@@ -328,24 +330,25 @@ window.searchData = async function(){
     if (item.reserved > 0) {
       reserveHtml = `<div style="margin-top:2px;"><span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">留货 ${item.reserved}</span>${item.reserveDetail ? `<div style="margin-top:4px;font-size:12px;color:#c0392b;line-height:1.4;">客户：${item.reserveDetail}</div>` : ""}</div>`;
     }
-    resultDiv.innerHTML += `
+    mobileHtml += `
       <div class="card" style="display:flex;align-items:center;gap:12px;">
         <div onclick="openModal('${imageUrl}')">
           <img src="${imageUrl}" style="width:58px;height:58px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'">
         </div>
-        <div style="flex:1;">
+        <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:15px;">${item.code}</div>
           <div style="font-size:13px;color:#555;margin-top:2px;">${normalizeSpec(item.spec) || item.spec || "-"} | 色号 ${item.color}</div>
           ${formatPackLine(item) ? `<div style="font-size:12px;color:#64748b;margin-top:3px;">${formatPackLine(item)}</div>` : ""}
           <div style="margin-top:6px;">${reserveHtml}</div>
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:right;flex-shrink:0;">
           <div style="display:inline-block;font-size:11px;padding:4px 10px;border-radius:999px;background:${warehouseBg};color:${warehouseColor};font-weight:500;margin-bottom:6px;">${item.warehouse}</div>
           <div style="font-size:16px;font-weight:700;padding:6px 12px;border-radius:10px;background:${stockColor};color:#fff;">${item.stock}</div>
         </div>
       </div>
     `;
   });
+  resultDiv.innerHTML = mobileHtml;
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -387,5 +390,5 @@ document.addEventListener("DOMContentLoaded", () => {
     var localHit = ensureMemoryCache();
     if(localHit) showReserveOverdueBanner(localHit.items);
   } catch(e){ console.warn(e); }
-  console.log("query.js ready v20260815h: local 8h cache, no preload");
+  console.log("query.js ready v20260818b: local 8h cache, no preload");
 });
