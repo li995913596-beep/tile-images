@@ -145,17 +145,25 @@ header{
   color:#2c3e50;
 }
 
+/* 手机也保持：输入框 + 查询同一行；刷新小字靠右下一行 */
 @media(max-width:640px){
+  .search-row{
+    flex-wrap:wrap;
+  }
   .search-row input{
-    flex:1 1 100%;
+    flex:1 1 auto;
     min-width:0;
   }
   .search-row #btnSearch{
-    flex:1 1 100%;
-    width:100%;
+    flex:0 0 auto;
+    width:auto;
+    padding:11px 16px;
   }
   .search-row #btnRefresh{
-    margin-left:auto;
+    flex:1 1 100%;
+    text-align:right;
+    margin:0;
+    padding:4px 2px 0;
   }
 }
 
@@ -287,7 +295,6 @@ header{
   .result-header,
   .result-row,
   .result-table{
-    /* keep mobile card path from query.js */
   }
 }
 
