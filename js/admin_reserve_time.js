@@ -54,11 +54,17 @@ function hasActiveReserve(list){
 }
 
 function esc(s){
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, """);
+  var t = String(s == null ? "" : s);
+  var out = "";
+  for(var i = 0; i < t.length; i++){
+    var c = t.charAt(i);
+    if(c === "&") out += "\u0026amp;";
+    else if(c === "<") out += "\u0026lt;";
+    else if(c === ">") out += "\u0026gt;";
+    else if(c === '"') out += "\u0026quot;";
+    else out += c;
+  }
+  return out;
 }
 
 async function writeLog(type, data, qty, customer, extra){
