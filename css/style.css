@@ -8,8 +8,8 @@ body{
 }
 
 header{
-  background:#1f2f46;
-  color:#fff;
+  background:#fff;
+  color:#1f2937;
   padding:8px 6px 6px;
   font-size:18px;
   font-weight:600;
@@ -18,21 +18,23 @@ header{
   align-items:center;
 }
 
-/* 前台统一顶栏：图标+文字，紧凑无大标题 */
+/* 前台统一顶栏：浅色底 + 彩色图标 */
 .app-nav{
-  background:#1f2f46;
-  padding:6px 2px 4px;
-  padding-left:max(2px, env(safe-area-inset-left));
-  padding-right:max(2px, env(safe-area-inset-right));
+  background:#ffffff;
+  padding:6px 3px 5px;
+  padding-left:max(3px, env(safe-area-inset-left));
+  padding-right:max(3px, env(safe-area-inset-right));
   display:flex;
   justify-content:space-between;
-  align-items:flex-end;
-  gap:0;
+  align-items:stretch;
+  gap:2px;
   position:sticky;
   top:0;
   z-index:50;
   box-sizing:border-box;
   width:100%;
+  border-bottom:1px solid #e8edf3;
+  box-shadow:0 2px 10px rgba(15, 23, 42, 0.05);
 }
 .app-nav .nav-item{
   flex:1 1 0;
@@ -42,16 +44,17 @@ header{
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:2px;
-  padding:3px 0 5px;
-  color:rgba(255,255,255,0.72);
+  gap:3px;
+  padding:6px 2px 5px;
+  color:#64748b;
   text-decoration:none;
   font-size:10px;
-  font-weight:500;
+  font-weight:600;
   line-height:1.1;
-  border-bottom:2px solid transparent;
+  border-radius:12px;
   -webkit-tap-highlight-color:transparent;
   overflow:hidden;
+  transition:background .15s ease, color .15s ease, transform .12s ease;
 }
 .app-nav .nav-item span{
   max-width:100%;
@@ -60,22 +63,32 @@ header{
   white-space:nowrap;
 }
 .app-nav .nav-item svg{
-  width:20px;
-  height:20px;
+  width:22px;
+  height:22px;
   flex-shrink:0;
-  stroke:currentColor;
-  fill:none;
-  stroke-width:1.7;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-.app-nav .nav-item.active{
-  color:#fff;
-  border-bottom-color:#3b82f6;
+  stroke:none;
+  fill:currentColor;
 }
 .app-nav .nav-item:active{
-  opacity:0.85;
+  transform:scale(0.96);
 }
+
+/* 各入口独立配色 */
+.app-nav .nav-stock{ color:#0ea5e9; }
+.app-nav .nav-transit{ color:#f59e0b; }
+.app-nav .nav-ship{ color:#22c55e; }
+.app-nav .nav-boxes{ color:#d97706; }
+.app-nav .nav-grout{ color:#a855f7; }
+.app-nav .nav-report{ color:#06b6d4; }
+.app-nav .nav-admin{ color:#64748b; }
+
+.app-nav .nav-stock.active{ background:#e0f2fe; color:#0284c7; }
+.app-nav .nav-transit.active{ background:#fef3c7; color:#d97706; }
+.app-nav .nav-ship.active{ background:#dcfce7; color:#16a34a; }
+.app-nav .nav-boxes.active{ background:#ffedd5; color:#c2410c; }
+.app-nav .nav-grout.active{ background:#f3e8ff; color:#7e22ce; }
+.app-nav .nav-report.active{ background:#cffafe; color:#0e7490; }
+.app-nav .nav-admin.active{ background:#f1f5f9; color:#334155; }
 
 .container{
   max-width:1200px;
@@ -198,10 +211,12 @@ header{
   }
   .app-nav .nav-item{
     font-size:10px;
+    padding:5px 1px 4px;
+    gap:2px;
   }
   .app-nav .nav-item svg{
-    width:18px;
-    height:18px;
+    width:20px;
+    height:20px;
   }
 }
 
