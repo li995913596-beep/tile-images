@@ -43,7 +43,7 @@ function renderTable(){
   const tbody = $("tableBody");
   if(!tbody) return;
   if(!list.length){
-    tbody.innerHTML = `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据 / ไม่มีข้อมูล</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map((r,i) => `
@@ -73,7 +73,7 @@ function renderCharts(){
       type: "bar",
       data: {
         labels: top15.map(r=>r.code),
-        datasets: [{ label: "出库数量", data: top15.map(r=>r.qty), backgroundColor: colors.slice(0, top15.length) }]
+        datasets: [{ label: "出库数量 / จำนวนเบิก", data: top15.map(r=>r.qty), backgroundColor: colors.slice(0, top15.length) }]
       },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
@@ -104,7 +104,7 @@ window.loadReport = async function(preset){
   if(preset === "custom"){
     const sv = $("r_start").value;
     const ev = $("r_end").value;
-    if(!sv || !ev) return alert("请选择开始和结束日期");
+    if(!sv || !ev) return alert("请选择开始和结束日期 / เลือกวันที่เริ่ม-สิ้นสุด");
     start = new Date(sv); start.setHours(0,0,0,0);
     end = new Date(ev); end.setHours(23,59,59,999);
   } else {
@@ -118,7 +118,7 @@ window.loadReport = async function(preset){
 
   const whFilter = (($("r_warehouse") && $("r_warehouse").value) || "").trim().toLowerCase();
   const summaryEl = $("summary");
-  if(summaryEl) summaryEl.innerText = "加载中…";
+  if(summaryEl) summaryEl.innerText = "加载中… / กำลังโหลด";
 
   try {
     const snap = await getDocs(query(
@@ -146,19 +146,19 @@ window.loadReport = async function(preset){
     rankedCache = Object.entries(map)
       .map(([code, v]) => ({ code, qty: Number(v.qty.toFixed(4)), count: v.count }));
 
-    const whText = whFilter ? `（仓库 ${whFilter}）` : "";
+    const whText = whFilter ? `（仓库 / คลัง ${whFilter}）` : "";
     if(summaryEl){
       summaryEl.innerText = rankedCache.length
-        ? `共 ${totalOrders} 笔出库${whText}，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号`
-        : `该时间段没有出库记录${whText}`;
+        ? `共 ${totalOrders} 笔出库${whText}，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号 / ${totalOrders} รายการ`
+        : `该时间段没有出库记录${whText} / ไม่มีรายการเบิก`;
     }
 
     renderTable();
     renderCharts();
   } catch (err) {
     console.error(err);
-    if(summaryEl) summaryEl.innerText = "加载失败：" + (err.message || err);
-    alert("加载失败。\n" + (err.message || err));
+    if(summaryEl) summaryEl.innerText = "加载失败 / โหลดไม่สำเร็จ：" + (err.message || err);
+    alert("加载失败 / โหลดไม่สำเร็จ\n" + (err.message || err));
   }
 };
 
