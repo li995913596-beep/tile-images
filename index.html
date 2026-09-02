@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <title>库存查询</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/style.css?v=20260902r">
-<script src="js/i18n.js?v=20260902r"></script>
+<link rel="stylesheet" href="css/style.css?v=20260902s">
+<script src="js/i18n.js?v=20260902s"></script>
 </head>
 <body>
+
 <header class="app-nav">
   <a class="nav-item nav-stock active" href="index.html">
     <svg viewBox="0 0 24 24"><path d="M12 3L3 9v11a1 1 0 0 0 1 1h5v-7h6v7h5a1 1 0 0 0 1-1V9l-9-6z"/></svg>
@@ -39,20 +40,27 @@
   </a>
 </header>
 <div class="container">
+
   <div id="reserveBanner" style="display:none;margin:0 0 12px;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,#fef2f2,#fff7ed);border:1px solid #fecaca;color:#9a3412;font-size:14px;line-height:1.5;"></div>
+
   <div class="search-box">
     <div class="search-row">
-      <input id="searchInput" placeholder="输入编号或规格\uff0c如 3609, 300x600">
+      <input id="searchInput" placeholder="输入编号或规格，如 3609, 300x600">
       <button type="button" id="btnSearch"><span>查询</span></button>
       <button type="button" id="btnRefresh"><span>刷新</span></button>
     </div>
   </div>
+
   <div id="result"></div>
+
 </div>
+
 <div id="imgModal" class="modal">
   <img id="modalImg">
 </div>
-<script type="module" src="js/query.js?v=20260902r"></script>
+
+<script type="module" src="js/query.js?v=20260902s"></script>
+
 <script>
 const modal=document.getElementById("imgModal");
 const modalImg=document.getElementById("modalImg");
@@ -64,5 +72,6 @@ modal.onclick=function(){
   modal.style.display="none";
 };
 </script>
+
 </body>
 </html>

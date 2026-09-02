@@ -1,42 +1,45 @@
-/** Chinese-only stub. No language switcher. */
+/** translation removed — Chinese only stub so existing tt() calls keep working */
 (function(g){
+  try { localStorage.removeItem("tile_lang"); } catch (e) {}
+  try { document.cookie = "tile_lang=; Max-Age=0; path=/"; } catch (e) {}
+
   var ZH = {
-    "title.stock":"\u5e93\u5b58\u67e5\u8be2","title.transit":"\u5728\u9014\u8d27\u7269","title.ship":"\u51fa\u8d27\u8ba1\u5212",
-    "title.boxes":"\u7eb8\u7bb1\u5e93\u5b58","title.grout":"\u7f8e\u7f1d\u5242\u5e93\u5b58","title.report":"\u51fa\u5e93\u6392\u884c",
-    "nav.stock":"\u5e93\u5b58","nav.transit":"\u5728\u9014","nav.ship":"\u51fa\u8d27","nav.boxes":"\u7eb8\u7bb1",
-    "nav.grout":"\u7f8e\u7f1d","nav.report":"\u770b\u677f","nav.admin":"\u8bbe\u7f6e",
-    "btn.search":"\u67e5\u8be2","btn.refresh":"\u5237\u65b0","btn.showAll":"\u663e\u793a\u5168\u90e8",
-    "ph.searchCodeSpec":"\u8f93\u5165\u7f16\u53f7\u6216\u89c4\u683c\uff0c\u5982 3609, 300x600",
-    "ph.searchTransit":"\u641c\u7d22\u7f16\u53f7 / \u67dc\u53f7 / \u63d0\u5355\u53f7",
-    "h.transit":"\u5728\u9014\u8d27\u7269","h.ship":"\u51fa\u8d27\u8ba1\u5212","h.boxes":"\u7eb8\u7bb1\u5e93\u5b58",
-    "h.grout":"\u7f8e\u7f1d\u5242\u5e93\u5b58","h.report":"\u51fa\u5e93\u6392\u884c\uff08\u8001\u677f\u770b\u677f\uff09",
-    "tip.transit":"\u6570\u636e\u7531\u7ba1\u7406\u5458\u624b\u52a8\u66f4\u65b0\uff1b\u82e5\u66f4\u65b0\u65f6\u95f4\u8d85\u8fc7 1 \u5468\uff0c\u4fe1\u606f\u53ef\u80fd\u4e0d\u51c6\u786e\uff0c\u8bf7\u8be2\u95ee\u7ba1\u7406\u5458\u3002",
-    "opt.active":"\u5728\u9014 + \u5df2\u5230\u6e2f","opt.inTransit":"\u4ec5\u5728\u9014","opt.arrived":"\u4ec5\u5df2\u5230\u6e2f",
-    "opt.history":"\u5386\u53f2\uff08\u5df2\u5165\u5e93/\u53d6\u6d88\uff09","opt.all":"\u5168\u90e8",
-    "col.image":"\u56fe\u7247","col.code":"\u7f16\u53f7","col.model":"\u578b\u53f7","col.spec":"\u89c4\u683c","col.color":"\u8272\u53f7",
-    "col.stock":"\u5e93\u5b58","col.reserve":"\u7559\u8d27","col.warehouse":"\u4ed3\u5e93",
-    "col.container":"\u67dc\u53f7","col.qty":"\u6570\u91cf","col.status":"\u72b6\u6001","col.remark":"\u5907\u6ce8","col.booked":"\u9884\u5b9a",
-    "status.inTransit":"\u5728\u9014","status.arrived":"\u5df2\u5230\u6e2f","status.inbound":"\u5df2\u5165\u5e93","status.cancelled":"\u53d6\u6d88",
-    "msg.needKeyword":"\u8bf7\u8f93\u5165\u7f16\u53f7\u6216\u89c4\u683c","msg.searching":"\u641c\u7d22\u4e2d\u2026","msg.firstLoad":"\u9996\u6b21\u52a0\u8f7d\u5e93\u5b58\u6570\u636e\uff0c\u7a0d\u5019\u2026",
-    "msg.searchFail":"\u641c\u7d22\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5","msg.notFound":"\u672a\u627e\u5230\u5e93\u5b58",
-    "msg.refreshing":"\u6b63\u5728\u4ece\u670d\u52a1\u5668\u5237\u65b0\u5e93\u5b58\u2026","msg.refreshed":"\u5e93\u5b58\u5df2\u5237\u65b0\uff08\u5171 {n} \u6761\uff09\uff0c\u8bf7\u91cd\u65b0\u641c\u7d22",
-    "msg.refreshFail":"\u5237\u65b0\u5931\u8d25","msg.loading":"\u52a0\u8f7d\u4e2d\u2026","msg.loadFail":"\u52a0\u8f7d\u5931\u8d25",
-    "msg.noTransit":"\u6682\u65e0\u5728\u9014\u6570\u636e","msg.noData":"\u6682\u65e0\u6570\u636e",
-    "reserve.none":"\u7559\u8d27 0","reserve.has":"\u7559\u8d27 {n}","reserve.customer":"\u5ba2\u6237\uff1a","reserve.unknown":"\u672a\u586b\u5ba2\u6237",
-    "banner.overdueTitle":"\u26a0 \u6709 {n} \u7b14\u7559\u8d27\u5df2\u8d85\u8fc7 30 \u5929\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458",
-    "banner.overdueItem":"\uff08\u5df2\u7559 {days} \u5929\uff09","banner.more":"\u2026\u8fd8\u6709 {n} \u7b14",
-    "pack.pcsBox":"{n}\u7247/\u7bb1",
-    "transit.bl":"\u63d0\u5355","transit.noBl":"(\u65e0\u63d0\u5355\u53f7)","transit.hint":"\u5171 {g} \u4e2a\u63d0\u5355\uff0c{n} \u884c",
-    "transit.meta":"{c} \u67dc \u00b7 {n} \u884c","transit.eta":"\u9884\u8ba1\u5230\u6e2f\uff1a","transit.updated":"\u66f4\u65b0\uff1a",
-    "transit.stale":"\u26a0\ufe0f \u90e8\u5206\u5728\u9014\u6570\u636e\u4e0a\u6b21\u66f4\u65b0\u5df2\u8d85\u8fc7 {days} \u5929\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458\u786e\u8ba4\u6700\u65b0\u88c5\u67dc/\u5230\u6e2f\u60c5\u51b5\u3002",
-    "report.today":"\u4eca\u5929","report.week":"\u672c\u5468","report.month":"\u672c\u6708","report.year":"\u672c\u5e74",
-    "report.or":"\u6216","report.wh":"\u4ed3\u5e93","report.allWh":"\u5168\u90e8\u4ed3\u5e93",
-    "report.bar":"\u51fa\u5e93 Top 15\uff08\u67f1\u72b6\u56fe\uff09","report.pie":"Top 10 \u5360\u6bd4\uff08\u997c\u56fe\uff09","report.sort":"\u6392\u540d\u6392\u5e8f\uff1a",
-    "report.sortQty":"\u6309\u51fa\u5e93\u6570\u91cf","report.sortCount":"\u6309\u51fa\u5e93\u6b21\u6570","report.rank":"\u6392\u540d",
-    "report.outQty":"\u51fa\u5e93\u603b\u91cf","report.outCount":"\u51fa\u5e93\u6b21\u6570","report.hint":"\u6b64\u9875\u9762\u65e0\u9700\u767b\u5f55\uff0c\u4ec5\u4f9b\u67e5\u770b",
-    "report.needDate":"\u8bf7\u9009\u62e9\u5f00\u59cb\u548c\u7ed3\u675f\u65e5\u671f",
-    "report.summary":"\u5171 {orders} \u7b14\u51fa\u5e93{wh}\uff0c\u603b\u91cf {qty}\uff0c\u6d89\u53ca {codes} \u4e2a\u7f16\u53f7",
-    "report.empty":"\u8be5\u65f6\u95f4\u6bb5\u6ca1\u6709\u51fa\u5e93\u8bb0\u5f55{wh}","report.whTag":"\uff08\u4ed3\u5e93 {w}\uff09","report.chartQty":"\u51fa\u5e93\u6570\u91cf"
+    "title.stock":"库存查询","title.transit":"在途货物","title.ship":"出货计划",
+    "title.boxes":"纸箱库存","title.grout":"美缝剂库存","title.report":"出库排行",
+    "nav.stock":"库存","nav.transit":"在途","nav.ship":"出货","nav.boxes":"纸箱",
+    "nav.grout":"美缝","nav.report":"看板","nav.admin":"设置",
+    "btn.search":"查询","btn.refresh":"刷新","btn.showAll":"显示全部",
+    "ph.searchCodeSpec":"输入编号或规格，如 3609, 300x600",
+    "ph.searchTransit":"搜索编号 / 柜号 / 提单号",
+    "h.transit":"在途货物","h.ship":"出货计划","h.boxes":"纸箱库存",
+    "h.grout":"美缝剂库存","h.report":"出库排行（老板看板）",
+    "tip.transit":"数据由管理员手动更新；若更新时间超过 1 周，信息可能不准确，请询问管理员。",
+    "opt.active":"在途 + 已到港","opt.inTransit":"仅在途","opt.arrived":"仅已到港",
+    "opt.history":"历史（已入库/取消）","opt.all":"全部",
+    "col.image":"图片","col.code":"编号","col.model":"型号","col.spec":"规格","col.color":"色号",
+    "col.stock":"库存","col.reserve":"留货","col.warehouse":"仓库",
+    "col.container":"柜号","col.qty":"数量","col.status":"状态","col.remark":"备注","col.booked":"预定",
+    "status.inTransit":"在途","status.arrived":"已到港","status.inbound":"已入库","status.cancelled":"取消",
+    "msg.needKeyword":"请输入编号或规格","msg.searching":"搜索中…","msg.firstLoad":"首次加载库存数据，稍候…",
+    "msg.searchFail":"搜索失败，请稍后重试","msg.notFound":"未找到库存",
+    "msg.refreshing":"正在从服务器刷新库存…","msg.refreshed":"库存已刷新（共 {n} 条），请重新搜索",
+    "msg.refreshFail":"刷新失败","msg.loading":"加载中…","msg.loadFail":"加载失败",
+    "msg.noTransit":"暂无在途数据","msg.noData":"暂无数据",
+    "reserve.none":"留货 0","reserve.has":"留货 {n}","reserve.customer":"客户：","reserve.unknown":"未填客户",
+    "banner.overdueTitle":"⚠ 有 {n} 笔留货已超过 30 天，请联系管理员",
+    "banner.overdueItem":"（已留 {days} 天）","banner.more":"…还有 {n} 笔",
+    "pack.pcsBox":"{n}片/箱",
+    "transit.bl":"提单","transit.noBl":"(无提单号)","transit.hint":"共 {g} 个提单，{n} 行",
+    "transit.meta":"{c} 柜 · {n} 行","transit.eta":"预计到港：","transit.updated":"更新：",
+    "transit.stale":"⚠️ 部分在途数据上次更新已超过 {days} 天，请联系管理员确认最新装柜/到港情况。",
+    "report.today":"今天","report.week":"本周","report.month":"本月","report.year":"本年",
+    "report.or":"或","report.wh":"仓库","report.allWh":"全部仓库",
+    "report.bar":"出库 Top 15（柱状图）","report.pie":"Top 10 占比（饼图）","report.sort":"排名排序：",
+    "report.sortQty":"按出库数量","report.sortCount":"按出库次数","report.rank":"排名",
+    "report.outQty":"出库总量","report.outCount":"出库次数","report.hint":"此页面无需登录，仅供查看",
+    "report.needDate":"请选择开始和结束日期",
+    "report.summary":"共 {orders} 笔出库{wh}，总量 {qty}，涉及 {codes} 个编号",
+    "report.empty":"该时间段没有出库记录{wh}","report.whTag":"（仓库 {w}）","report.chartQty":"出库数量"
   };
   function fill(s, vars){
     if(!vars) return s;
@@ -44,10 +47,10 @@
   }
   function t(key, vars){ return fill(ZH[key] || key, vars); }
   function statusLabel(st){
-    if(st==="\u5df2\u5230\u6e2f") return "\u5df2\u5230\u6e2f";
-    if(st==="\u5df2\u5165\u5e93") return "\u5df2\u5165\u5e93";
-    if(st==="\u53d6\u6d88") return "\u53d6\u6d88";
-    return "\u5728\u9014";
+    if(st==="已到港") return "已到港";
+    if(st==="已入库") return "已入库";
+    if(st==="取消") return "取消";
+    return "在途";
   }
   g.I18N = { t:t, pick:function(zh){ return zh; }, getLang:function(){ return "zh"; }, setLang:function(){}, apply:function(){}, applyPhrases:function(){}, statusLabel:statusLabel };
   g.t = t;
