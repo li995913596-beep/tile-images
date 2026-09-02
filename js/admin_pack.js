@@ -1,6 +1,6 @@
 /**
- * 包装信息扩展：一箱多重(boxWeight)、包装(packaging)
- * 在 CDN admin 加载后强制往「新增」表单和「编辑」面板注入字段
+ * Pack fields: boxWeight / packaging. Labels follow tile_lang.
+ * v20260902i
  */
 import { db } from "./firebase.js";
 import {
@@ -8,32 +8,38 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
+function packLang(){
+  try {
+    var v = localStorage.getItem("tile_lang");
+    if (v === "en" || v === "th" || v === "zh") return v;
+  } catch (e) {}
+  if (window.I18N && I18N.getLang) return I18N.getLang();
+  return "zh";
+}
+function L(zh, en, th){
+  var l = packLang();
+  if (l === "en") return en == null ? zh : en;
+  if (l === "th") return th == null ? zh : th;
+  return zh;
+}
 
-/** 新增表单：在「每箱片数」后面插入「一箱多重 / 包装」 */
 function ensureNewPackFields(){
   var ppb = $("new_piecesPerBox");
   if(!ppb) return;
   if($("new_boxWeight")) return;
-
   var wrap = document.createElement("div");
   wrap.id = "new_pack_fields";
   wrap.innerHTML =
-    '<div style="margin-top:8px;">一箱多重kg（可空）</div>' +
+    '<div style="margin-top:8px;">' + L("\u4e00\u7bb1\u591a\u91cdkg\uff08\u53ef\u7a7a\uff09", "Weight/box kg (optional)", "\u0e19\u0e49\u0e33\u0e2b\u0e19\u0e31\u0e01/\u0e01\u0e25\u0e48\u0e2d\u0e07 kg (\u0e27\u0e48\u0e32\u0e07\u0e44\u0e14\u0e49)") + '</div>' +
     '<input id="new_boxWeight" type="number" step="0.01">' +
-    '<div style="margin-top:8px;">包装（可空）</div>' +
-    '<input id="new_packaging" placeholder="如纸箱">';
-
+    '<div style="margin-top:8px;">' + L("\u5305\u88c5\uff08\u53ef\u7a7a\uff09", "Packaging (optional)", "\u0e1a\u0e23\u0e23\u0e08\u0e38\u0e20\u0e31\u0e13\u0e11\u0e4c (\u0e27\u0e48\u0e32\u0e07\u0e44\u0e14\u0e49)") + '</div>' +
+    '<input id="new_packaging" placeholder="' + L("\u5982\u7eb8\u7bb1", "e.g. carton", "\u0e40\u0e0a\u0e48\u0e19 \u0e01\u0e25\u0e48\u0e2d\u0e07") + '">';
   var next = ppb.nextSibling;
   while(next && next.nodeType === 3) next = next.nextSibling;
-  if(next && next.parentNode === ppb.parentNode){
-    ppb.parentNode.insertBefore(wrap, next);
-  } else {
-    ppb.parentNode.appendChild(wrap);
-  }
-  console.log("admin_pack: 已注入新增表单 一箱多重/包装");
+  if(next && next.parentNode === ppb.parentNode) ppb.parentNode.insertBefore(wrap, next);
+  else ppb.parentNode.appendChild(wrap);
 }
 
-/** 编辑面板：在每箱片数后注入 */
 function injectEditPackFields(root){
   if(!root) return;
   root.querySelectorAll("[id^='edit_ppb_']").forEach(function(ppb){
@@ -43,10 +49,10 @@ function injectEditPackFields(root){
     var frag = document.createElement("span");
     frag.style.cssText = "display:contents";
     frag.innerHTML =
-      '<span style="font-size:12px;color:#666;">一箱多重(kg)</span>' +
+      '<span style="font-size:12px;color:#666;">' + L("\u4e00\u7bb1\u591a\u91cd(kg)", "kg/box", "\u0e01\u0e01./\u0e01\u0e25\u0e48\u0e2d\u0e07") + '</span>' +
       '<input id="edit_bw_' + id + '" type="number" step="0.01" style="width:70px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">' +
-      '<span style="font-size:12px;color:#666;">包装</span>' +
-      '<input id="edit_pack_' + id + '" placeholder="如纸箱" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">';
+      '<span style="font-size:12px;color:#666;">' + L("\u5305\u88c5", "Packaging", "\u0e1a\u0e23\u0e23\u0e08\u0e38\u0e20\u0e31\u0e13\u0e11\u0e4c") + '</span>' +
+      '<input id="edit_pack_' + id + '" placeholder="' + L("\u5982\u7eb8\u7bb1", "e.g. carton", "\u0e40\u0e0a\u0e48\u0e19 \u0e01\u0e25\u0e48\u0e2d\u0e07") + '" style="width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;">';
     if(btn) ppb.parentNode.insertBefore(frag, btn);
     else ppb.parentNode.appendChild(frag);
     getDoc(doc(db, "inventory", id)).then(function(snap){
@@ -64,7 +70,7 @@ window.saveEdit = async function(id){
   try{
     var ref = doc(db, "inventory", id);
     var snap = await getDoc(ref);
-    if(!snap.exists()) return alert("记录不存在，请重新搜索");
+    if(!snap.exists()) return alert("\u8bb0\u5f55\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u641c\u7d22");
     var data = snap.data();
     var code = (($("edit_code_"+id)||{}).value || "").trim();
     var spec = (($("edit_spec_"+id)||{}).value || "").trim();
@@ -75,11 +81,10 @@ window.saveEdit = async function(id){
     var bwRaw = (($("edit_bw_"+id)||{}).value || "").trim();
     var boxWeight = bwRaw === "" ? null : Number(bwRaw);
     var packaging = (($("edit_pack_"+id)||{}).value || "").trim() || null;
-    if(!code) return alert("编号不能为空");
-    if(!warehouse) return alert("仓库不能为空");
-    if(ppbRaw !== "" && (!piecesPerBox || piecesPerBox <= 0)) return alert("每箱片数不正确");
-    if(bwRaw !== "" && (isNaN(boxWeight) || boxWeight <= 0)) return alert("一箱多重不正确");
-
+    if(!code) return alert("\u7f16\u53f7\u4e0d\u80fd\u4e3a\u7a7a");
+    if(!warehouse) return alert("\u4ed3\u5e93\u4e0d\u80fd\u4e3a\u7a7a");
+    if(ppbRaw !== "" && (!piecesPerBox || piecesPerBox <= 0)) return alert("\u6bcf\u7bb1\u7247\u6570\u4e0d\u6b63\u786e");
+    if(bwRaw !== "" && (isNaN(boxWeight) || boxWeight <= 0)) return alert("\u4e00\u7bb1\u591a\u91cd\u4e0d\u6b63\u786e");
     var newId = code + "_" + color + "_" + warehouse;
     var same =
       String(data.code||"") === code &&
@@ -89,12 +94,10 @@ window.saveEdit = async function(id){
       (data.piecesPerBox == null ? null : Number(data.piecesPerBox)) === piecesPerBox &&
       (data.boxWeight == null ? null : Number(data.boxWeight)) === boxWeight &&
       (data.packaging || null) === packaging;
-    if(same) return alert("没有改动");
-
-    if(!confirm("确认修改？\n原：" + data.code + " / " + (data.spec||"-") + " / 色" + (data.color||"-") + " / " + data.warehouse +
-      "\n新：" + code + " / " + (spec||"-") + " / 色" + (color||"-") + " / " + warehouse +
-      "\n库存 " + data.stock + "、留货会一起保留")) return;
-
+    if(same) return alert("\u6ca1\u6709\u6539\u52a8");
+    if(!confirm("\u786e\u8ba4\u4fee\u6539\uff1f\n\u539f\uff1a" + data.code + " / " + (data.spec||"-") + " / \u8272" + (data.color||"-") + " / " + data.warehouse +
+      "\n\u65b0\uff1a" + code + " / " + (spec||"-") + " / \u8272" + (color||"-") + " / " + warehouse +
+      "\n\u5e93\u5b58 " + data.stock + "\u3001\u7559\u8d27\u4f1a\u4e00\u8d77\u4fdd\u7559")) return;
     var payload = {
       code: code, spec: spec, color: color, warehouse: warehouse,
       piecesPerBox: piecesPerBox, boxWeight: boxWeight, packaging: packaging,
@@ -103,7 +106,6 @@ window.saveEdit = async function(id){
       lastUpdate: serverTimestamp()
     };
     if(data.hidden != null) payload.hidden = data.hidden;
-
     if(newId === id){
       await updateDoc(ref, {
         code: code, spec: spec, color: color, warehouse: warehouse,
@@ -112,23 +114,20 @@ window.saveEdit = async function(id){
       });
     } else {
       var exist = await getDoc(doc(db, "inventory", newId));
-      if(exist.exists()) return alert("目标已存在：" + newId + "\n请先处理那条库存，避免重复");
+      if(exist.exists()) return alert("\u76ee\u6807\u5df2\u5b58\u5728\uff1a" + newId + "\n\u8bf7\u5148\u5904\u7406\u90a3\u6761\u5e93\u5b58\uff0c\u907f\u514d\u91cd\u590d");
       await setDoc(doc(db, "inventory", newId), payload);
       await deleteDoc(ref);
     }
-
     await addDoc(collection(db, "logs"), {
-      timestamp: serverTimestamp(),
-      type: "修改",
+      timestamp: serverTimestamp(), type: "\u4fee\u6539",
       code: code, spec: spec, color: color, warehouse: warehouse,
-      qty: Number(data.stock || 0),
-      note: "修改库存信息"
+      qty: Number(data.stock || 0), note: "\u4fee\u6539\u5e93\u5b58\u4fe1\u606f"
     });
-    alert("修改成功");
+    alert("\u4fee\u6539\u6210\u529f");
     if($("in_search") && $("in_search").value.trim() && typeof window.searchIn === "function") window.searchIn();
   }catch(e){
     console.error(e);
-    alert("修改失败：" + (e.message||e));
+    alert("\u4fee\u6539\u5931\u8d25\uff1a" + (e.message||e));
   }
 };
 
@@ -137,33 +136,28 @@ window.addNewStock = async function(){
     var code = ($("new_code").value||"").trim();
     var color = ($("new_color").value||"").trim();
     var warehouse = ($("new_warehouse").value||"").toString().trim().toLowerCase();
-    if(!code||!warehouse) return alert("请填写编号和仓库");
+    if(!code||!warehouse) return alert("\u8bf7\u586b\u5199\u7f16\u53f7\u548c\u4ed3\u5e93");
     var id = code + "_" + color + "_" + warehouse;
     await setDoc(doc(db,"inventory",id),{
-      code: code,
-      spec: $("new_spec").value,
-      color: color,
-      warehouse: warehouse,
+      code: code, spec: $("new_spec").value, color: color, warehouse: warehouse,
       stock: Number($("new_qty").value)||0,
       piecesPerBox: $("new_piecesPerBox").value ? Number($("new_piecesPerBox").value) : null,
       boxWeight: $("new_boxWeight") && $("new_boxWeight").value ? Number($("new_boxWeight").value) : null,
       packaging: ($("new_packaging") && $("new_packaging").value || "").trim() || null,
-      reservedList: [],
-      lastUpdate: serverTimestamp()
+      reservedList: [], lastUpdate: serverTimestamp()
     });
-    alert("新增成功");
+    alert("\u65b0\u589e\u6210\u529f");
   }catch(e){
     console.error(e);
-    alert("新增失败：" + (e.message||e));
+    alert("\u65b0\u589e\u5931\u8d25\uff1a" + (e.message||e));
   }
 };
 
 function patchExport(){
-  if(typeof window.exportInventory !== "function") return;
-  if(window.exportInventory.__packPatched) return;
+  if(typeof window.exportInventory !== "function" || window.exportInventory.__packPatched) return;
   window.exportInventory = async function(){
     try{
-      if(typeof XLSX === "undefined") return alert("XLSX 未加载");
+      if(typeof XLSX === "undefined") return alert("XLSX \u672a\u52a0\u8f7d");
       var snap = await getDocs(query(collection(db,"inventory"), limit(5000)));
       var warehouseMap = {}, allRows = [];
       snap.forEach(function(d){
@@ -172,70 +166,64 @@ function patchExport(){
         var reserved = 0;
         if(Array.isArray(i.reservedList)) i.reservedList.forEach(function(r){ if(r) reserved += Number(r.qty||r.quantity||0); });
         var row = {
-          "编号": i.code||"", "规格": i.spec||"", "色号": i.color||"",
-          "数量": Number(i.stock||0), "所在仓库": i.warehouse||"", "留货": reserved,
-          "每箱片数": i.piecesPerBox||"", "一箱多重": i.boxWeight||"", "包装": i.packaging||""
+          "\u7f16\u53f7": i.code||"", "\u89c4\u683c": i.spec||"", "\u8272\u53f7": i.color||"",
+          "\u6570\u91cf": Number(i.stock||0), "\u6240\u5728\u4ed3\u5e93": i.warehouse||"", "\u7559\u8d27": reserved,
+          "\u6bcf\u7bb1\u7247\u6570": i.piecesPerBox||"", "\u4e00\u7bb1\u591a\u91cd": i.boxWeight||"", "\u5305\u88c5": i.packaging||""
         };
-        var w = (i.warehouse||"未分类").toString().replace(/[\\\/\?\*\[\]\:]/g,"_").trim().substring(0,31)||"未分类";
+        var w = (i.warehouse||"\u672a\u5206\u7c7b").toString().replace(/[\\\/\?\*\[\]\:]/g,"_").trim().substring(0,31)||"\u672a\u5206\u7c7b";
         if(!warehouseMap[w]) warehouseMap[w]=[];
         warehouseMap[w].push(row);
         allRows.push(row);
       });
-      if(!Object.keys(warehouseMap).length) return alert("没有可导出的数据");
+      if(!Object.keys(warehouseMap).length) return alert("\u6ca1\u6709\u53ef\u5bfc\u51fa\u7684\u6570\u636e");
       var wb = XLSX.utils.book_new();
       for(var w in warehouseMap) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(warehouseMap[w]), w);
       allRows.sort(function(a,b){
-        var s = String(a["规格"]||"").localeCompare(String(b["规格"]||""),"zh-CN"); if(s) return s;
-        var q = Number(a["数量"]||0)-Number(b["数量"]||0); if(q) return q;
-        return String(a["编号"]||"").localeCompare(String(b["编号"]||""),"zh-CN");
+        var s = String(a["\u89c4\u683c"]||"").localeCompare(String(b["\u89c4\u683c"]||""),"zh-CN"); if(s) return s;
+        var q = Number(a["\u6570\u91cf"]||0)-Number(b["\u6570\u91cf"]||0); if(q) return q;
+        return String(a["\u7f16\u53f7"]||"").localeCompare(String(b["\u7f16\u53f7"]||""),"zh-CN");
       });
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allRows), "全部排序");
-      XLSX.writeFile(wb, "当前库存_" + new Date().toISOString().split("T")[0] + ".xlsx");
-      alert("导出成功！");
-    }catch(err){ alert("导出失败：" + (err.message||err)); }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allRows), "\u5168\u90e8\u6392\u5e8f");
+      XLSX.writeFile(wb, "\u5f53\u524d\u5e93\u5b58_" + new Date().toISOString().split("T")[0] + ".xlsx");
+      alert("\u5bfc\u51fa\u6210\u529f\uff01");
+    }catch(err){ alert("\u5bfc\u51fa\u5931\u8d25\uff1a" + (err.message||err)); }
   };
   window.exportInventory.__packPatched = true;
 }
 
 function patchImport(){
-  if(typeof window.handleImport !== "function") return;
-  if(window.handleImport.__packPatched) return;
+  if(typeof window.handleImport !== "function" || window.handleImport.__packPatched) return;
   window.handleImport = async function(){
     try{
-      if(typeof XLSX === "undefined") return alert("XLSX 未加载");
+      if(typeof XLSX === "undefined") return alert("XLSX \u672a\u52a0\u8f7d");
       var fileEl = $("excelFile");
-      if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("请选择 Excel");
+      if(!fileEl || !fileEl.files || !fileEl.files[0]) return alert("\u8bf7\u9009\u62e9 Excel");
       var wb = XLSX.read(await fileEl.files[0].arrayBuffer(), { type: "array" });
       var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
       var ok = 0, skip = 0;
       for(var i = 0; i < rows.length; i++){
         var row = rows[i];
-        var safeCode = (row["编号"]||row["型号"]||row["code"]||"").toString().trim();
+        var safeCode = (row["\u7f16\u53f7"]||row["\u578b\u53f7"]||row["code"]||"").toString().trim();
         if(!safeCode){ skip++; continue; }
-        var safeColor = (row["色号"]||row["color"]||"").toString().trim();
-        var safeWarehouse = (row["所在仓库"]||row["仓库"]||row["warehouse"]||"").toString().trim().toLowerCase();
+        var safeColor = (row["\u8272\u53f7"]||row["color"]||"").toString().trim();
+        var safeWarehouse = (row["\u6240\u5728\u4ed3\u5e93"]||row["\u4ed3\u5e93"]||row["warehouse"]||"").toString().trim().toLowerCase();
         if(!safeWarehouse){ skip++; continue; }
-        var bwRaw = row["一箱多重"]||row["箱重"]||row["一箱重量"]||"";
-        var packRaw = (row["包装"]||"").toString().trim();
+        var bwRaw = row["\u4e00\u7bb1\u591a\u91cd"]||row["\u7bb1\u91cd"]||row["\u4e00\u7bb1\u91cd\u91cf"]||"";
+        var packRaw = (row["\u5305\u88c5"]||"").toString().trim();
         try{
           await setDoc(doc(db,"inventory", safeCode+"_"+safeColor+"_"+safeWarehouse), {
-            code: safeCode,
-            spec: (row["规格"]||"").toString(),
-            color: safeColor,
-            warehouse: safeWarehouse,
-            stock: Number(row["数量"])||0,
-            piecesPerBox: row["每箱片数"] ? Number(row["每箱片数"]) : null,
+            code: safeCode, spec: (row["\u89c4\u683c"]||"").toString(), color: safeColor, warehouse: safeWarehouse,
+            stock: Number(row["\u6570\u91cf"])||0,
+            piecesPerBox: row["\u6bcf\u7bb1\u7247\u6570"] ? Number(row["\u6bcf\u7bb1\u7247\u6570"]) : null,
             boxWeight: bwRaw !== "" && bwRaw != null ? Number(bwRaw) : null,
-            packaging: packRaw || null,
-            reservedList: [],
-            lastUpdate: serverTimestamp()
+            packaging: packRaw || null, reservedList: [], lastUpdate: serverTimestamp()
           });
           ok++;
         }catch(e){ console.error(e); skip++; }
       }
-      alert("导入完成：成功 "+ok+" 条"+(skip?"，跳过 "+skip+" 条":""));
+      alert("\u5bfc\u5165\u5b8c\u6210\uff1a\u6210\u529f "+ok+" \u6761"+(skip?"\uff0c\u8df3\u8fc7 "+skip+" \u6761":""));
       fileEl.value = "";
-    }catch(err){ alert("导入失败："+(err.message||err)); }
+    }catch(err){ alert("\u5bfc\u5165\u5931\u8d25\uff1a"+(err.message||err)); }
   };
   window.handleImport.__packPatched = true;
 }
@@ -247,24 +235,15 @@ function watchInResult(){
   var obs = new MutationObserver(function(){ injectEditPackFields(box); });
   obs.observe(box, { childList: true, subtree: true });
 }
-
 function boot(){
-  ensureNewPackFields();
-  watchInResult();
-  patchExport();
-  patchImport();
+  ensureNewPackFields(); watchInResult(); patchExport(); patchImport();
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
-
 var tries = 0;
 var timer = setInterval(function(){
   tries++;
-  ensureNewPackFields();
-  watchInResult();
-  patchExport();
-  patchImport();
+  ensureNewPackFields(); watchInResult(); patchExport(); patchImport();
   if(($("new_boxWeight") && $("new_piecesPerBox")) || tries > 30) clearInterval(timer);
 }, 500);
-
-console.log("admin_pack.js ready v20260806b");
+console.log("admin_pack.js ready v20260902i");
