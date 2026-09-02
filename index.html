@@ -4,14 +4,8 @@
 <meta charset="UTF-8">
 <title data-i18n="title.stock">库存查询</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/style.css?v=20260902a">
-<style>
-.lang-switch{position:fixed;top:6px;right:8px;z-index:200;display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.94);border:1px solid #e2e8f0;border-radius:999px;box-shadow:0 4px 14px rgba(15,23,42,.10)}
-.lang-switch button{border:none;background:transparent;color:#64748b;border-radius:999px;font-size:11px;font-weight:700;line-height:1;padding:5px 8px;cursor:pointer}
-.lang-switch button.active{background:#0f172a;color:#fff}
-@media (max-width:520px){.lang-switch{top:auto;bottom:12px;right:10px}}
-</style>
-<script src="js/i18n.js?v=20260902b"></script>
+<link rel="stylesheet" href="css/style.css?v=20260902e">
+<script src="js/i18n.js?v=20260902e"></script>
 </head>
 <body>
 
@@ -45,6 +39,11 @@
     <span data-i18n="nav.admin">设置</span>
   </a>
 </header>
+<div id="langSwitch" class="lang-switch">
+  <button type="button" data-lang="zh">中文</button>
+  <button type="button" data-lang="en">EN</button>
+  <button type="button" data-lang="th">ไทย</button>
+</div>
 
 <div class="container">
 
@@ -66,7 +65,7 @@
   <img id="modalImg">
 </div>
 
-<script type="module" src="js/query.js?v=20260902a"></script>
+<script type="module" src="js/query.js?v=20260902e"></script>
 
 <script>
 const modal=document.getElementById("imgModal");
@@ -78,41 +77,6 @@ window.openModal=function(src){
 modal.onclick=function(){
   modal.style.display="none";
 };
-</script>
-<script>
-(function(){
-  if(window.I18N) return;
-  var KEY="tile_lang";
-  var D={
-    zh:{"title.stock":"库存查询","nav.stock":"库存","nav.transit":"在途","nav.ship":"出货","nav.boxes":"纸箱","nav.grout":"美缝","nav.report":"看板","nav.admin":"设置","btn.search":"查询","btn.refresh":"刷新","ph.searchCodeSpec":"输入编号或规格，如 3609, 300x600"},
-    en:{"title.stock":"Stock Search","nav.stock":"Stock","nav.transit":"Transit","nav.ship":"Ship","nav.boxes":"Boxes","nav.grout":"Grout","nav.report":"Board","nav.admin":"Admin","btn.search":"Search","btn.refresh":"Refresh","ph.searchCodeSpec":"Code or size, e.g. 3609, 300x600"},
-    th:{"title.stock":"ค้นหาสต็อก","nav.stock":"สต็อก","nav.transit":"ระหว่างทาง","nav.ship":"ส่งของ","nav.boxes":"กล่อง","nav.grout":"ยาแนว","nav.report":"แดชบอร์ด","nav.admin":"ตั้งค่า","btn.search":"ค้นหา","btn.refresh":"รีเฟรช","ph.searchCodeSpec":"ใส่รหัสหรือขนาด เช่น 3609, 300x600"}
-  };
-  function lang(){ try{ var v=localStorage.getItem(KEY); if(v==="en"||v==="th"||v==="zh") return v; }catch(e){} return "zh"; }
-  function t(k){ var L=lang(); return (D[L]&&D[L][k])||(D.zh&&D.zh[k])||k; }
-  function apply(){
-    document.querySelectorAll("[data-i18n]").forEach(function(el){ el.textContent=t(el.getAttribute("data-i18n")); });
-    document.querySelectorAll("[data-i18n-placeholder]").forEach(function(el){ el.setAttribute("placeholder", t(el.getAttribute("data-i18n-placeholder"))); });
-    var title=document.querySelector("title[data-i18n]"); if(title) title.textContent=t(title.getAttribute("data-i18n"));
-    var bar=document.getElementById("langSwitch");
-    if(bar) bar.querySelectorAll("button[data-lang]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-lang")===lang()); });
-    try{ window.dispatchEvent(new CustomEvent("tile-lang-change",{detail:{lang:lang()}})); }catch(e){}
-  }
-  function setLang(v){ try{ localStorage.setItem(KEY,v); }catch(e){} apply(); }
-  window.I18N={t:t,getLang:lang,setLang:setLang,apply:apply,pick:function(zh,en,th){ var L=lang(); return L==="en"?en:(L==="th"?th:zh); }};
-  window.t=t;
-  function boot(){
-    if(document.getElementById("langSwitch")) { apply(); return; }
-    var bar=document.createElement("div");
-    bar.id="langSwitch"; bar.className="lang-switch";
-    bar.innerHTML='<button type="button" data-lang="zh">中文</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="th">ไทย</button>';
-    bar.onclick=function(e){ var b=e.target.closest("button[data-lang]"); if(b) setLang(b.getAttribute("data-lang")); };
-    document.body.appendChild(bar);
-    apply();
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-})();
 </script>
 
 </body>
