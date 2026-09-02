@@ -4,9 +4,17 @@
 <meta charset="UTF-8">
 <title data-i18n="title.admin">库存管理后台</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/style.css?v=20260902h">
-<script src="js/i18n.js?v=20260902h"></script>
-<script src="js/lang_bind.js?v=20260902h"></script>
+<script>
+window.setTileLang=function(c){
+  if(c!=="en"&&c!=="th")c="zh";
+  try{localStorage.setItem("tile_lang",c);}catch(e){}
+  try{document.cookie="tile_lang="+c+";path=/;max-age=31536000;SameSite=Lax";}catch(e){}
+  location.reload();
+};
+</script>
+<link rel="stylesheet" href="css/style.css?v=20260902i">
+<script src="js/i18n.js?v=20260902i"></script>
+<script src="js/lang_bind.js?v=20260902i"></script>
 </head>
 <body>
 <header>
@@ -15,9 +23,9 @@
 </header>
 <div id="langSwitch" class="lang-switch">
   <div class="lang-switch-inner">
-    <button type="button" data-lang="zh" onclick="(window.setTileLang||window.TILE_LANG&&TILE_LANG.setLang)('zh')"><span class="lang-flag">🇨🇳</span>中文</button>
-    <button type="button" data-lang="en" onclick="(window.setTileLang||window.TILE_LANG&&TILE_LANG.setLang)('en')"><span class="lang-flag">🇬🇧</span>EN</button>
-    <button type="button" data-lang="th" onclick="(window.setTileLang||window.TILE_LANG&&TILE_LANG.setLang)('th')"><span class="lang-flag">🇹🇭</span>ไทย</button>
+    <button type="button" data-lang="zh" onclick="setTileLang('zh');return false;"><span class="lang-flag">🇨🇳</span>中文</button>
+    <button type="button" data-lang="en" onclick="setTileLang('en');return false;"><span class="lang-flag">🇬🇧</span>EN</button>
+    <button type="button" data-lang="th" onclick="setTileLang('th');return false;"><span class="lang-flag">🇹🇭</span>ไทย</button>
   </div>
 </div>
 <div class="container">
@@ -123,7 +131,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="js/admin.js?v=20260821b"></script>
+<script type="module" src="js/admin.js?v=20260902i"></script>
 <script type="module" src="js/ship_plan.js?v=20260819b"></script>
 <script type="module" src="js/out_from_plan.js?v=20260819b"></script>
 <script type="module" src="js/admin_log_tools.js?v=20260821b"></script>
@@ -132,11 +140,11 @@
 <script type="module" src="js/transit_inbound.js?v=20260815g"></script>
 <script type="module" src="js/boxes.js?v=20260815m"></script>
 <script type="module" src="js/grout.js?v=20260817a"></script>
-
 <script>
 function tileApplyAdmin(){
-  if(window.TILE_LANG && TILE_LANG.paint) TILE_LANG.paint();
-  else if(window.I18N){ I18N.apply(); if(I18N.applyPhrases) I18N.applyPhrases(document.body); }
+  if(!window.I18N) return;
+  window.I18N.apply();
+  if(window.I18N.applyPhrases) window.I18N.applyPhrases(document.body);
 }
 document.addEventListener("tile-lang-change", tileApplyAdmin);
 (function(){
