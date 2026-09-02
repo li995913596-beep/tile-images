@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <title data-i18n="title.stock">库存查询</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/style.css?v=20260902e">
-<script src="js/i18n.js?v=20260902e"></script>
+<link rel="stylesheet" href="css/style.css?v=20260902f">
+<script src="js/i18n.js?v=20260902f"></script>
 </head>
 <body>
 
@@ -40,11 +40,12 @@
   </a>
 </header>
 <div id="langSwitch" class="lang-switch">
-  <button type="button" data-lang="zh">中文</button>
-  <button type="button" data-lang="en">EN</button>
-  <button type="button" data-lang="th">ไทย</button>
+  <div class="lang-switch-inner">
+    <button type="button" data-lang="zh"><span class="lang-flag">🇨🇳</span>中文</button>
+    <button type="button" data-lang="en"><span class="lang-flag">🇬🇧</span>EN</button>
+    <button type="button" data-lang="th"><span class="lang-flag">🇹🇭</span>ไทย</button>
+  </div>
 </div>
-
 <div class="container">
 
   <div id="reserveBanner" style="display:none;margin:0 0 12px;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,#fef2f2,#fff7ed);border:1px solid #fecaca;color:#9a3412;font-size:14px;line-height:1.5;"></div>
@@ -65,7 +66,7 @@
   <img id="modalImg">
 </div>
 
-<script type="module" src="js/query.js?v=20260902e"></script>
+<script type="module" src="js/query.js?v=20260902f"></script>
 
 <script>
 const modal=document.getElementById("imgModal");
