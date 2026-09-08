@@ -8,6 +8,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
+function tt(key, vars){ return (window.I18N && window.I18N.t(key, vars)) || key; }
+function stLabel(st){ return (window.I18N && window.I18N.statusLabel(st)) || st; }
 
 function pad2(n){ return String(n).padStart(2, "0"); }
 
@@ -46,7 +48,9 @@ function fmtEtaCN(eta){
     if(/年.*月.*日/.test(s)) return s;
     return s.length > 24 ? s.slice(0, 16) : s;
   }
-  return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+  var lang = (window.I18N && window.I18N.getLang && window.I18N.getLang()) || "zh";
+  if(lang === "zh") return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
 }
 
 function fmtColor(c){
@@ -78,7 +82,6 @@ function esc(s){
   return t;
 }
 
-/** 与主页搜索一致的数量徽章 */
 function qtyPill(qty){
   if(qty == null || qty === "") return "-";
   var n = Number(qty);
@@ -90,12 +93,16 @@ function qtyPill(qty){
   return '<span class="qty-pill" style="background:' + bg + ';">' + esc(String(qty)) + "</span>";
 }
 
+function statusLabel(st){
+  return stLabel(st);
+}
+
 function statusBadge(st){
   var cls = "badge-zt";
   if(st === "已到港") cls = "badge-dg";
   else if(st === "已入库") cls = "badge-rk";
   else if(st === "取消") cls = "badge-qx";
-  return '<span class="badge ' + cls + '">' + esc(st || "在途") + "</span>";
+  return '<span class="badge ' + cls + '">' + esc(statusLabel(st || "在途")) + "</span>";
 }
 
 function getUpdatedMs(v){
@@ -114,18 +121,33 @@ async function loadAll(){
   return list;
 }
 
+function statusOk(item, status){
+  var st = item.status || "在途";
+  if(status === "active") return st === "在途" || st === "已到港";
+  if(status === "history") return st === "已入库" || st === "取消";
+  if(status === "all") return true;
+  return st === status;
+}
+function itemBlob(item){
+  return [item.code, item.spec, item.color, item.containerNo, item.blNo]
+    .map(function(x){ return String(x || "").toLowerCase(); }).join(" ");
+}
 function filterList(list){
   var status = ($("tStatus") && $("tStatus").value) || "active";
   var kw = (($("tSearch") && $("tSearch").value) || "").trim().toLowerCase();
-  return list.filter(function(item){
-    var st = item.status || "在途";
-    if(status === "active" && st !== "在途" && st !== "已到港") return false;
-    if(status === "history" && st !== "已入库" && st !== "取消") return false;
-    if(status !== "active" && status !== "history" && status !== "all" && st !== status) return false;
-    if(!kw) return true;
-    var blob = [item.code, item.spec, item.color, item.containerNo, item.blNo]
-      .map(function(x){ return String(x || "").toLowerCase(); }).join(" ");
-    return blob.indexOf(kw) >= 0;
+  var byStatus = list.filter(function(item){ return statusOk(item, status); });
+  if(!kw) return byStatus;
+  var hit = byStatus.filter(function(item){ return itemBlob(item).indexOf(kw) >= 0; });
+  var containers = {};
+  hit.forEach(function(item){
+    var cn = String(item.containerNo || "").trim();
+    if(cn) containers[cn] = true;
+  });
+  if(!Object.keys(containers).length) return hit;
+  return byStatus.filter(function(item){
+    var cn = String(item.containerNo || "").trim();
+    if(cn && containers[cn]) return true;
+    return itemBlob(item).indexOf(kw) >= 0;
   });
 }
 
@@ -133,7 +155,7 @@ function groupByBL(list){
   var order = [];
   var map = {};
   list.forEach(function(item){
-    var bl = (item.blNo && String(item.blNo).trim()) ? String(item.blNo).trim() : "(无提单号)";
+    var bl = (item.blNo && String(item.blNo).trim()) ? String(item.blNo).trim() : tt("transit.noBl");
     if(!map[bl]){ map[bl] = []; order.push(bl); }
     map[bl].push(item);
   });
@@ -151,10 +173,7 @@ function groupByBL(list){
 function renderStaleBanner(list){
   var tip = $("tTip");
   var warn = $("tStale");
-  if(tip){
-    tip.style.display = "block";
-    tip.textContent = "数据由管理员手动更新；若更新时间超过 1 周，信息可能不准确，请询问管理员。";
-  }
+  if(tip) tip.style.display = "block";
   if(!warn) return;
   var week = 7 * 24 * 60 * 60 * 1000;
   var now = Date.now();
@@ -175,8 +194,7 @@ function renderStaleBanner(list){
   if(now - oldest > week){
     var days = Math.floor((now - oldest) / (24 * 60 * 60 * 1000));
     warn.style.display = "block";
-    warn.innerHTML =
-      "⚠️ 部分在途数据上次更新已超过 <b>" + days + " 天</b>，请联系管理员确认最新装柜/到港情况。";
+    warn.innerHTML = tt("transit.stale", { days: days });
   } else {
     warn.style.display = "none";
     warn.innerHTML = "";
@@ -189,34 +207,25 @@ function renderGroups(list){
   var filtered = filterList(list);
   renderStaleBanner(filtered);
   var groups = groupByBL(filtered);
-
-  // 从全量数据取每个提单的到港时间（搜索只命中一行时也能显示同票 ETA）
   var etaByBL = {};
   var updatedByBL = {};
   list.forEach(function(item){
-    var bl = (item.blNo && String(item.blNo).trim()) ? String(item.blNo).trim() : "(无提单号)";
+    var bl = (item.blNo && String(item.blNo).trim()) ? String(item.blNo).trim() : tt("transit.noBl");
     if(item.eta && !etaByBL[bl]) etaByBL[bl] = item.eta;
     var u = fmtTime(item.updatedAt);
     if(u && (!updatedByBL[bl] || u > updatedByBL[bl])) updatedByBL[bl] = u;
   });
-
   if(!groups.length){
-    box.innerHTML = '<div class="empty">暂无在途数据</div>';
+    box.innerHTML = '<div class="empty">' + tt("msg.noTransit") + '</div>';
     if($("tHint")) $("tHint").textContent = "";
     return;
   }
-
-  if($("tHint")){
-    $("tHint").textContent = "共 " + groups.length + " 个提单，" + filtered.length + " 行";
-  }
-
+  if($("tHint")) $("tHint").textContent = tt("transit.hint", { g: groups.length, n: filtered.length });
   box.innerHTML = "";
   groups.forEach(function(g, gi){
     var items = g.items;
     var containers = {};
-    items.forEach(function(it){
-      containers[it.containerNo || "-"] = true;
-    });
+    items.forEach(function(it){ containers[it.containerNo || "-"] = true; });
     var eta = etaByBL[g.blNo] || "";
     if(!eta){
       for(var i = 0; i < items.length; i++){
@@ -231,47 +240,38 @@ function renderGroups(list){
       }
     }
     var etaCN = fmtEtaCN(eta);
-
     var sec = document.createElement("div");
     sec.className = "bl-section";
     var open = gi === 0;
-
     var head = document.createElement("div");
     head.className = "bl-head" + (open ? " open" : "");
     head.innerHTML =
       '<span class="bl-toggle">' + (open ? "▼" : "▶") + "</span>" +
-      '<span class="bl-title">提单 ' + esc(g.blNo) + "</span>" +
-      '<span class="bl-meta">' + Object.keys(containers).length + " 柜 · " + items.length + " 行</span>" +
-      (etaCN ? '<span class="bl-eta">预计到港：' + esc(etaCN) + "</span>" : "") +
-      (updated ? '<span class="bl-updated">更新：' + esc(updated) + "</span>" : "");
-
+      '<span class="bl-title">' + tt("transit.bl") + " " + esc(g.blNo) + "</span>" +
+      '<span class="bl-meta">' + tt("transit.meta", { c: Object.keys(containers).length, n: items.length }) + "</span>" +
+      (etaCN ? '<span class="bl-eta">' + tt("transit.eta") + esc(etaCN) + "</span>" : "") +
+      (updated ? '<span class="bl-updated">' + tt("transit.updated") + esc(updated) + "</span>" : "");
     var body = document.createElement("div");
     body.className = "bl-body";
     body.style.display = open ? "block" : "none";
-
     var table = document.createElement("table");
     table.className = "bl-table";
     table.innerHTML =
       "<thead><tr>" +
-      "<th>柜号</th><th>型号</th><th>色号</th><th>规格</th>" +
-      '<th class="col-qty">数量</th><th>状态</th><th>备注</th><th>预定</th>' +
+      "<th>" + tt("col.container") + "</th><th>" + tt("col.model") + "</th><th>" + tt("col.color") + "</th><th>" + tt("col.spec") + "</th>" +
+      '<th class="col-qty">' + tt("col.qty") + "</th><th>" + tt("col.status") + "</th><th>" + tt("col.remark") + "</th><th>" + tt("col.booked") + "</th>" +
       "</tr></thead>";
     var tbody = document.createElement("tbody");
-
     var lastContainer = null;
     items.forEach(function(item){
       var cNo = item.containerNo || "";
       var showC = (cNo !== lastContainer);
       lastContainer = cNo;
-
       var reserves = Array.isArray(item.reservations) ? item.reservations : [];
       var resHtml = "";
       if(reserves.length){
-        resHtml = reserves.map(function(r){
-          return esc(r.customer) + " ×" + (r.qty || 0);
-        }).join("；");
+        resHtml = reserves.map(function(r){ return esc(r.customer) + " ×" + (r.qty || 0); }).join("；");
       }
-
       var tr = document.createElement("tr");
       if(showC) tr.className = "row-new-container";
       tr.innerHTML =
@@ -285,13 +285,11 @@ function renderGroups(list){
         '<td class="td-res">' + (resHtml || "") + "</td>";
       tbody.appendChild(tr);
     });
-
     table.appendChild(tbody);
     body.appendChild(table);
     sec.appendChild(head);
     sec.appendChild(body);
     box.appendChild(sec);
-
     head.onclick = function(){
       var isOpen = body.style.display !== "none";
       body.style.display = isOpen ? "none" : "block";
@@ -302,19 +300,17 @@ function renderGroups(list){
 }
 
 var cache = [];
-
 async function refresh(){
   var box = $("tResult");
-  if(box) box.innerHTML = '<div class="empty">加载中…</div>';
+  if(box) box.innerHTML = '<div class="empty">' + tt("msg.loading") + '</div>';
   try {
     cache = await loadAll();
     renderGroups(cache);
   } catch(e){
     console.error(e);
-    if(box) box.innerHTML = '<div class="empty" style="color:#b91c1c;">加载失败：' + ((e && e.message) || e) + "</div>";
+    if(box) box.innerHTML = '<div class="empty" style="color:#b91c1c;">' + tt("msg.loadFail") + '：' + ((e && e.message) || e) + "</div>";
   }
 }
-
 function boot(){
   if($("tBtnSearch")) $("tBtnSearch").onclick = function(){ renderGroups(cache); };
   if($("tBtnAll")) $("tBtnAll").onclick = function(){
@@ -330,6 +326,6 @@ function boot(){
   if($("tStatus")) $("tStatus").onchange = function(){ renderGroups(cache); };
   refresh();
 }
-
+window.addEventListener("tile-lang-change", function(){ if(cache && cache.length) renderGroups(cache); });
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
