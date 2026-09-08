@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>库存管理后台</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="css/style.css?v=20260902r">
+<link rel="stylesheet" href="css/style.css?v=20260908c">
 </head>
 <body>
 <header>
@@ -68,7 +68,8 @@
     <div style="padding:14px;border-radius:12px;background:#fef3c7;border:1px solid #fcd34d;margin-bottom:14px;">
       <div style="font-weight:600;margin-bottom:8px;color:#92400e;font-size:14px;">📦 整柜一键入库</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
-        <select id="inbound_container" style="min-width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;"><option value="">请选择柜号</option></select>
+        <input id="inbound_container_q" placeholder="输入柜号搜索" style="width:160px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;">
+        <select id="inbound_container" style="min-width:180px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;"><option value="">请选择柜号</option></select>
         <button type="button" id="btnInboundLoadContainers" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;">刷新柜号</button>
         <select id="inbound_warehouse" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;"><option value="">选择仓库</option><option value="k38">k38</option><option value="k39">k39</option><option value="1">1</option><option value="c9">c9</option></select>
         <button type="button" id="btnInboundPreview" style="padding:7px 14px;border:none;border-radius:8px;background:#d97706;color:#fff;cursor:pointer;font-weight:600;">加载明细</button>
@@ -114,14 +115,15 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="js/admin.js?v=20260902r"></script>
-<script type="module" src="js/ship_plan.js?v=20260819b"></script>
-<script type="module" src="js/out_from_plan.js?v=20260819b"></script>
-<script type="module" src="js/admin_log_tools.js?v=20260821b"></script>
+<script type="module" src="js/admin.js?v=20260908c"></script>
+<script type="module" src="js/ship_plan.js?v=20260908c"></script>
+<script type="module" src="js/out_from_plan.js?v=20260908c"></script>
+<script type="module" src="js/admin_log_tools.js?v=20260908c"></script>
 <script type="module" src="js/image_upload.js?v=20260801f"></script>
 <script type="module" src="js/transit_admin.js?v=20260813a"></script>
-<script type="module" src="js/transit_inbound.js?v=20260815g"></script>
+<script type="module" src="js/transit_inbound.js?v=20260908c"></script>
 <script type="module" src="js/boxes.js?v=20260815m"></script>
 <script type="module" src="js/grout.js?v=20260817a"></script>
+
 </body>
 </html>
