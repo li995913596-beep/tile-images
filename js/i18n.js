@@ -32,7 +32,7 @@
     "transit.bl":"提单","transit.noBl":"(无提单号)","transit.hint":"共 {g} 个提单，{n} 行",
     "transit.meta":"{c} 柜 · {n} 行","transit.eta":"预计到港：","transit.updated":"更新：",
     "transit.stale":"⚠️ 部分在途数据上次更新已超过 {days} 天，请联系管理员确认最新装柜/到港情况。",
-    "report.today":"今天","report.week":"本周","report.month":"本月","report.year":"本年",
+    "report.today":"今天","report.yesterday":"昨天","report.days3":"近三天","report.week":"本周","report.month":"本月","report.year":"本年",
     "report.or":"或","report.wh":"仓库","report.allWh":"全部仓库",
     "report.bar":"出库 Top 15（柱状图）","report.pie":"Top 10 占比（饼图）","report.sort":"排名排序：",
     "report.sortQty":"按出库数量","report.sortCount":"按出库次数","report.rank":"排名",

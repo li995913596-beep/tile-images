@@ -9,13 +9,20 @@ let rankedCache = [];
 let sortBy = "qty";
 
 function $(id){ return document.getElementById(id); }
+function tt(key, vars){ return (window.I18N && window.I18N.t(key, vars)) || key; }
 
 function getRange(preset){
   const end = new Date();
   end.setHours(23,59,59,999);
   const start = new Date();
   start.setHours(0,0,0,0);
-  if(preset === "week"){
+  if(preset === "yesterday"){
+    start.setDate(start.getDate() - 1);
+    end.setTime(start.getTime());
+    end.setHours(23,59,59,999);
+  } else if(preset === "days3"){
+    start.setDate(start.getDate() - 2);
+  } else if(preset === "week"){
     const day = start.getDay() || 7;
     start.setDate(start.getDate() - (day - 1));
   } else if(preset === "month"){
@@ -27,7 +34,7 @@ function getRange(preset){
 }
 
 function setActivePeriod(preset){
-  ["today","week","month","year"].forEach(p => {
+  ["today","yesterday","days3","week","month","year"].forEach(p => {
     const btn = $("btn_" + p);
     if(btn) btn.classList.toggle("active", p === preset);
   });
@@ -43,7 +50,7 @@ function renderTable(){
   const tbody = $("tableBody");
   if(!tbody) return;
   if(!list.length){
-    tbody.innerHTML = `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">暂无数据 / ไม่มีข้อมูล</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888;">${tt("msg.noData")}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map((r,i) => `
@@ -73,7 +80,7 @@ function renderCharts(){
       type: "bar",
       data: {
         labels: top15.map(r=>r.code),
-        datasets: [{ label: "出库数量 / จำนวนเบิก", data: top15.map(r=>r.qty), backgroundColor: colors.slice(0, top15.length) }]
+        datasets: [{ label: tt("report.chartQty"), data: top15.map(r=>r.qty), backgroundColor: colors.slice(0, top15.length) }]
       },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
@@ -104,7 +111,7 @@ window.loadReport = async function(preset){
   if(preset === "custom"){
     const sv = $("r_start").value;
     const ev = $("r_end").value;
-    if(!sv || !ev) return alert("请选择开始和结束日期 / เลือกวันที่เริ่ม-สิ้นสุด");
+    if(!sv || !ev) return alert(tt("report.needDate"));
     start = new Date(sv); start.setHours(0,0,0,0);
     end = new Date(ev); end.setHours(23,59,59,999);
   } else {
@@ -118,7 +125,7 @@ window.loadReport = async function(preset){
 
   const whFilter = (($("r_warehouse") && $("r_warehouse").value) || "").trim().toLowerCase();
   const summaryEl = $("summary");
-  if(summaryEl) summaryEl.innerText = "加载中… / กำลังโหลด";
+  if(summaryEl) summaryEl.innerText = tt("msg.loading");
 
   try {
     const snap = await getDocs(query(
@@ -146,20 +153,25 @@ window.loadReport = async function(preset){
     rankedCache = Object.entries(map)
       .map(([code, v]) => ({ code, qty: Number(v.qty.toFixed(4)), count: v.count }));
 
-    const whText = whFilter ? `（仓库 / คลัง ${whFilter}）` : "";
+    const whText = whFilter ? tt("report.whTag", { w: whFilter }) : "";
     if(summaryEl){
       summaryEl.innerText = rankedCache.length
-        ? `共 ${totalOrders} 笔出库${whText}，总量 ${Number(totalQty.toFixed(2))}，涉及 ${rankedCache.length} 个编号 / ${totalOrders} รายการ`
-        : `该时间段没有出库记录${whText} / ไม่มีรายการเบิก`;
+        ? tt("report.summary", { orders: totalOrders, wh: whText, qty: Number(totalQty.toFixed(2)), codes: rankedCache.length })
+        : tt("report.empty", { wh: whText });
     }
 
     renderTable();
     renderCharts();
   } catch (err) {
     console.error(err);
-    if(summaryEl) summaryEl.innerText = "加载失败 / โหลดไม่สำเร็จ：" + (err.message || err);
-    alert("加载失败 / โหลดไม่สำเร็จ\n" + (err.message || err));
+    if(summaryEl) summaryEl.innerText = tt("msg.loadFail") + "：" + (err.message || err);
+    alert(tt("msg.loadFail") + "\n" + (err.message || err));
   }
 };
+
+window.addEventListener("tile-lang-change", function(){
+  if(window.I18N) window.I18N.apply();
+  if(typeof window.loadReport === "function") window.loadReport(window._lastPreset || "month");
+});
 
 loadReport("month");
