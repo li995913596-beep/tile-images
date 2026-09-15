@@ -1,94 +1,45 @@
 /**
- * Overlay on out_from_plan.js — fuzzy helpers + reserve-out customer field. v20260908c
+ * Overlay: plan outbound must show inventory color.
+ * Inventory id = code_color_warehouse
+ * v20260915a
  */
 (function () {
-  function normCode(s) {
-    return String(s == null ? "" : s).trim().toUpperCase().replace(/[\s\-_.]/g, "");
+  function colorFromInvId(id) {
+    var parts = String(id || "").split("_");
+    if (parts.length < 3) return "";
+    return parts.slice(1, parts.length - 1).join("_");
   }
-  function codeCore(s) {
-    var n = normCode(s);
-    var stripped = n.replace(/[A-Z]+$/, "");
-    return stripped || n;
-  }
-  function codesLooseEqual(a, b) {
-    var A = normCode(a), B = normCode(b);
-    if (!A || !B) return false;
-    if (A === B) return true;
-    var ca = codeCore(a), cb = codeCore(b);
-    if (ca && cb && ca === cb) return true;
-    if (A.indexOf(B) === 0 || B.indexOf(A) === 0) {
-      var longer = A.length >= B.length ? A : B;
-      var shorter = A.length >= B.length ? B : A;
-      var rest = longer.slice(shorter.length);
-      if (/^[A-Z]{1,2}$/.test(rest)) return true;
-    }
-    return false;
-  }
-  function codeMatchScore(planCode, invCode) {
-    var A = normCode(planCode), B = normCode(invCode);
-    if (!A || !B) return 0;
-    if (A === B) return 100;
-    if (codesLooseEqual(planCode, invCode)) return 80;
-    if (B.indexOf(A) === 0 || A.indexOf(B) === 0) return 60;
-    if (B.indexOf(A) >= 0 || A.indexOf(B) >= 0) return 40;
-    return 0;
-  }
-  function cleanTok(s) {
-    return String(s || "").replace(/[。．.、，,\s]+$/g, "").replace(/^[。．.、，,\s]+/g, "").trim();
-  }
-  function classifyPayAccount(tok) {
-    var t = cleanTok(tok);
-    if (!t) return null;
-    if (/已付款|已经付款|已付完|付清/.test(t)) return { pay: "已付款" };
-    if (/未付款|没付款|尚未付款/.test(t)) return { pay: "未付款" };
-    if (/部分付款|已付定金|定金/.test(t)) return { pay: "部分付款" };
-    if (/货到付款|到付/.test(t)) return { pay: "货到付款" };
-    if (/^(已付|付了)$/.test(t)) return { pay: "已付款" };
-    if (/^(未付|没付)$/.test(t)) return { pay: "未付款" };
-    if (/开票|发票|要票|对公|公账|公司账/.test(t)) return { account: "公账" };
-    if (/对私|私账|个人账|现金$/.test(t)) return { account: "私账" };
-    return null;
-  }
-  function parseCustomerBlob(raw) {
-    var s = String(raw || "").replace(/^客户\s*[:：]?\s*/, "");
-    var parts = s.split(/[，,、；;\/|]/).map(cleanTok).filter(Boolean);
-    var customer = "", pay = "", account = "";
-    var nameParts = [];
-    for (var i = 0; i < parts.length; i++) {
-      var tagged = classifyPayAccount(parts[i]);
-      if (tagged && tagged.pay) { pay = tagged.pay; continue; }
-      if (tagged && tagged.account) { account = tagged.account; continue; }
-      nameParts.push(parts[i]);
-    }
-    customer = nameParts.join("").trim() ? nameParts.join(" ") : "";
-    return { customer: customer, pay: pay, account: account };
-  }
-  window.__tileNormCode = normCode;
-  window.__tileCodesLooseEqual = codesLooseEqual;
-  window.__tileCodeMatchScore = codeMatchScore;
-  window.__tileParseCustomerBlob = parseCustomerBlob;
-  function enhanceReserveCustomerInputs() {
-    var box = document.getElementById("out_result");
+  function paintPreview() {
+    var box = document.getElementById("opf_preview");
     if (!box) return;
-    box.querySelectorAll("button[onclick*='shipReserve']").forEach(function (btn) {
-      var m = String(btn.getAttribute("onclick") || "").match(/shipReserve\('([^']+)',\s*(\d+)\)/);
-      if (!m) return;
-      var id = m[1], index = m[2];
-      var inpId = "ship_c_" + id + "_" + index;
-      if (document.getElementById(inpId)) return;
-      var wrap = btn.parentNode;
-      if (!wrap) return;
-      var label = document.createElement("span");
-      label.style.cssText = "font-size:12px;color:#64748b;";
-      label.textContent = "出给";
-      var inp = document.createElement("input");
-      inp.id = inpId;
-      inp.placeholder = "实际客户（可改）";
-      inp.style.cssText = "width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;";
-      wrap.insertBefore(inp, btn);
-      wrap.insertBefore(label, inp);
+    box.querySelectorAll("[data-opf-wh]").forEach(function (sel) {
+      Array.from(sel.options).forEach(function (opt) {
+        var color = colorFromInvId(opt.value);
+        if (!color) return;
+        if (opt.textContent.indexOf("色") >= 0) return;
+        opt.textContent = String(opt.textContent || "").replace("（", " · 色" + color + "（");
+      });
+      var tr = sel.closest("tr");
+      if (!tr || !tr.children || tr.children.length < 3) return;
+      var colorTd = tr.children[2];
+      var color = colorFromInvId(sel.value);
+      if (!color) color = String(colorTd.textContent || "").replace("计划:", "").trim();
+      if (!color || color === "-") color = "无色号";
+      if (colorTd.getAttribute("data-painted") === color) return;
+      colorTd.setAttribute("data-painted", color);
+      colorTd.innerHTML = "<span style='display:inline-block;min-width:64px;padding:4px 8px;border-radius:6px;background:#ecfdf5;color:#115e59;font-weight:800;font-size:15px;'>" + color + "</span>";
     });
   }
-  setInterval(enhanceReserveCustomerInputs, 1200);
-  console.log("out_from_plan_fix.js ready v20260908c");
+  function watch() {
+    var box = document.getElementById("opf_preview");
+    if (box && !box.__opfColorObs) {
+      box.__opfColorObs = true;
+      new MutationObserver(function () { paintPreview(); }).observe(box, { childList: true, subtree: true });
+    }
+    paintPreview();
+  }
+  setInterval(watch, 800);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch);
+  else watch();
+  console.log("out_from_plan_fix.js ready v20260915a (show color from inventory id)");
 })();
