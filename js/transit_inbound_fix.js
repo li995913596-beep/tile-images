@@ -4,8 +4,8 @@
  */
 import { db } from "./firebase.js";
 import {
-  collection, doc, getDoc, addDoc, updateDoc,
-  serverTimestamp, runTransaction
+  collection, doc, getDoc, getDocs, addDoc, updateDoc,
+  query, limit, serverTimestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
@@ -32,23 +32,24 @@ window.confirmInboundContainer = async function(){
   var wh = (($("inbound_warehouse") && $("inbound_warehouse").value) || "").trim().toLowerCase();
   if(!cn) return alert("请选择柜号");
   if(!wh) return alert("请选择入库仓库");
+  var lines = [];
   var n = 0;
   while(document.getElementById("ib_code_"+n)) n++;
+  if(!n && window.inboundCache && window.inboundCache.length) n = window.inboundCache.length;
   if(!n) return alert("没有可入库的行，请先选择柜号加载");
-  var lines = [];
   for(var i = 0; i < n; i++){
     var code = (($("ib_code_"+i) && $("ib_code_"+i).value) || "").trim();
     var color = (($("ib_color_"+i) && $("ib_color_"+i).value) || "").trim();
-    var spec = String(($( "ib_spec_"+i) && $("ib_spec_"+i).value) || "").trim();
+    var spec = String(($("ib_spec_"+i) && $("ib_spec_"+i).value) || "").trim();
     var qty = Number(($("ib_qty_"+i) && $("ib_qty_"+i).value) || 0);
     var dmgBox = Number(($("ib_dmgbox_"+i) && $("ib_dmgbox_"+i).value) || 0);
     var dmgPc = Number(($("ib_dmgpc_"+i) && $("ib_dmgpc_"+i).value) || 0);
     var ppbRaw = ($("ib_ppb_"+i) && $("ib_ppb_"+i).value);
     var wtRaw = ($("ib_wt_"+i) && $("ib_wt_"+i).value);
     var pack = (($("ib_pack_"+i) && $("ib_pack_"+i).value) || "").trim();
-    var src = window.inboundCache && window.inboundCache[i] && window.inboundCache[i].item;
+    var cached = window.inboundCache && window.inboundCache[i];
+    var src = cached && cached.item;
     if(!pack && src) pack = String(src.brand || src.packaging || "").trim();
-    var tid = window.inboundCache && window.inboundCache[i] && window.inboundCache[i].id;
     var ppb = (ppbRaw !== "" && ppbRaw != null) ? Number(ppbRaw) : null;
     var boxWeight = (wtRaw !== "" && wtRaw != null) ? Number(wtRaw) : null;
     if(!code) return alert("第 " + (i+1) + " 行编号不能为空");
@@ -61,7 +62,7 @@ window.confirmInboundContainer = async function(){
     var inboundQty = Number((qty - deduct).toFixed(4));
     if(inboundQty < 0) inboundQty = 0;
     lines.push({
-      transitId: tid,
+      transitId: cached && cached.id,
       code: code, color: color, spec: spec,
       qty: qty, dmgBox: dmgBox, dmgPc: dmgPc, inboundQty: inboundQty,
       piecesPerBox: (ppb != null && !isNaN(ppb)) ? ppb : null,
@@ -96,8 +97,7 @@ window.confirmInboundContainer = async function(){
         var live0 = await getDoc(doc(db, "in_transit", lines[gi].transitId));
         var st = live0.exists() ? live0.data() : null;
         if(st && /已入库|已入庫|已入仓|已入倉/.test(String(st.status||""))){
-          skip++;
-          continue;
+          skip++; continue;
         }
       }
       var invId0 = lines[gi].code + "_" + lines[gi].color + "_" + wh;
@@ -116,16 +116,9 @@ window.confirmInboundContainer = async function(){
         var snap = await tx.get(ref);
         if(snap.exists()){
           var data = snap.data() || {};
-          tx.update(ref, {
-            stock: Number((Number(data.stock || 0) + addQty).toFixed(4)),
-            lastUpdate: serverTimestamp()
-          });
+          tx.update(ref, { stock: Number((Number(data.stock || 0) + addQty).toFixed(4)), lastUpdate: serverTimestamp() });
         } else {
-          tx.set(ref, {
-            code: meta.code, color: meta.color, spec: meta.spec, warehouse: wh,
-            stock: addQty, piecesPerBox: meta.piecesPerBox, boxWeight: meta.boxWeight,
-            packaging: meta.packaging, reservedList: [], lastUpdate: serverTimestamp()
-          });
+          tx.set(ref, { code: meta.code, color: meta.color, spec: meta.spec, warehouse: wh, stock: addQty, piecesPerBox: meta.piecesPerBox, boxWeight: meta.boxWeight, packaging: meta.packaging, reservedList: [], lastUpdate: serverTimestamp() });
         }
       });
       return addQty;
@@ -138,13 +131,29 @@ window.confirmInboundContainer = async function(){
           var L = G.rows[rj];
           await addDoc(collection(db, "logs"), {
             timestamp: serverTimestamp(), type: "入库",
-            code: L.code, spec: L.spec || "", color: L.color, warehouse: wh,
-            qty: L.inboundQty,
+            code: L.code, spec: L.spec || "", color: L.color, warehouse: wh, qty: L.inboundQty,
             customer: "柜号" + cn + (G.rows.length > 1 ? (" 打托"+G.rows.length+"行合计"+addQty) : ""),
             source: "整柜入库", containerNo: cn, fromFree: L.inboundQty
           });
-          if(L.transitId){
-            await updateDoc(doc(db, "in_transit", L.transitId), {
+          var tid = L.transitId;
+          if(!tid){
+            try {
+              var snapT = await getDocs(query(collection(db, "in_transit"), limit(4000)));
+              snapT.forEach(function(d){
+                if(tid) return;
+                var it = d.data() || {};
+                var a = String(it.containerNo||"").replace(/[\s\-_.]/g,"").toUpperCase();
+                var b = String(cn||"").replace(/[\s\-_.]/g,"").toUpperCase();
+                if(a !== b) return;
+                if(String(it.code||"").trim().toUpperCase() !== String(L.code||"").trim().toUpperCase()) return;
+                if(Math.abs(Number(it.qty||0) - Number(L.qty||0)) > 0.05) return;
+                if(/已入库|已入庫|已入仓/.test(String(it.status||""))) return;
+                tid = d.id;
+              });
+            } catch(e){ console.warn(e); }
+          }
+          if(tid){
+            await updateDoc(doc(db, "in_transit", tid), {
               status: "已入库", inboundWarehouse: wh, inboundQty: L.inboundQty,
               damageBoxes: L.dmgBox, damagePieces: L.dmgPc, updatedAt: serverTimestamp()
             });
@@ -160,9 +169,9 @@ window.confirmInboundContainer = async function(){
     if(skip) msg += "\n跳过已入库 " + skip + " 行";
     if(fail.length) msg += "\n失败：\n" + fail.join("\n");
     alert(msg);
+    if($("inbound_preview")) $("inbound_preview").innerHTML = "";
     if(window.loadInboundContainers) window.loadInboundContainers();
     if(window.reloadTransitAdmin) window.reloadTransitAdmin();
-    if($("inbound_preview")) $("inbound_preview").innerHTML = "";
   } finally {
     if(btn){ btn.disabled = false; btn.textContent = "确认整柜入库"; }
   }
