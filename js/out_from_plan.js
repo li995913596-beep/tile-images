@@ -71,20 +71,22 @@ function deductReserveFifo(list, need, preferCustomer){
   });
 }
 
-function splitShip(qty, free, reserved, useReserve){
+function splitShip(qty, free, reserved, useReserve, reserveFirst){
   qty = Number(qty) || 0;
   free = Math.max(0, Number(free) || 0);
   reserved = Math.max(0, Number(reserved) || 0);
-  if(useReserve){
+  if(!useReserve){
+    var onlyFree = Math.min(qty, free);
+    return { fromRes: 0, fromFree: Number(onlyFree.toFixed(4)) };
+  }
+  if(reserveFirst){
     var fromRes = Math.min(qty, reserved);
     var fromFree = Math.min(Math.max(0, qty - fromRes), free);
-    return {
-      fromRes: Number(fromRes.toFixed(4)),
-      fromFree: Number(fromFree.toFixed(4))
-    };
+    return { fromRes: Number(fromRes.toFixed(4)), fromFree: Number(fromFree.toFixed(4)) };
   }
-  var onlyFree = Math.min(qty, free);
-  return { fromRes: 0, fromFree: Number(onlyFree.toFixed(4)) };
+  var freeFirst = Math.min(qty, free);
+  var resNext = Math.min(Math.max(0, qty - freeFirst), reserved);
+  return { fromRes: Number(resNext.toFixed(4)), fromFree: Number(freeFirst.toFixed(4)) };
 }
 
 function syncPreviewInputs(){
@@ -97,6 +99,10 @@ function syncPreviewInputs(){
   box.querySelectorAll("[data-opf-reserve]").forEach(function(chk){
     var i = Number(chk.getAttribute("data-opf-reserve"));
     if(previewRows[i]) previewRows[i].useReserve = !!chk.checked;
+  });
+  box.querySelectorAll("[data-opf-resfirst]").forEach(function(chk){
+    var i = Number(chk.getAttribute("data-opf-resfirst"));
+    if(previewRows[i]) previewRows[i].reserveFirst = !!chk.checked;
   });
 }
 
@@ -392,7 +398,7 @@ function renderPreview(){
   var html = "<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;font-size:13px;min-width:760px;'>";
   html += "<thead><tr style='background:#f1f5f9;text-align:left;'>";
   html += "<th style='padding:8px;'>#</th><th style='padding:8px;'>编号</th><th style='padding:8px;'>色号</th><th style='padding:8px;'>计划数</th>";
-  html += "<th style='padding:8px;'>仓库（可选）</th><th style='padding:8px;'>可售/留货</th><th style='padding:8px;'>从留货出</th><th style='padding:8px;'>出库数</th><th style='padding:8px;'>状态</th><th style='padding:8px;'></th></tr></thead><tbody>";
+  html += "<th style='padding:8px;'>仓库（可选）</th><th style='padding:8px;'>可售/留货</th><th style='padding:8px;'>动用留货</th><th style='padding:8px;'>留货客户</th><th style='padding:8px;'>出库数</th><th style='padding:8px;'>怎么扣</th><th style='padding:8px;'></th></tr></thead><tbody>";
   previewRows.forEach(function(row, idx){
     var bg = row.ok ? "#fff" : "#fef2f2";
     var stockInfo = "-";
@@ -405,10 +411,17 @@ function renderPreview(){
         free = freeQty(hit.data);
         rs = reservedTotal(hit.data);
         stockInfo = "可售" + free + " / 留" + rs;
-        if(row.ok && row.useReserve && row.qty > free && rs > 0){
-          statusExtra = "将动用留货" + Number((Math.min(row.qty, maxShipQty(hit.data)) - Math.min(row.qty, free)).toFixed(2));
+        if(row.ok){
+          var parts = splitShip(row.qty, free, rs, row.useReserve, row.reserveFirst);
+          if(parts.fromRes > 0 && parts.fromFree > 0){
+            statusExtra = (row.reserveFirst ? "留货客户：" : "非留货客户：") + "先扣" + (row.reserveFirst ? "留货" : "可售") + "，可售" + parts.fromFree + " + 留货" + parts.fromRes;
+          } else if(parts.fromRes > 0){
+            statusExtra = "只扣留货 " + parts.fromRes;
+          } else if(row.useReserve){
+            statusExtra = "可售够用，不动留货";
+          }
         } else if(!row.ok && free <= 0 && rs > 0 && !row.useReserve){
-          statusExtra = "仅有留货，勾选右侧可出";
+          statusExtra = "仅有留货，勾选「动用留货」";
         }
       }
     }
@@ -442,7 +455,10 @@ function renderPreview(){
       return "<option value='" + esc(c.id) + "'" + selected + ">" + label + "</option>";
     }).join("");
     var reserveChk = rs > 0
-      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;'><input type='checkbox' data-opf-reserve='" + idx + "'" + (row.useReserve ? " checked" : "") + "> 用</label>")
+      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;'><input type='checkbox' data-opf-reserve='" + idx + "'" + (row.useReserve ? " checked" : "") + "> 允许</label>")
+      : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
+    var firstChk = rs > 0
+      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;' title='勾选=这是留货客户，优先扣留货；不勾=先用可售，不够再动留货'><input type='checkbox' data-opf-resfirst='" + idx + "'" + (row.reserveFirst ? " checked" : "") + (row.useReserve ? "" : " disabled") + "> 是</label>")
       : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
     html += "<tr style='background:" + bg + ";border-bottom:1px solid #f1f5f9;'>";
     html += "<td style='padding:8px;color:#64748b;'>" + (idx + 1) + "</td>";
@@ -456,6 +472,7 @@ function renderPreview(){
     }
     html += "<td style='padding:8px;font-size:12px;'>" + stockInfo + "</td>";
     html += "<td style='padding:8px;text-align:center;'>" + reserveChk + "</td>";
+    html += "<td style='padding:8px;text-align:center;'>" + firstChk + "</td>";
     html += "<td style='padding:8px;'><input data-opf-qty='" + idx + "' type='number' step='0.01' min='0' value='" + esc(row.qty) + "' style='width:80px;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;'></td>";
     html += "<td style='padding:8px;font-size:12px;color:" + (row.ok ? (String(statusExtra).indexOf("留货") >= 0 ? "#d97706" : "#16a34a") : "#b91c1c") + ";'>" + esc(statusExtra) + "</td>";
     html += "<td style='padding:8px;'><button type='button' data-opf-del='" + idx + "' style='padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;font-size:12px;'>删</button></td></tr>";
@@ -510,6 +527,17 @@ function renderPreview(){
       var i = Number(chk.getAttribute("data-opf-reserve"));
       var row = previewRows[i]; if(!row) return;
       row.useReserve = !!chk.checked;
+      if(!row.useReserve) row.reserveFirst = false;
+      refreshRowOk(row);
+      renderPreview();
+    };
+  });
+  box.querySelectorAll("[data-opf-resfirst]").forEach(function(chk){
+    chk.onchange = function(){
+      var i = Number(chk.getAttribute("data-opf-resfirst"));
+      var row = previewRows[i]; if(!row) return;
+      row.reserveFirst = !!chk.checked;
+      if(row.reserveFirst) row.useReserve = true;
       refreshRowOk(row);
       renderPreview();
     };
@@ -552,7 +580,7 @@ window.opfParsePreview = async function(){
   for(var i = 0; i < parsed.items.length; i++){
     var it = parsed.items[i];
     var candidates = await findCandidates(it.code, it.color);
-    var row = { plan: it, candidates: candidates, invId: "", qty: Number(it.qty) || 0, ok: false, error: "", useReserve: false };
+    var row = { plan: it, candidates: candidates, invId: "", qty: Number(it.qty) || 0, ok: false, error: "", useReserve: false, reserveFirst: false };
     if(!candidates.length){
       row.error = "库存无此编号/色号"; row.ok = false;
     } else {
@@ -577,7 +605,7 @@ window.opfParsePreview = async function(){
   }
   renderPreview();
   var okN = previewRows.filter(function(r){ return r.ok; }).length;
-  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length - okN ? "，异常 " + (previewRows.length - okN) + " 行（可勾选从留货出或删除）" : "") + "\n说明：默认只出可售；有留货时勾选「从留货出」即可");
+  alert("识别完成：共 " + previewRows.length + " 行，可出 " + okN + " 行" + (previewRows.length - okN ? "，异常 " + (previewRows.length - okN) + " 行" : "") + "\n动用留货：不勾「留货客户」=先用可售、不够再动留货；勾上=优先扣留货");
 };
 
 window.opfConfirmOut = async function(){
@@ -598,11 +626,9 @@ window.opfConfirmOut = async function(){
     var data = snap.data();
     var av = rowMaxShip(r, data);
     if(r.qty > av) return alert(data.code + " 可出仅 " + av + (r.useReserve ? "" : "（未勾选从留货出）") + "，请改小数量或勾选从留货出");
-    var parts = splitShip(r.qty, freeQty(data), reservedTotal(data), r.useReserve);
-    summary.push((i + 1) + ". " + data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " × " + r.qty + (parts.fromRes > 0 ? "（扣留货" + parts.fromRes + (parts.fromFree > 0 ? "，扣可售" + parts.fromFree : "") + "）" : ""));
-    if(r.useReserve && parts.fromRes <= 0){
-      return alert(data.code + " 已勾选从留货出，但这条没有可扣的留货");
-    }
+    var parts = splitShip(r.qty, freeQty(data), reservedTotal(data), r.useReserve, r.reserveFirst);
+    summary.push((i + 1) + ". " + data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " × " + r.qty + (parts.fromRes > 0 ? "（扣可售" + parts.fromFree + "，扣留货" + parts.fromRes + (r.reserveFirst ? "，留货客户优先" : "，先用可售") + "）" : ""));
+    if(parts.fromFree + parts.fromRes < r.qty) return alert(data.code + " 可出不足");
     if(parts.fromRes > 0){
       var who = reserveCustomersText(data) || "有留货";
       reserveWarnings.push(data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " 将扣留货 " + parts.fromRes + "（现有留货：" + who + "）");
@@ -630,8 +656,7 @@ window.opfConfirmOut = async function(){
           var reserved = reservedTotal(data);
           var maxQ = rowMaxShip(L, data);
           if(qty <= 0 || qty > maxQ) throw new Error("可出不足");
-          var parts = splitShip(qty, stock, reserved, L.useReserve);
-          if(L.useReserve && parts.fromRes <= 0) throw new Error("勾了从留货出，但没有留货可扣");
+          var parts = splitShip(qty, stock, reserved, L.useReserve, L.reserveFirst);
           if(parts.fromFree + parts.fromRes < qty) throw new Error("可出不足");
           var list = Array.isArray(data.reservedList) ? data.reservedList.map(function(x){
             return { customer: (x && x.customer) || "", qty: Number((x && x.qty) || 0), time: x && x.time ? x.time : null, at: x && x.at ? x.at : null };
@@ -678,7 +703,7 @@ window.opfConfirmOut = async function(){
 
 function buildPlanPanelHtml(){
   return "<div style='padding:14px;border-radius:12px;background:#f0fdfa;border:1px solid #99f6e4;margin-bottom:12px;'>" +
-    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>粘贴出货计划。默认只出可售库存；有留货的行可勾选「从留货出」。动用留货会二次确认。</div>" +
+    "<div style='font-size:13px;color:#0f766e;margin-bottom:10px;line-height:1.5;'>粘贴出货计划。默认只出可售。「动用留货」允许不够时动留货；「留货客户」勾上才优先扣留货，不勾则先用可售、不够再动留货。</div>" +
     "<textarea id='opf_text' rows='10' placeholder='在此粘贴出货计划全文' style='width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;line-height:1.45;font-family:ui-monospace,monospace;resize:vertical;'></textarea>" +
     "<div style='margin-top:10px;'><button type='button' id='opf_btn_parse' style='padding:8px 16px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;'>识别预览</button></div></div>" +
     "<div style='padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;'>" +
@@ -761,7 +786,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261001a (reserve-first plan outbound)");
+  console.log("out_from_plan.js ready v20261001b (reserve customer choice)");
 }
 
 function patchRegularReserveOut(){
