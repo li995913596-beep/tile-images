@@ -25,6 +25,17 @@ function normHeader(h){
   return String(h || "").trim().toLowerCase().replace(/\s+/g, "");
 }
 
+
+/** 规格统一：600*1200*9.0 → 600x1200（去掉厚度，* 改 x） */
+function normalizeSpec(s){
+  s = String(s == null ? "" : s).trim();
+  if(!s) return "";
+  s = s.replace(/[＊×✕✖*]/g, "x").replace(/X/g, "x").replace(/\s+/g, "");
+  var parts = s.split("x").filter(function(p){ return p !== ""; });
+  if(parts.length >= 2) return parts[0] + "x" + parts[1];
+  return s;
+}
+
 function esc(s){
   var t = String(s == null ? "" : s);
   var amp = String.fromCharCode(38);
@@ -93,6 +104,56 @@ function rowFromExcel(obj){
   return out;
 }
 
+var transitImportRows = [];
+
+function renderTransitImportPreview(){
+  var box = $("transitImportPreview");
+  if(!box) return;
+  if(!transitImportRows.length){
+    box.innerHTML = "";
+    return;
+  }
+  var html = '<div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #bfdbfe;border-radius:10px;">';
+  html += '<div style="font-weight:700;color:#1e40af;margin-bottom:8px;">箱单预览 ' + transitImportRows.length + ' 行，可改后再确认导入（还没写入在途）</div>';
+  html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px;">';
+  html += '<thead><tr style="background:#eff6ff;text-align:left;"><th style="padding:6px;">提单</th><th style="padding:6px;">柜号</th><th style="padding:6px;">编号</th><th style="padding:6px;">色号</th><th style="padding:6px;">规格</th><th style="padding:6px;">数量</th><th style="padding:6px;">到港</th><th style="padding:6px;">牌子</th><th style="padding:6px;">备注</th><th style="padding:6px;"></th></tr></thead><tbody>';
+  transitImportRows.forEach(function(it, idx){
+    html += '<tr style="border-top:1px solid #e5e7eb;">';
+    html += '<td style="padding:4px;"><input data-ti="blNo" data-i="' + idx + '" value="' + esc(it.blNo) + '" style="width:110px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="containerNo" data-i="' + idx + '" value="' + esc(it.containerNo) + '" style="width:110px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="code" data-i="' + idx + '" value="' + esc(it.code) + '" style="width:110px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="color" data-i="' + idx + '" value="' + esc(it.color) + '" style="width:70px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="spec" data-i="' + idx + '" value="' + esc(it.spec) + '" style="width:90px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="qty" data-i="' + idx + '" type="number" value="' + esc(it.qty) + '" style="width:70px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="eta" data-i="' + idx + '" value="' + esc(it.eta) + '" style="width:100px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="brand" data-i="' + idx + '" value="' + esc(it.brand) + '" style="width:70px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><input data-ti="remark" data-i="' + idx + '" value="' + esc(it.remark) + '" style="width:120px;padding:4px;border:1px solid #d1d5db;border-radius:6px;"></td>';
+    html += '<td style="padding:4px;"><button type="button" data-ti-del="' + idx + '" style="padding:4px 8px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;">删</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div style="margin-top:10px;display:flex;gap:8px;"><button type="button" id="btnTransitConfirmImport" style="padding:8px 16px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:700;">确认导入在途</button><button type="button" id="btnTransitCancelImport" style="padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">取消</button></div></div>';
+  box.innerHTML = html;
+  box.querySelectorAll("[data-ti]").forEach(function(inp){
+    inp.onchange = inp.onblur = function(){
+      var i = Number(inp.getAttribute("data-i"));
+      var key = inp.getAttribute("data-ti");
+      if(!transitImportRows[i]) return;
+      transitImportRows[i][key] = key === "qty" ? (Number(inp.value) || 0) : String(inp.value || "").trim();
+    };
+  });
+  box.querySelectorAll("[data-ti-del]").forEach(function(btn){
+    btn.onclick = function(){
+      transitImportRows.splice(Number(btn.getAttribute("data-ti-del")), 1);
+      renderTransitImportPreview();
+    };
+  });
+  var okBtn = $("btnTransitConfirmImport");
+  if(okBtn) okBtn.onclick = function(){ window.confirmTransitImport(); };
+  var cancelBtn = $("btnTransitCancelImport");
+  if(cancelBtn) cancelBtn.onclick = function(){ transitImportRows = []; renderTransitImportPreview(); };
+}
+
 window.importTransitExcel = async function(){
   try {
     if(!auth.currentUser) return alert("请先登录");
@@ -105,16 +166,47 @@ window.importTransitExcel = async function(){
     if(!rows.length) return alert("Excel 没有数据行");
 
     var lastBl = "", lastContainer = "", lastEta = "";
-    var ok = 0, skip = 0;
-    var errors = [];
-
+    var parsed = [];
+    var skipped = 0;
     for(var i = 0; i < rows.length; i++){
       var item = rowFromExcel(rows[i]);
       if(item.blNo) lastBl = item.blNo; else item.blNo = lastBl;
       if(item.containerNo) lastContainer = item.containerNo; else item.containerNo = lastContainer;
       if(item.eta) lastEta = item.eta; else item.eta = lastEta;
-      if(!item.code){ skip++; continue; }
+      if(!item.code){ skipped++; continue; }
       if(item.color != null) item.color = String(item.color).trim();
+      item.spec = normalizeSpec(item.spec);
+      parsed.push(item);
+    }
+    if(!parsed.length) return alert("没有识别到编号，请检查表头是否有型号/编号");
+    transitImportRows = parsed;
+    renderTransitImportPreview();
+    alert("已读出 " + parsed.length + " 行" + (skipped ? "，跳过无编号 " + skipped + " 行" : "") + "。\n请先核对、修改，再点「确认导入在途」。还没有写入系统。");
+  } catch(e){
+    console.error(e);
+    alert("读取箱单失败：" + ((e && e.message) || e));
+  }
+};
+
+window.confirmTransitImport = async function(){
+  try {
+    if(!auth.currentUser) return alert("请先登录");
+    var box = $("transitImportPreview");
+    if(box){
+      box.querySelectorAll("[data-ti]").forEach(function(inp){
+        var i = Number(inp.getAttribute("data-i"));
+        var key = inp.getAttribute("data-ti");
+        if(!transitImportRows[i]) return;
+        transitImportRows[i][key] = key === "qty" ? (Number(inp.value) || 0) : String(inp.value || "").trim();
+      });
+    }
+    var lines = transitImportRows.filter(function(it){ return String(it.code || "").trim(); });
+    if(!lines.length) return alert("没有可导入的行");
+    if(!confirm("确认导入在途？\n共 " + lines.length + " 行\n写入后才会出现在在途列表。")) return;
+    var ok = 0, skip = 0, errors = [];
+    for(var i = 0; i < lines.length; i++){
+      var item = lines[i];
+      item.spec = normalizeSpec(item.spec);
       try {
         await addDoc(collection(db, "in_transit"), Object.assign({}, item, {
           createdAt: serverTimestamp(),
@@ -122,20 +214,22 @@ window.importTransitExcel = async function(){
         }));
         ok++;
       } catch(e){
-        console.error("row", i+2, e);
+        console.error(e);
         skip++;
         if(errors.length < 3) errors.push((e && e.message) || String(e));
       }
     }
-
     var msg = "导入完成：成功 " + ok + " 条";
-    if(skip) msg += "，跳过 " + skip + " 条";
-    msg += "\n（空柜号/提单号已按「同上」自动填充）";
+    if(skip) msg += "，失败 " + skip + " 条";
     if(errors.length) msg += "\n错误示例：" + errors.join("；");
-    if(ok === 0 && errors.length) msg += "\n若是权限错误，请在 Firebase 规则允许 in_transit 写入";
     alert(msg);
-    fileEl.value = "";
-    if(window.reloadTransitAdmin) window.reloadTransitAdmin();
+    if(ok){
+      transitImportRows = [];
+      renderTransitImportPreview();
+      var fileEl = $("transitExcel");
+      if(fileEl) fileEl.value = "";
+      if(window.reloadTransitAdmin) window.reloadTransitAdmin();
+    }
   } catch(e){
     console.error(e);
     alert("导入失败：" + ((e && e.message) || e));
@@ -152,7 +246,7 @@ window.addTransitManual = async function(){
       containerNo: (($("tm_container") && $("tm_container").value) || "").trim(),
       code: code,
       color: (($("tm_color") && $("tm_color").value) || "").trim(),
-      spec: (($("tm_spec") && $("tm_spec").value) || "").trim(),
+      spec: normalizeSpec((($("tm_spec") && $("tm_spec").value) || "").trim()),
       remark: (($("tm_remark") && $("tm_remark").value) || "").trim(),
       qty: Number(($("tm_qty") && $("tm_qty").value) || 0) || 0,
       eta: (($("tm_eta") && $("tm_eta").value) || "").trim(),
@@ -317,7 +411,7 @@ window.exportTransit = async function(){
         "柜号": item.containerNo || "",
         "型号": item.code || "",
         "色号": item.color || "",
-        "规格": item.spec || "",
+        "规格": normalizeSpec(item.spec) || item.spec || "",
         "数量": Number(item.qty || 0),
         "状态": item.status || "在途",
         "预计到港": fmtEta(item.eta),
@@ -402,7 +496,7 @@ function hookShowTab(){
 function boot(){
   ensureTransitUI();
   hookShowTab();
-  console.log("transit_admin.js ready OK");
+  console.log("transit_admin.js ready v20261001c OK");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

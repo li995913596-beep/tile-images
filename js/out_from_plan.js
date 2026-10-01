@@ -123,6 +123,7 @@ function normCode(s){
 }
 function codeCore(s){
   var n = normCode(s);
+  if(/PS$/.test(n)) return n;
   var stripped = n.replace(/[A-Z]+$/, "");
   return stripped || n;
 }
@@ -130,13 +131,14 @@ function codesLooseEqual(a, b){
   var A = normCode(a), B = normCode(b);
   if(!A || !B) return false;
   if(A === B) return true;
+  if(/PS$/.test(A) || /PS$/.test(B)) return false;
   var ca = codeCore(a), cb = codeCore(b);
   if(ca && cb && ca === cb) return true;
   if(A.indexOf(B) === 0 || B.indexOf(A) === 0){
     var longer = A.length >= B.length ? A : B;
     var shorter = A.length >= B.length ? B : A;
     var rest = longer.slice(shorter.length);
-    if(/^[A-Z]{1,2}$/.test(rest)) return true;
+    if(/^[A-Z]{1,3}$/.test(rest)) return true;
   }
   return false;
 }
@@ -162,12 +164,13 @@ function classifyPayAccount(tok){
   if(/货到付款|到付/.test(t)) return { pay: "货到付款" };
   if(/^(已付|付了)$/.test(t)) return { pay: "已付款" };
   if(/^(未付|没付)$/.test(t)) return { pay: "未付款" };
+  if(/未开票|不开票|不要票|不开发票|未开发票/.test(t)) return { account: "私账" };
   if(/开票|发票|要票|对公|公账|公司账/.test(t)) return { account: "公账" };
   if(/对私|私账|个人账|现金$/.test(t)) return { account: "私账" };
   return null;
 }
 function parseCustomerBlob(raw){
-  var s = String(raw || "").replace(/^客户\s*[:：]?\s*/, "");
+  var s = String(raw || "").replace(/^(客户名称|客户名|客户)\s*[:：]?\s*/, "");
   var parts = s.split(/[，,、；;\/|]/).map(cleanTok).filter(Boolean);
   var customer = "", pay = "", account = "";
   var nameParts = [];
@@ -232,7 +235,7 @@ function parseShipPlanText(text){
   }
   for(var i = 0; i < lines.length; i++){
     var line = lines[i];
-    var isCustLine = /^客户\s*[:：]/.test(line) || (/已付款|未付款|公账|私账|开票|发票/.test(line) && !/编号|规格|色号|数量|仓库/.test(line));
+    var isCustLine = /^(客户名称|客户名|客户)\s*[:：]/.test(line) || (/已付款|未付款|公账|私账|开票|未开票|发票/.test(line) && !/编号|规格|色号|数量|仓库/.test(line));
     if(isCustLine && !customer){
       var parsedC = parseCustomerBlob(line);
       if(parsedC.customer) customer = parsedC.customer;
@@ -786,7 +789,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261001b (reserve customer choice)");
+  console.log("out_from_plan.js ready v20261001c (suffix code + customer name + invoice account)");
 }
 
 function patchRegularReserveOut(){
