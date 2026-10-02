@@ -612,6 +612,7 @@ window.opfParsePreview = async function(){
 };
 
 window.opfConfirmOut = async function(){
+  try {
   if(!auth.currentUser) return alert("请先登录");
   var customer = (($("opf_customer") && $("opf_customer").value) || "").trim();
   var pay = (($("opf_pay") && $("opf_pay").value) || "").trim();
@@ -619,22 +620,17 @@ window.opfConfirmOut = async function(){
   var logCustomer = [customer, pay, account].filter(Boolean).join("，");
   syncPreviewInputs();
   var lines = previewRows.filter(function(r){ return r.ok && r.invId && r.qty > 0; });
-  if(!lines.length) return alert("没有可出库的行");
+  if(!lines.length) return alert("没有可出库的行。请先识别，异常行要勾选动用留货或删掉。");
   var summary = [];
   var reserveWarnings = [];
   for(var i = 0; i < lines.length; i++){
     var r = lines[i];
-    var snap = await getDoc(doc(db, "inventory", r.invId));
-    if(!snap.exists()) return alert("第 " + (i + 1) + " 行库存已不存在，请重新识别");
-    var data = snap.data();
-    var av = rowMaxShip(r, data);
-    if(r.qty > av) return alert(data.code + " 可出仅 " + av + (r.useReserve ? "" : "（未勾选从留货出）") + "，请改小数量或勾选从留货出");
+    var hit = (r.candidates || []).filter(function(c){ return c.id === r.invId; })[0];
+    var data = (hit && hit.data) || {};
     var parts = splitShip(r.qty, freeQty(data), reservedTotal(data), r.useReserve, r.reserveFirst);
-    summary.push((i + 1) + ". " + data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " × " + r.qty + (parts.fromRes > 0 ? "（扣可售" + parts.fromFree + "，扣留货" + parts.fromRes + (r.reserveFirst ? "，留货客户优先" : "，先用可售") + "）" : ""));
-    if(parts.fromFree + parts.fromRes < r.qty) return alert(data.code + " 可出不足");
+    summary.push((i + 1) + ". " + (data.code || r.plan.code) + " 色" + (data.color || r.plan.color || "-") + " @" + (data.warehouse || "-") + " × " + r.qty + (parts.fromRes > 0 ? "（扣可售" + parts.fromFree + "，扣留货" + parts.fromRes + (r.reserveFirst ? "，留货客户优先" : "，先用可售") + "）" : ""));
     if(parts.fromRes > 0){
-      var who = reserveCustomersText(data) || "有留货";
-      reserveWarnings.push(data.code + " 色" + (data.color || "-") + " @" + data.warehouse + " 将扣留货 " + parts.fromRes + "（现有留货：" + who + "）");
+      reserveWarnings.push((data.code || r.plan.code) + " 将扣留货 " + parts.fromRes);
     }
   }
   if(!confirm("确认按计划出库？\n客户：" + (logCustomer || "未填") + "\n共 " + lines.length + " 行\n\n" + summary.join("\n"))) return;
@@ -702,6 +698,10 @@ window.opfConfirmOut = async function(){
   } finally {
     if(btn){ btn.disabled = false; btn.textContent = "确认出库"; }
   }
+  } catch(err){
+    console.error(err);
+    alert("确认出库失败：" + ((err && err.message) || err));
+  }
 };
 
 function buildPlanPanelHtml(){
@@ -718,7 +718,7 @@ function buildPlanPanelHtml(){
     "<div style='padding:14px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;margin-bottom:12px;'>" +
     "<div style='font-weight:600;margin-bottom:8px;color:#1f2937;font-size:14px;'>明细预览</div>" +
     "<div id='opf_preview'><div style='padding:8px;color:#888;font-size:13px;'>识别后显示</div></div></div>" +
-    "<button type='button' id='opf_btn_confirm' style='padding:10px 20px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;font-weight:600;'>确认出库</button>";
+    "<button type='button' id='opf_btn_confirm' onclick='window.opfConfirmOut()' style='padding:10px 20px;border:none;border-radius:8px;background:#e67e22;color:#fff;cursor:pointer;font-weight:600;'>确认出库</button>";
 }
 
 function needsOutEnhance(){
@@ -789,7 +789,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261001c (suffix code + customer name + invoice account)");
+  console.log("out_from_plan.js ready v20261002a (confirm before network)");
 }
 
 function patchRegularReserveOut(){
