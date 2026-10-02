@@ -653,33 +653,28 @@ window.opfConfirmOut = async function(){
       var L = lines[j];
       try {
         var ref = doc(db, "inventory", L.invId);
-        var wrote = await runTransaction(db, async function(tx){
-          var s2 = await tx.get(ref);
-          if(!s2.exists()) throw new Error("已不存在");
-          var data = s2.data();
-          var qty = Number(L.qty) || 0;
-          var stock = Number(data.stock || 0);
-          var reserved = reservedTotal(data);
-          var maxQ = rowMaxShip(L, data);
-          if(qty <= 0 || qty > maxQ) throw new Error("可出不足");
-          var parts = splitShip(qty, stock, reserved, L.useReserve, L.reserveFirst);
-          if(parts.fromFree + parts.fromRes < qty) throw new Error("可出不足");
-          var list = Array.isArray(data.reservedList) ? data.reservedList.map(function(x){
-            return { customer: (x && x.customer) || "", qty: Number((x && x.qty) || 0), time: x && x.time ? x.time : null, at: x && x.at ? x.at : null };
-          }) : [];
-          var beforeRes = reservedTotal({ reservedList: list });
-          if(parts.fromRes > 0) list = deductReserveFifo(list, parts.fromRes, logCustomer);
-          var afterRes = reservedTotal({ reservedList: list });
-          if(parts.fromRes > 0 && afterRes > beforeRes - parts.fromRes + 0.001) throw new Error("留货扣减失败");
-          var newStock = Number((stock - parts.fromFree).toFixed(4));
-          if(newStock < 0) newStock = 0;
-          if(newStock <= 0 && !hasActiveReserve(list)){
-            tx.delete(ref);
-          } else {
-            tx.update(ref, { stock: newStock, reservedList: list, lastUpdate: serverTimestamp() });
-          }
-          return { code: data.code, spec: data.spec || "", color: data.color || "", warehouse: data.warehouse || "", qty: qty, fromRes: parts.fromRes, fromFree: parts.fromFree, beforeRes: beforeRes, afterRes: afterRes, newStock: newStock };
-        });
+        var s2 = await getDoc(ref);
+        if(!s2.exists()) throw new Error("已不存在");
+        var data = s2.data();
+        var qty = Number(L.qty) || 0;
+        var stock = Number(data.stock || 0);
+        var reserved = reservedTotal(data);
+        var maxQ = rowMaxShip(L, data);
+        if(qty <= 0 || qty > maxQ) throw new Error("可出不足");
+        var parts = splitShip(qty, stock, reserved, L.useReserve, L.reserveFirst);
+        if(parts.fromFree + parts.fromRes < qty) throw new Error("可出不足");
+        var list = Array.isArray(data.reservedList) ? data.reservedList.map(function(x){
+          return { customer: (x && x.customer) || "", qty: Number((x && x.qty) || 0), time: x && x.time ? x.time : null, at: x && x.at ? x.at : null };
+        }) : [];
+        var beforeRes = reservedTotal({ reservedList: list });
+        if(parts.fromRes > 0) list = deductReserveFifo(list, parts.fromRes, logCustomer);
+        var afterRes = reservedTotal({ reservedList: list });
+        if(parts.fromRes > 0 && afterRes > beforeRes - parts.fromRes + 0.001) throw new Error("留货扣减失败");
+        var newStock = Number((stock - parts.fromFree).toFixed(4));
+        if(newStock < 0) newStock = 0;
+        if(newStock <= 0 && !hasActiveReserve(list)) await deleteDoc(ref);
+        else await updateDoc(ref, { stock: newStock, reservedList: list, lastUpdate: serverTimestamp() });
+        var wrote = { code: data.code, spec: data.spec || "", color: data.color || "", warehouse: data.warehouse || "", qty: qty, fromRes: parts.fromRes, fromFree: parts.fromFree, beforeRes: beforeRes, afterRes: afterRes, newStock: newStock };
         await addDoc(collection(db, "logs"), {
           timestamp: serverTimestamp(),
           type: "出库",
@@ -796,7 +791,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261002d (restore rowMaxShip)");
+  console.log("out_from_plan.js ready v20261002e (plain stock write)");
 }
 
 function patchRegularReserveOut(){
