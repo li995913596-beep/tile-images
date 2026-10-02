@@ -461,7 +461,7 @@ function renderPreview(){
       ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;'><input type='checkbox' data-opf-reserve='" + idx + "'" + (row.useReserve ? " checked" : "") + "> 允许</label>")
       : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
     var firstChk = rs > 0
-      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;' title='勾选=这是留货客户，优先扣留货；不勾=先用可售，不够再动留货'><input type='checkbox' data-opf-resfirst='" + idx + "'" + (row.reserveFirst ? " checked" : "") + (row.useReserve ? "" : " disabled") + "> 是</label>")
+      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;' title='勾选=这是留货客户，优先扣留货；不勾=先用可售，不够再动留货'><input type='checkbox' data-opf-resfirst='" + idx + "'" + (row.reserveFirst ? " checked" : "") + "> 是</label>")
       : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
     html += "<tr style='background:" + bg + ";border-bottom:1px solid #f1f5f9;'>";
     html += "<td style='padding:8px;color:#64748b;'>" + (idx + 1) + "</td>";
@@ -789,7 +789,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261002a (confirm before network)");
+  console.log("out_from_plan.js ready v20261002b (reserve customer always clickable)");
 }
 
 function patchRegularReserveOut(){
