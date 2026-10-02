@@ -71,6 +71,11 @@ function deductReserveFifo(list, need, preferCustomer){
   });
 }
 
+function rowMaxShip(row, data){
+  if(row && row.useReserve) return maxShipQty(data);
+  return freeQty(data);
+}
+
 function splitShip(qty, free, reserved, useReserve, reserveFirst){
   qty = Number(qty) || 0;
   free = Math.max(0, Number(free) || 0);
@@ -791,7 +796,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261002c (reserve toggle buttons)");
+  console.log("out_from_plan.js ready v20261002d (restore rowMaxShip)");
 }
 
 function patchRegularReserveOut(){
