@@ -96,13 +96,13 @@ function syncPreviewInputs(){
     var i = Number(inp.getAttribute("data-opf-qty"));
     if(previewRows[i]) previewRows[i].qty = Number(inp.value) || 0;
   });
-  box.querySelectorAll("[data-opf-reserve]").forEach(function(chk){
-    var i = Number(chk.getAttribute("data-opf-reserve"));
-    if(previewRows[i]) previewRows[i].useReserve = !!chk.checked;
+  box.querySelectorAll("[data-opf-reserve]").forEach(function(btn){
+    var i = Number(btn.getAttribute("data-opf-reserve"));
+    if(previewRows[i] && btn.tagName === "INPUT") previewRows[i].useReserve = !!btn.checked;
   });
-  box.querySelectorAll("[data-opf-resfirst]").forEach(function(chk){
-    var i = Number(chk.getAttribute("data-opf-resfirst"));
-    if(previewRows[i]) previewRows[i].reserveFirst = !!chk.checked;
+  box.querySelectorAll("[data-opf-resfirst]").forEach(function(btn){
+    var i = Number(btn.getAttribute("data-opf-resfirst"));
+    if(previewRows[i] && btn.tagName === "INPUT") previewRows[i].reserveFirst = !!btn.checked;
   });
 }
 
@@ -458,10 +458,10 @@ function renderPreview(){
       return "<option value='" + esc(c.id) + "'" + selected + ">" + label + "</option>";
     }).join("");
     var reserveChk = rs > 0
-      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;'><input type='checkbox' data-opf-reserve='" + idx + "'" + (row.useReserve ? " checked" : "") + "> 允许</label>")
+      ? ("<button type='button' data-opf-reserve='" + idx + "' style='min-width:64px;padding:8px 10px;border-radius:8px;border:1px solid " + (row.useReserve ? "#0f766e" : "#cbd5e1") + ";background:" + (row.useReserve ? "#0f766e" : "#fff") + ";color:" + (row.useReserve ? "#fff" : "#334155") + ";cursor:pointer;font-weight:700;'>" + (row.useReserve ? "已允许" : "允许") + "</button>")
       : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
     var firstChk = rs > 0
-      ? ("<label style='font-size:12px;white-space:nowrap;cursor:pointer;' title='勾选=这是留货客户，优先扣留货；不勾=先用可售，不够再动留货'><input type='checkbox' data-opf-resfirst='" + idx + "'" + (row.reserveFirst ? " checked" : "") + "> 是</label>")
+      ? ("<button type='button' data-opf-resfirst='" + idx + "' style='min-width:72px;padding:8px 10px;border-radius:8px;border:1px solid " + (row.reserveFirst ? "#b45309" : "#cbd5e1") + ";background:" + (row.reserveFirst ? "#b45309" : "#fff") + ";color:" + (row.reserveFirst ? "#fff" : "#334155") + ";cursor:pointer;font-weight:700;'>" + (row.reserveFirst ? "是留货客户" : "不是") + "</button>")
       : "<span style='color:#94a3b8;font-size:12px;'>—</span>";
     html += "<tr style='background:" + bg + ";border-bottom:1px solid #f1f5f9;'>";
     html += "<td style='padding:8px;color:#64748b;'>" + (idx + 1) + "</td>";
@@ -525,21 +525,23 @@ function renderPreview(){
       renderPreview();
     };
   });
-  box.querySelectorAll("[data-opf-reserve]").forEach(function(chk){
-    chk.onchange = function(){
-      var i = Number(chk.getAttribute("data-opf-reserve"));
+  box.querySelectorAll("[data-opf-reserve]").forEach(function(btn){
+    btn.onclick = function(e){
+      if(e){ e.preventDefault(); e.stopPropagation(); }
+      var i = Number(btn.getAttribute("data-opf-reserve"));
       var row = previewRows[i]; if(!row) return;
-      row.useReserve = !!chk.checked;
+      row.useReserve = !row.useReserve;
       if(!row.useReserve) row.reserveFirst = false;
       refreshRowOk(row);
       renderPreview();
     };
   });
-  box.querySelectorAll("[data-opf-resfirst]").forEach(function(chk){
-    chk.onchange = function(){
-      var i = Number(chk.getAttribute("data-opf-resfirst"));
+  box.querySelectorAll("[data-opf-resfirst]").forEach(function(btn){
+    btn.onclick = function(e){
+      if(e){ e.preventDefault(); e.stopPropagation(); }
+      var i = Number(btn.getAttribute("data-opf-resfirst"));
       var row = previewRows[i]; if(!row) return;
-      row.reserveFirst = !!chk.checked;
+      row.reserveFirst = !row.reserveFirst;
       if(row.reserveFirst) row.useReserve = true;
       refreshRowOk(row);
       renderPreview();
@@ -789,7 +791,7 @@ function boot(){
     }
   }, true);
   patchRegularReserveOut();
-  console.log("out_from_plan.js ready v20261002b (reserve customer always clickable)");
+  console.log("out_from_plan.js ready v20261002c (reserve toggle buttons)");
 }
 
 function patchRegularReserveOut(){
