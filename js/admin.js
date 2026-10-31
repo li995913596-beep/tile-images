@@ -5,6 +5,6 @@ await import("./admin_reserve_time.js?v=20260821a");
 await import("./ship_plan.js?v=20260908c");
 await import("./out_from_plan.js?v=20260915a");
 await import("./out_from_plan_fix.js?v=20260915a");
-await import("./admin_log_tools.js?v=20260908c");
+await import("./admin_log_tools.js?v=20261031a");
 await import("./boxes.js?v=20260815j");
 await import("./grout.js?v=20260817a");

@@ -5,7 +5,7 @@
 import { db, auth } from "./firebase.js";
 import {
   collection, doc, getDocs, getDoc, updateDoc, deleteDoc, addDoc, setDoc,
-  serverTimestamp, query, orderBy, where, limit
+  serverTimestamp, query, orderBy, where, limit, startAfter
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 function $(id){ return document.getElementById(id); }
@@ -26,6 +26,7 @@ function esc(s){
   t = t.split(">").join(amp + "gt;");
   return t;
 }
+
 
 function parseReserveAt(at){
   if(at == null || at === "") return null;
@@ -210,15 +211,30 @@ function renderLogPage(){
   if(next) next.disabled = logPage >= pages;
 }
 
+var logAll = [];
+function applyLogFilter(){
+  var kw = (($("logSearch") && $("logSearch").value) || "").trim().toLowerCase();
+  var typ = (($("logType") && $("logType").value) || "").trim();
+  logCache = logAll.filter(function(row){
+    var l = row.data || {};
+    if(typ && String(l.type || "") !== typ) return false;
+    if(!kw) return true;
+    var blob = [l.type, l.code, l.spec, l.color, l.warehouse, l.customer, l.source]
+      .map(function(x){ return String(x || "").toLowerCase(); }).join(" ");
+    return blob.indexOf(kw) >= 0;
+  });
+  logPage = 1;
+  renderLogPage();
+}
+
 async function loadLogsPaged(){
   var tbody = $("logTable");
   if(tbody) tbody.innerHTML = "<tr><td colspan='9' style='padding:12px;color:#666;'>加载中…</td></tr>";
   try {
-    var snap = await getDocs(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(500)));
-    logCache = [];
-    snap.forEach(function(d){ logCache.push({ id: d.id, data: d.data() }); });
-    logPage = 1;
-    renderLogPage();
+    var snap = await getDocs(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(2000)));
+    logAll = [];
+    snap.forEach(function(d){ logAll.push({ id: d.id, data: d.data() }); });
+    applyLogFilter();
   } catch(e){
     console.error(e);
     if(tbody) tbody.innerHTML = "<tr><td colspan='9' style='padding:12px;color:#b91c1c;'>加载失败</td></tr>";
@@ -235,7 +251,9 @@ function enhanceLogPage(){
     "<div style='display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;'>" +
     "<button type='button' onclick='downloadLogs()' style='padding:7px 14px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;'>下载CSV</button>" +
     "<button type='button' id='logReload' style='padding:7px 14px;border:none;border-radius:8px;background:#2f7dd1;color:#fff;cursor:pointer;'>刷新</button>" +
-    "<span style='font-size:12px;color:#64748b;'>可撤销：出库/入库/留货/取消留货。每页 " + LOG_PAGE + " 条。</span></div>" +
+    "<input id='logSearch' placeholder='搜索编号/客户/仓库' style='flex:1;min-width:140px;padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;'>" +
+    "<select id='logType' style='padding:7px 10px;border:1px solid #d1d5db;border-radius:8px;'><option value=''>全部类型</option><option value='入库'>入库</option><option value='出库'>出库</option><option value='留货'>留货</option><option value='取消留货'>取消留货</option><option value='撤销'>撤销</option></select>" +
+    "<span style='font-size:12px;color:#64748b;'>最近 2000 条。可撤销出库/入库/留货。每页 " + LOG_PAGE + " 条。</span></div>" +
     "<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;min-width:720px;'>" +
     "<thead><tr style='background:#f1f5f9;text-align:left;'>" +
     "<th style='padding:8px 10px;'>时间</th><th style='padding:8px 10px;'>类型</th><th style='padding:8px 10px;'>编号</th>" +
@@ -250,6 +268,11 @@ function enhanceLogPage(){
   $("logReload").onclick = function(){ loadLogsPaged(); };
   $("logPrev").onclick = function(){ logPage--; renderLogPage(); };
   $("logNext").onclick = function(){ logPage++; renderLogPage(); };
+  if($("logSearch")){
+    $("logSearch").addEventListener("keydown", function(e){ if(e.key === "Enter") applyLogFilter(); });
+    $("logSearch").addEventListener("input", function(){ applyLogFilter(); });
+  }
+  if($("logType")) $("logType").onchange = function(){ applyLogFilter(); };
   loadLogsPaged();
 }
 
@@ -378,7 +401,136 @@ function hookShowTab(){
 function boot(){
   hookShowTab();
   setInterval(hookShowTab, 1000);
-  console.log("admin_log_tools.js ready v20260821b: reserve edit + page");
+  window.downloadLogs = async function(){
+    try {
+      alert("正在导出全部日志，并计算出库后剩余…");
+      var logs = [];
+      var last = null;
+      while(logs.length < 20000){
+        var q = last
+          ? query(collection(db, "logs"), orderBy("timestamp", "desc"), startAfter(last), limit(500))
+          : query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(500));
+        var snap = await getDocs(q);
+        if(snap.empty) break;
+        snap.forEach(function(d){ logs.push({ id: d.id, data: d.data() || {} }); });
+        last = snap.docs[snap.docs.length - 1];
+        if(snap.size < 500) break;
+      }
+      var stockMap = {};
+      var invSnap = await getDocs(collection(db, "inventory"));
+      invSnap.forEach(function(d){
+        var i = d.data() || {};
+        var key = String(i.code || "") + "|" + String(i.color || "") + "|" + String(i.warehouse || "").toLowerCase();
+        stockMap[key] = Number(i.stock || 0);
+      });
+      var transitSnap = await getDocs(collection(db, "in_transit"));
+      var seenIn = {};
+      logs.forEach(function(row){
+        var l = row.data;
+        if(l.type !== "入库") return;
+        var k = [l.code, l.color, l.containerNo || "", l.qty].join("|");
+        seenIn[k] = true;
+      });
+      transitSnap.forEach(function(d){
+        var it = d.data() || {};
+        if(!/已入库|已入庫|已入仓/.test(String(it.status || ""))) return;
+        var qty = Number(it.inboundQty != null ? it.inboundQty : it.qty || 0);
+        if(!qty) return;
+        var k = [it.code || "", it.color || "", it.containerNo || "", qty].join("|");
+        if(seenIn[k]) return;
+        var ts = it.updatedAt && it.updatedAt.toDate ? it.updatedAt.toDate() : null;
+        logs.push({
+          id: "transit-" + d.id,
+          data: {
+            timestamp: it.updatedAt || null,
+            type: "入库",
+            code: it.code || "",
+            spec: it.spec || "",
+            color: it.color || "",
+            qty: qty,
+            warehouse: it.inboundWarehouse || "",
+            customer: "柜号" + (it.containerNo || "") + " 在途已入库补记",
+            source: "整柜入库",
+            containerNo: it.containerNo || "",
+            _ms: ts ? ts.getTime() : 0
+          }
+        });
+      });
+      function msOf(l){
+        if(l._ms) return l._ms;
+        try { return l.timestamp && l.timestamp.toDate ? l.timestamp.toDate().getTime() : 0; } catch(e){ return 0; }
+      }
+      var groups = {};
+      logs.forEach(function(row){
+        var l = row.data;
+        var key = String(l.code || "") + "|" + String(l.color || "") + "|" + String(l.warehouse || "").toLowerCase();
+        if(!groups[key]) groups[key] = [];
+        groups[key].push(row);
+      });
+      Object.keys(groups).forEach(function(key){
+        var arr = groups[key].slice().sort(function(a, b){ return msOf(b.data) - msOf(a.data); });
+        var running = stockMap.hasOwnProperty(key) ? stockMap[key] : 0;
+        arr.forEach(function(row){
+          var l = row.data;
+          var qty = Number(l.qty || 0);
+          row.after = running;
+          var type = l.type || "";
+          if(type === "出库" || type === "留货") running = Number((running + qty).toFixed(4));
+          else if(type === "入库" || type === "取消留货") running = Number((running - qty).toFixed(4));
+        });
+      });
+      var rows = [["时间","类型","编号","规格","色号","数量","操作后剩余","仓库","客户","来源","柜号"]];
+      logs.sort(function(a, b){ return msOf(b.data) - msOf(a.data); });
+      logs.forEach(function(row){
+        var l = row.data;
+        var time = "";
+        try { time = l.timestamp && l.timestamp.toDate ? l.timestamp.toDate().toLocaleString() : ""; } catch(e){}
+        rows.push([
+          time, l.type || "", l.code || "", l.spec || "", l.color || "",
+          l.qty == null ? "" : l.qty,
+          row.after == null ? "" : row.after,
+          l.warehouse || "", l.customer || "", l.source || "", l.containerNo || ""
+        ]);
+      });
+      var csv = rows.map(function(r){
+        return r.map(function(c){
+          var s = String(c == null ? "" : c);
+          if(/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+          return s;
+        }).join(",");
+      }).join("\n");
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+      a.download = "logs.csv";
+      a.click();
+      alert("已导出 " + (rows.length - 1) + " 行。操作后剩余 = 这笔出/入库之后，该编号在该仓库的可售剩余。");
+    } catch(e){
+      console.error(e);
+      alert("导出失败：" + (e.message || e));
+    }
+  };
+  var origAddNew = window.addNewStock;
+  if(origAddNew && !origAddNew.__logged){
+    window.addNewStock = async function(){
+      var code = (($("new_code") && $("new_code").value) || "").trim();
+      var color = (($("new_color") && $("new_color").value) || "").trim();
+      var spec = (($("new_spec") && $("new_spec").value) || "").trim();
+      var warehouse = (($("new_warehouse") && $("new_warehouse").value) || "").toString().trim().toLowerCase();
+      var qty = Number(($("new_qty") && $("new_qty").value) || 0);
+      await origAddNew.apply(this, arguments);
+      if(code && warehouse && qty){
+        try {
+          await addDoc(collection(db, "logs"), {
+            timestamp: serverTimestamp(), type: "入库",
+            code: code, spec: spec, color: color, warehouse: warehouse, qty: qty,
+            customer: "新增库存", source: "新增"
+          });
+        } catch(e){ console.error(e); }
+      }
+    };
+    window.addNewStock.__logged = true;
+  }
+  console.log("admin_log_tools.js ready v20261031a: full log csv + after-qty + transit inbound");
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
