@@ -314,7 +314,6 @@ window.searchData = async function(){
           <div style="font-weight:700;color:${stockColor}">${item.stock}</div>
           <div>${reserveHtml}</div>
           <div>${item.warehouse}</div>
-          <div><button type="button" onclick='shareTileCard(${JSON.stringify({code:item.code,spec:normalizeSpec(item.spec)||item.spec||"",color:item.color||"",warehouse:item.warehouse||"",stock:item.stock,reserved:item.reserved||0})})' style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;">分享</button></div>
         </div>
       `;
     });
