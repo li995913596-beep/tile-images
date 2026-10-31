@@ -17,6 +17,10 @@ function normalizeSpec(s){
   return s;
 }
 
+function tt(key, vars){
+  return (window.I18N && window.I18N.t(key, vars)) || key;
+}
+
 /* 汇总留货数量 + 客户明细 */
 function getReserveInfo(item){
   const list = Array.isArray(item.reservedList) ? item.reservedList : [];
@@ -24,7 +28,7 @@ function getReserveInfo(item){
   const detail = list
     .filter(r => r && (r.customer || r.qty))
     .map(r => {
-      const name = (r.customer || "未填客户").toString();
+      const name = (r.customer || tt("reserve.unknown")).toString();
       const qty = Number(r.qty || 0);
       return `${name}(${qty})`;
     })
@@ -35,7 +39,7 @@ function getReserveInfo(item){
 function formatPackLine(item){
   var parts = [];
   if(item.piecesPerBox != null && item.piecesPerBox !== "" && Number(item.piecesPerBox) > 0){
-    parts.push(Number(item.piecesPerBox) + "片/箱");
+    parts.push(tt("pack.pcsBox", { n: Number(item.piecesPerBox) }));
   }
   if(item.boxWeight != null && item.boxWeight !== "" && Number(item.boxWeight) > 0){
     parts.push(Number(item.boxWeight) + "kg");
@@ -203,7 +207,7 @@ function collectOverdueReserves(items){
       if(days >= 30){
         overdue.push({
           code: item.code || "",
-          customer: r.customer || "未填",
+          customer: r.customer || tt("reserve.unknown"),
           qty: r.qty,
           days: days
         });
@@ -224,13 +228,12 @@ function showReserveOverdueBanner(items){
     return;
   }
   var lines = overdue.slice(0, 8).map(function(o){
-    return "· " + o.code + " / " + o.customer + " ×" + o.qty + "（已留 " + o.days + " 天）";
+    return "· " + o.code + " / " + o.customer + " ×" + o.qty + " " + tt("banner.overdueItem", { days: o.days });
   }).join("<br>");
-  if(overdue.length > 8) lines += "<br>…还有 " + (overdue.length - 8) + " 笔";
+  if(overdue.length > 8) lines += "<br>" + tt("banner.more", { n: overdue.length - 8 });
   el.style.display = "block";
   el.innerHTML =
-    '<div style="font-weight:700;margin-bottom:6px;">⚠ 有 ' + overdue.length +
-    ' 笔留货已超过 30 天，请联系管理员处理</div>' +
+    '<div style="font-weight:700;margin-bottom:6px;">' + tt("banner.overdueTitle", { n: overdue.length }) + "</div>" +
     '<div style="font-size:13px;opacity:0.95;">' + lines + "</div>";
 }
 
@@ -242,13 +245,13 @@ window.searchData = async function(){
   const keyword = raw.toLowerCase();
   resultDiv.innerHTML = "";
   if (!raw) {
-    resultDiv.innerHTML = "请输入编号或规格 / Please enter Code or Size";
+    resultDiv.innerHTML = tt("msg.needKeyword");
     return;
   }
   const hasCache = !!ensureMemoryCache();
   resultDiv.innerHTML = hasCache
-    ? "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>搜索中…</div>"
-    : "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>首次加载库存数据，稍候…</div>";
+    ? "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>" + tt("msg.searching") + "</div>"
+    : "<div style='padding:8px 4px;color:#94a3b8;font-size:13px;'>" + tt("msg.firstLoad") + "</div>";
   let list = [];
   try {
     const all = await getInventory(false);
@@ -263,11 +266,11 @@ window.searchData = async function(){
     );
   } catch (e) {
     console.error("搜索失败:", e);
-    resultDiv.innerHTML = "搜索失败，请稍后重试";
+    resultDiv.innerHTML = tt("msg.searchFail");
     return;
   }
   if (list.length === 0) {
-    resultDiv.innerHTML = "未找到库存 / No Inventory Found";
+    resultDiv.innerHTML = tt("msg.notFound");
     return;
   }
   list.sort((a, b) => {
@@ -285,13 +288,14 @@ window.searchData = async function(){
     let html = `
       <div class="result-table">
         <div class="result-header">
-          <div>图片</div>
-          <div>编号</div>
-          <div>规格</div>
-          <div>色号</div>
-          <div>库存</div>
-          <div>留货</div>
-          <div>仓库</div>
+          <div>${tt("col.image")}</div>
+          <div>${tt("col.code")}</div>
+          <div>${tt("col.spec")}</div>
+          <div>${tt("col.color")}</div>
+          <div>${tt("col.stock")}</div>
+          <div>${tt("col.reserve")}</div>
+          <div>${tt("col.warehouse")}</div>
+          <div>分享</div>
         </div>
     `;
     list.forEach(item => {
@@ -311,6 +315,7 @@ window.searchData = async function(){
           <div style="font-weight:700;color:${stockColor}">${item.stock}</div>
           <div>${reserveHtml}</div>
           <div>${item.warehouse}</div>
+          <div><button type="button" onclick='shareTileCard(${JSON.stringify({code:item.code,spec:normalizeSpec(item.spec)||item.spec||"",color:item.color||"",warehouse:item.warehouse||"",stock:item.stock,reserved:item.reserved||0})})' style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;cursor:pointer;">分享</button></div>
         </div>
       `;
     });
@@ -319,16 +324,15 @@ window.searchData = async function(){
     return;
   }
 
-  // 手机：先清空「搜索中…」，再一次性写入结果，避免残留空位
   let mobileHtml = "";
   list.forEach(item => {
     const imageUrl = window.location.origin + "/images/" + item.code + ".jpg";
     const stockColor = item.stock > 10 ? "#2ecc71" : item.stock > 0 ? "#f39c12" : "#e74c3c";
     const warehouseBg = "#eef3f8";
     const warehouseColor = "#2c3e50";
-    let reserveHtml = `<span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#e5e7eb;color:#666;">留货 0</span>`;
+    let reserveHtml = `<span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#e5e7eb;color:#666;">${tt("reserve.none")}</span>`;
     if (item.reserved > 0) {
-      reserveHtml = `<div style="margin-top:2px;"><span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">留货 ${item.reserved}</span>${item.reserveDetail ? `<div style="margin-top:4px;font-size:12px;color:#c0392b;line-height:1.4;">客户：${item.reserveDetail}</div>` : ""}</div>`;
+      reserveHtml = `<div style="margin-top:2px;"><span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">${tt("reserve.has", { n: item.reserved })}</span>${item.reserveDetail ? `<div style="margin-top:4px;font-size:12px;color:#c0392b;line-height:1.4;">${tt("reserve.customer")}${item.reserveDetail}</div>` : ""}</div>`;
     }
     mobileHtml += `
       <div class="card" style="display:flex;align-items:center;gap:12px;">
@@ -337,13 +341,14 @@ window.searchData = async function(){
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:15px;">${item.code}</div>
-          <div style="font-size:13px;color:#555;margin-top:2px;">${normalizeSpec(item.spec) || item.spec || "-"} | 色号 ${item.color}</div>
+          <div style="font-size:13px;color:#555;margin-top:2px;">${normalizeSpec(item.spec) || item.spec || "-"} | ${tt("col.color")} ${item.color}</div>
           ${formatPackLine(item) ? `<div style="font-size:12px;color:#64748b;margin-top:3px;">${formatPackLine(item)}</div>` : ""}
           <div style="margin-top:6px;">${reserveHtml}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="display:inline-block;font-size:11px;padding:4px 10px;border-radius:999px;background:${warehouseBg};color:${warehouseColor};font-weight:500;margin-bottom:6px;">${item.warehouse}</div>
           <div style="font-size:16px;font-weight:700;padding:6px 12px;border-radius:10px;background:${stockColor};color:#fff;">${item.stock}</div>
+          <button type="button" onclick='shareTileCard(${JSON.stringify({code:item.code,spec:normalizeSpec(item.spec)||item.spec||"",color:item.color||"",warehouse:item.warehouse||"",stock:item.stock,reserved:item.reserved||0})})' style="margin-top:6px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;">分享</button>
         </div>
       </div>
     `;
@@ -369,26 +374,32 @@ document.addEventListener("DOMContentLoaded", () => {
     btnRefresh.addEventListener("click", async () => {
       if (searchInput) searchInput.value = "";
       if (resultDiv) {
-        resultDiv.innerHTML = "<div style='padding:16px;color:#666;font-size:14px;'>正在从服务器刷新库存…</div>";
+        resultDiv.innerHTML = "<div style='padding:16px;color:#666;font-size:14px;'>" + tt("msg.refreshing") + "</div>";
       }
       try {
         window.clearInventoryCache();
         const items = await getInventory(true);
         if (resultDiv) {
-          resultDiv.innerHTML = "<div style='padding:16px;color:#16a34a;font-size:14px;'>库存已刷新（共 " + items.length + " 条），本地缓存有效约 8 小时。请重新查询。</div>";
+          resultDiv.innerHTML = "<div style='padding:16px;color:#16a34a;font-size:14px;'>" + tt("msg.refreshed", { n: items.length }) + "</div>";
         }
       } catch (e) {
         console.error(e);
         if (resultDiv) {
-          resultDiv.innerHTML = "<div style='padding:16px;color:#b91c1c;font-size:14px;'>刷新失败，请稍后重试</div>";
+          resultDiv.innerHTML = "<div style='padding:16px;color:#b91c1c;font-size:14px;'>" + tt("msg.refreshFail") + "</div>";
         }
       }
     });
   }
-  // 打开页面不拉 Firebase：仅用本地未过期缓存显示留货提醒
   try {
     var localHit = ensureMemoryCache();
     if(localHit) showReserveOverdueBanner(localHit.items);
   } catch(e){ console.warn(e); }
-  console.log("query.js ready v20260818b: local 8h cache, no preload");
+  window.addEventListener("tile-lang-change", function(){
+    try {
+      var hit = ensureMemoryCache();
+      if(hit) showReserveOverdueBanner(hit.items);
+    } catch(e){}
+    if(searchInput && searchInput.value.trim()) window.searchData();
+  });
+  console.log("query.js ready v20260902a: i18n + local 8h cache");
 });
