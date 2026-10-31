@@ -295,7 +295,6 @@ window.searchData = async function(){
           <div>${tt("col.stock")}</div>
           <div>${tt("col.reserve")}</div>
           <div>${tt("col.warehouse")}</div>
-          <div>分享</div>
         </div>
     `;
     list.forEach(item => {
@@ -348,7 +347,6 @@ window.searchData = async function(){
         <div style="text-align:right;flex-shrink:0;">
           <div style="display:inline-block;font-size:11px;padding:4px 10px;border-radius:999px;background:${warehouseBg};color:${warehouseColor};font-weight:500;margin-bottom:6px;">${item.warehouse}</div>
           <div style="font-size:16px;font-weight:700;padding:6px 12px;border-radius:10px;background:${stockColor};color:#fff;">${item.stock}</div>
-          <button type="button" onclick='shareTileCard(${JSON.stringify({code:item.code,spec:normalizeSpec(item.spec)||item.spec||"",color:item.color||"",warehouse:item.warehouse||"",stock:item.stock,reserved:item.reserved||0})})' style="margin-top:6px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;">分享</button>
         </div>
       </div>
     `;
