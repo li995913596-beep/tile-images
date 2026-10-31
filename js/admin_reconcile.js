@@ -35,15 +35,9 @@ function ensureTab(){
     host.parentNode.insertBefore(div, host);
   }
   var nav = document.querySelector(".nav-card");
-  if(nav && !nav.querySelector("[data-audit-btn]")){
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.setAttribute("data-audit-btn", "1");
-    btn.textContent = "对账";
-    btn.onclick = function(){ if(window.showTab) window.showTab("audit"); };
-    var logBtn = Array.from(nav.querySelectorAll("button")).filter(function(b){ return b.textContent === "日志"; })[0];
-    if(logBtn && logBtn.nextSibling) nav.insertBefore(btn, logBtn.nextSibling);
-    else nav.appendChild(btn);
+  if(nav){
+    var auditBtns = Array.from(nav.querySelectorAll("button")).filter(function(b){ return b.textContent === "对账"; });
+    auditBtns.slice(1).forEach(function(b){ b.remove(); });
   }
   var box = $("tab_audit");
   if(box && !box.dataset.ready){
@@ -227,7 +221,7 @@ function compareWechat(){
 function boot(){
   ensureTab();
   setInterval(ensureTab, 1500);
-  console.log("admin_reconcile.js ready v20261031a");
+  console.log("admin_reconcile.js ready v20261031b");
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
