@@ -218,6 +218,7 @@ function collectOverdueReserves(items){
   return overdue;
 }
 
+var reserveBannerOpen = false;
 function showReserveOverdueBanner(items){
   var el = document.getElementById("reserveBanner");
   if(!el) return;
@@ -233,8 +234,17 @@ function showReserveOverdueBanner(items){
   if(overdue.length > 8) lines += "<br>" + tt("banner.more", { n: overdue.length - 8 });
   el.style.display = "block";
   el.innerHTML =
-    '<div style="font-weight:700;margin-bottom:6px;">' + tt("banner.overdueTitle", { n: overdue.length }) + "</div>" +
-    '<div style="font-size:13px;opacity:0.95;">' + lines + "</div>";
+    '<div style="border-radius:12px;background:linear-gradient(90deg,#fef2f2,#fff7ed);border:1px solid #fecaca;color:#9a3412;font-size:14px;line-height:1.5;overflow:hidden;">' +
+      '<button type="button" id="reserveBannerToggle" style="width:100%;text-align:left;padding:10px 14px;border:none;background:transparent;color:#9a3412;font-weight:700;cursor:pointer;">' +
+        (reserveBannerOpen ? "▾ " : "▸ ") + tt("banner.overdueTitle", { n: overdue.length }) +
+      "</button>" +
+      '<div id="reserveBannerBody" style="display:' + (reserveBannerOpen ? "block" : "none") + ';padding:0 14px 10px;font-size:13px;">' + lines + "</div>" +
+    "</div>";
+  var btn = document.getElementById("reserveBannerToggle");
+  if(btn) btn.onclick = function(){
+    reserveBannerOpen = !reserveBannerOpen;
+    showReserveOverdueBanner(items);
+  };
 }
 
 window.searchData = async function(){

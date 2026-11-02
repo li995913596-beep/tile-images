@@ -106,6 +106,7 @@ header{
   margin-bottom:12px;
   box-sizing:border-box;
   width:100%;
+  max-width:520px;
   overflow:visible;
 }
 
@@ -144,19 +145,18 @@ header{
   white-space:nowrap;
 }
 
-.search-box #btnRefresh{
-  display:block;
-  width:auto;
-  margin:14px 0 2px auto;
-  padding:2px 0;
-  border:none;
-  border-radius:0;
-  background:transparent;
-  color:#94a3b8;
-  font-size:12px;
-  font-weight:400;
+.search-row #btnRefresh{
+  flex:0 0 auto;
+  padding:11px 12px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+  color:#64748b;
+  font-size:14px;
+  font-weight:600;
   box-shadow:none;
   cursor:pointer;
+  white-space:nowrap;
 }
 
 .search-row #btnRefresh:hover{
