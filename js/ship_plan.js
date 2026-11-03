@@ -196,34 +196,40 @@ function warehouseStyle(w){
   return "display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:#eef3f8;color:#2c3e50;";
 }
 
+function isShipFront(){ return !!$("shipFrontRoot"); }
+function LF(zh, th, en){
+  if(window.I18N && window.I18N.pick) return window.I18N.pick(zh, en || zh, th);
+  return zh;
+}
+
 function renderSearchResults(items){
   var box = $("sp_search_result");
   if(!box) return;
   if(!items.length){
-    box.innerHTML = '<div style="padding:12px;color:#888;">未找到库存</div>';
+    box.innerHTML = '<div style="padding:12px;color:#888;">' + LF("未找到库存", "ไม่พบสต็อก") + "</div>";
     return;
   }
   box.innerHTML = items.map(function(it, idx){
     var avColor = it.available > 0 ? "#16a34a" : "#b91c1c";
     var resHtml = it.reserved > 0
-      ? '<div style="font-size:12px;color:#b45309;margin-top:4px;">留货 ' + it.reserved + (it.reserveDetail ? "：" + esc(it.reserveDetail) : "") + "</div>"
-      : '<div style="font-size:12px;color:#94a3b8;margin-top:4px;">留货 0</div>';
+      ? '<div style="font-size:12px;color:#b45309;margin-top:4px;">' + LF("留货", "จอง") + " " + it.reserved + (it.reserveDetail ? "：" + esc(it.reserveDetail) : "") + "</div>"
+      : '<div style="font-size:12px;color:#94a3b8;margin-top:4px;">' + LF("留货", "จอง") + " 0</div>";
     return (
       '<div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;background:#fff;">' +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
           '<span style="font-weight:700;">' + esc(it.code) + "</span>" +
           '<span style="color:#64748b;">' + esc(it.spec || "-") + "</span>" +
-          '<span>色号 ' + esc(it.color || "-") + "</span>" +
+          '<span>' + LF("色号", "สี") + " " + esc(it.color || "-") + "</span>" +
           '<span style="' + warehouseStyle(it.warehouse) + '">' + esc(it.warehouse || "-") + "</span>" +
         "</div>" +
         '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:13px;">' +
-          '<span>可售 <b>' + it.stock + "</b></span>" +
-          '<span style="color:' + avColor + ';">可出 <b>' + it.available + "</b></span>" +
+          '<span>' + LF("可售", "พร้อมขาย") + " <b>" + it.stock + "</b></span>" +
+          '<span style="color:' + avColor + ';">' + LF("可出", "ส่งได้") + " <b>" + it.available + "</b></span>" +
           resHtml +
         "</div>" +
         '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
-          '<label style="font-size:13px;">数量 <input type="number" min="0.01" step="0.01" value="" data-sp-qty="' + idx + '" style="width:90px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;"></label>' +
-          '<button type="button" data-sp-add="' + idx + '" style="padding:6px 14px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">加入计划</button>' +
+          '<label style="font-size:13px;">' + LF("数量", "จำนวน") + ' <input type="number" min="0.01" step="0.01" value="" data-sp-qty="' + idx + '" style="width:90px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;"></label>' +
+          '<button type="button" data-sp-add="' + idx + '" style="padding:6px 14px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">' + LF("加入计划", "เพิ่มแผน") + "</button>" +
         "</div>" +
       "</div>"
     );
@@ -260,7 +266,7 @@ function renderPlanLines(){
   var box = $("sp_plan_list");
   if(!box) return;
   if(!planLines.length){
-    box.innerHTML = '<div style="padding:8px;color:#94a3b8;font-size:13px;">尚未加入瓷砖</div>';
+    box.innerHTML = '<div style="padding:8px;color:#94a3b8;font-size:13px;">' + LF("尚未加入瓷砖", "ยังไม่มีรายการ") + "</div>";
     return;
   }
   box.innerHTML = planLines.map(function(line, idx){
@@ -269,11 +275,11 @@ function renderPlanLines(){
         '<span style="color:#64748b;">' + (idx + 1) + ".</span>" +
         '<span style="font-weight:600;">' + esc(line.code) + "</span>" +
         '<span style="color:#64748b;">' + esc(line.spec || "-") + "</span>" +
-        '<span>色号 <b>' + esc(line.color || "-") + "</b></span>" +
+        '<span>' + LF("色号", "สี") + " <b>" + esc(line.color || "-") + "</b></span>" +
         '<span style="font-size:12px;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;">' + esc(line.warehouse || "-") + "</span>" +
         '<span style="font-weight:700;color:#0f766e;">× ' + line.qty + "</span>" +
-        (line.reserved > 0 ? '<span style="font-size:12px;color:#b45309;">(留货' + line.reserved + "/可出" + line.available + ")</span>" : "") +
-        '<button type="button" data-sp-del="' + idx + '" style="margin-left:auto;padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;">移除</button>' +
+        (line.reserved > 0 ? '<span style="font-size:12px;color:#b45309;">(' + LF("留货", "จอง") + line.reserved + "/" + LF("可出", "ส่งได้") + line.available + ")</span>" : "") +
+        '<button type="button" data-sp-del="' + idx + '" style="margin-left:auto;padding:4px 10px;border:1px solid #fecaca;background:#fee2e2;color:#b91c1c;border-radius:6px;cursor:pointer;">' + LF("移除", "ลบ") + "</button>" +
       "</div>"
     );
   }).join("");
@@ -297,27 +303,27 @@ function buildCustomerLine(){
 }
 
 function generatePlanText(){
-  var date = (($("sp_date") && $("sp_date").value) || todayStr()).trim();
   var vehicle = (($("sp_vehicle") && $("sp_vehicle").value) || "").trim();
   var note = (($("sp_note") && $("sp_note").value) || "").trim();
   var lines = [];
-  lines.push("出货计划เบิก");
-  lines.push("日期วันที่:" + date);
   if(vehicle){
     vehicle.split(/\r?\n/).forEach(function(row){
       var t = row.trim();
       if(t) lines.push(t);
     });
   }
+  if(lines.length) lines.push("");
   lines.push(buildCustomerLine());
+  lines.push("");
   planLines.forEach(function(line, idx){
-    if(idx > 0) lines.push(""); // 每款之间空一行，复制出来不挤
+    if(idx > 0) lines.push("");
     lines.push((idx + 1) + ".ကုဒ်နိပတ်/编号：" + (line.code || ""));
     lines.push("အလျားအနံ/规格：" + (line.spec || ""));
     lines.push("အရောင်ကုဒ်色号：" + (line.color || ""));
     lines.push("အရေအတွက်/数量：" + line.qty);
     lines.push("ဂိုဒေါင်/仓库：" + (line.warehouse || ""));
   });
+  lines.push("");
   if(note) lines.push(note);
   else lines.push("送货单一起带过去");
   var pallet = $("sp_pallet") && $("sp_pallet").checked;
@@ -329,14 +335,14 @@ window.spSearch = async function(){
   var input = $("sp_search");
   var raw = (input && input.value || "").trim();
   var box = $("sp_search_result");
-  if(!raw) return alert("请输入编号或规格");
-  if(box) box.innerHTML = '<div style="padding:12px;color:#666;">搜索中…</div>';
+  if(!raw) return alert(LF("请输入编号或规格", "กรุณาใส่รหัสหรือขนาด"));
+  if(box) box.innerHTML = '<div style="padding:12px;color:#666;">' + LF("搜索中…", "กำลังค้นหา") + "</div>";
   try {
     var items = await searchInventoryLikeFrontend(raw);
     renderSearchResults(items);
   } catch(e){
     console.error(e);
-    if(box) box.innerHTML = '<div style="padding:12px;color:#b91c1c;">搜索失败</div>';
+    if(box) box.innerHTML = '<div style="padding:12px;color:#b91c1c;">' + LF("搜索失败", "ค้นหาไม่สำเร็จ") + "</div>";
   }
 };
 
@@ -381,42 +387,60 @@ window.spClearPlan = function(){
 };
 
 function shipPlanInnerHTML(){
+  var front = !!$("shipFrontRoot");
+  function L(zh, th){ return front ? (zh + " / " + th) : zh; }
   return (
-    '<p style="font-size:13px;color:#666;margin:0 0 14px;line-height:1.5;">搜索与库存查询共用本地缓存（约 8 小时），尽量不重复读库。显示可售 / 留货 / 可出。只生成文本，不扣库存。</p>' +
+    '<div id="sp_quote_wrap" style="position:sticky;top:0;z-index:30;margin:0 0 12px;background:#fff;">' +
+      '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,0.06);">' +
+        '<button type="button" id="sp_quote_toggle" style="width:100%;text-align:left;border:none;background:transparent;color:#92400e;font-weight:700;cursor:pointer;padding:0;">报价单对照 ▸</button>' +
+        '<div id="sp_quote_body" style="display:none;margin-top:8px;">' +
+          '<div style="font-size:12px;color:#92400e;margin-bottom:6px;">贴报价单文字，或拍一张。往下改计划时它会停在上面。</div>' +
+          '<textarea id="sp_quote_text" rows="5" placeholder="把报价单文字粘在这里" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #fcd34d;border-radius:8px;font-size:13px;"></textarea>' +
+          '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+            '<label style="padding:6px 10px;border:1px solid #f59e0b;border-radius:8px;background:#fff;color:#92400e;cursor:pointer;font-size:13px;">拍/选报价单<input id="sp_quote_file" type="file" accept="image/*" style="display:none;"></label>' +
+            '<button type="button" id="sp_quote_clear" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#64748b;cursor:pointer;font-size:13px;">清除</button>' +
+          '</div>' +
+          '<div id="sp_quote_img_box" style="display:none;margin-top:8px;max-height:42vh;overflow:auto;background:#fff;border-radius:8px;">' +
+            '<img id="sp_quote_img" style="width:100%;display:block;">' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<p style="font-size:13px;color:#666;margin:0 0 14px;line-height:1.5;">' + L("搜索与库存查询共用本地缓存（约 8 小时）。显示可售 / 留货 / 可出。只生成文本，不扣库存。", "ค้นหาสต็อก แสดงพร้อมขาย / จอง สร้างข้อความอย่างเดียว ไม่หักสต็อก") + '</p>' +
     '<div style="display:grid;gap:12px;margin-bottom:14px;">' +
       '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">' +
-        '<label style="font-size:13px;">日期 <input id="sp_date" value="' + todayStr() + '" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;width:130px;"></label>' +
-        '<label style="font-size:13px;">客户 <input id="sp_customer" placeholder="客户名称" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;min-width:140px;"></label>' +
-        '<label style="font-size:13px;">付款 <select id="sp_pay" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;">' +
-          '<option value="已付款">已付款</option><option value="未付款">未付款</option><option value="">（不写）</option></select></label>' +
-        '<label style="font-size:13px;">账户 <select id="sp_account" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;">' +
+        '<label style="font-size:13px;">' + L("日期", "วันที่") + ' <input id="sp_date" value="' + todayStr() + '" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;width:130px;"></label>' +
+        '<label style="font-size:13px;">' + L("客户", "ลูกค้า") + ' <input id="sp_customer" placeholder="' + L("客户名称", "ชื่อลูกค้า") + '" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;min-width:140px;"></label>' +
+        '<label style="font-size:13px;">' + L("付款", "ชำระเงิน") + ' <select id="sp_pay" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;">' +
+          '<option value="已付款">' + L("已付款", "จ่ายแล้ว") + '</option><option value="未付款">' + L("未付款", "ยังไม่จ่าย") + '</option><option value="">（不写）</option></select></label>' +
+        '<label style="font-size:13px;">' + L("账户", "บัญชี") + ' <select id="sp_account" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;">' +
           '<option value="公账">公账</option><option value="私账">私账</option><option value="">（不写）</option></select></label>' +
         '<label style="font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;">' +
-          '<input type="checkbox" id="sp_pallet" style="width:16px;height:16px;cursor:pointer;"> 打托</label>' +
+          '<input type="checkbox" id="sp_pallet" style="width:16px;height:16px;cursor:pointer;"> ' + L("打托", "พาเลท") + '</label>' +
       "</div>" +
-      '<div><label style="font-size:13px;display:block;margin-bottom:4px;">车辆信息（可直接粘贴，可空）</label>' +
-        '<textarea id="sp_vehicle" rows="3" placeholder="粘贴车牌/电话等" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;"></textarea></div>' +
-      '<div><label style="font-size:13px;display:block;margin-bottom:4px;">备注（可空）</label>' +
-        '<input id="sp_note" placeholder="默认：送货单一起带过去" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;"></div>' +
+      '<div><label style="font-size:13px;display:block;margin-bottom:4px;">' + L("车辆信息（可直接粘贴，可空）", "ข้อมูลรถ (วางว่างได้)") + '</label>' +
+        '<textarea id="sp_vehicle" rows="3" placeholder="' + L("粘贴车牌/电话等", "ป้ายทะเบียน / เบอร์โทร") + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;"></textarea></div>' +
+      '<div><label style="font-size:13px;display:block;margin-bottom:4px;">' + L("备注（可空）", "หมายเหตุ") + '</label>' +
+        '<input id="sp_note" placeholder="' + L("默认：送货单一起带过去", "ค่าเริ่มต้น: เอาใบส่งของไปด้วย") + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;"></div>' +
     "</div>" +
     '<div style="padding:14px;border-radius:12px;background:#f0fdfa;border:1px solid #99f6e4;margin-bottom:14px;">' +
-      '<div style="font-weight:600;margin-bottom:8px;color:#0f766e;">搜索瓷砖并加入</div>' +
+      '<div style="font-weight:600;margin-bottom:8px;color:#0f766e;">' + L("搜索瓷砖并加入", "ค้นหาและเพิ่มกระเบื้อง") + '</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">' +
-        '<input id="sp_search" placeholder="输入编号或规格，如 3610 / NB3610" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;">' +
-        '<button type="button" id="sp_btn_search" style="padding:8px 16px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">搜索</button>' +
+        '<input id="sp_search" placeholder="' + L("输入编号或规格，如 3610 / NB3610", "ใส่รหัสหรือขนาด") + '" style="flex:1;min-width:180px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;">' +
+        '<button type="button" id="sp_btn_search" style="padding:8px 16px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;font-weight:600;">' + L("搜索", "ค้นหา") + '</button>' +
       "</div>" +
       '<div id="sp_search_result"></div>' +
     "</div>" +
     '<div style="padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:14px;">' +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">' +
-        '<div style="font-weight:600;color:#1f2937;">计划明细</div>' +
-        '<button type="button" id="sp_btn_clear" style="margin-left:auto;padding:4px 10px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600;">清空明细</button>' +
+        '<div style="font-weight:600;color:#1f2937;">' + L("计划明细", "รายการแผน") + '</div>' +
+        '<button type="button" id="sp_btn_clear" style="margin-left:auto;padding:4px 10px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600;">' + L("清空明细", "ล้างรายการ") + '</button>' +
       "</div>" +
       '<div id="sp_plan_list"></div>' +
     "</div>" +
     '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
-      '<button type="button" id="sp_btn_gen" style="padding:10px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">生成出货计划</button>' +
-      '<button type="button" id="sp_btn_copy" style="padding:10px 18px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">一键复制</button>' +
+      '<button type="button" id="sp_btn_gen" style="padding:10px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:600;">' + L("生成出货计划", "สร้างแผนส่งของ") + '</button>' +
+      '<button type="button" id="sp_btn_copy" style="padding:10px 18px;border:none;border-radius:8px;background:#16a34a;color:#fff;cursor:pointer;font-weight:600;">' + L("一键复制", "คัดลอก") + '</button>' +
     "</div>" +
     '<textarea id="sp_output" readonly rows="14" style="display:none;width:100%;box-sizing:border-box;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;line-height:1.5;font-family:ui-monospace,monospace;"></textarea>'
   );
@@ -438,6 +462,37 @@ function bindShipPlanButtons(){
   if(btnCopy) btnCopy.onclick = function(){ window.spCopy(); };
   var btnClear = $("sp_btn_clear");
   if(btnClear) btnClear.onclick = function(){ window.spClearPlan(); };
+  var quoteToggle = $("sp_quote_toggle");
+  if(quoteToggle) quoteToggle.onclick = function(){
+    var body = $("sp_quote_body");
+    if(!body) return;
+    var open = body.style.display === "none";
+    body.style.display = open ? "block" : "none";
+    quoteToggle.textContent = open ? "报价单对照 ▾" : "报价单对照 ▸";
+  };
+  var quoteFile = $("sp_quote_file");
+  if(quoteFile) quoteFile.onchange = function(){
+    var f = quoteFile.files && quoteFile.files[0];
+    if(!f) return;
+    var img = $("sp_quote_img");
+    var box = $("sp_quote_img_box");
+    var reader = new FileReader();
+    reader.onload = function(){
+      if(img) img.src = reader.result;
+      if(box) box.style.display = "block";
+      var body = $("sp_quote_body");
+      if(body) body.style.display = "block";
+      if(quoteToggle) quoteToggle.textContent = "报价单对照 ▾";
+    };
+    reader.readAsDataURL(f);
+  };
+  var quoteClear = $("sp_quote_clear");
+  if(quoteClear) quoteClear.onclick = function(){
+    var t = $("sp_quote_text"); if(t) t.value = "";
+    var img = $("sp_quote_img"); if(img) img.src = "";
+    var box = $("sp_quote_img_box"); if(box) box.style.display = "none";
+    if(quoteFile) quoteFile.value = "";
+  };
   renderPlanLines();
 }
 
@@ -495,8 +550,13 @@ function boot(){
     if(n > 80) clearInterval(t);
   }, 250);
   setInterval(ensureShipVisible, 800);
-  console.log("ship_plan.js ready v20260819b (blank line between items)");
+  console.log("ship_plan.js ready v20261103a (quote sticky while editing)");
 }
 
+window.addEventListener("tile-lang-change", function(){
+  var tab = $("tab_ship"); if(tab) tab.dataset.built = "";
+  var front = $("shipFrontRoot"); if(front) front.dataset.built = "";
+  buildShipPlanUI();
+});
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
