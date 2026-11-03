@@ -390,20 +390,20 @@ function shipPlanInnerHTML(){
   var front = !!$("shipFrontRoot");
   function L(zh, th){ return front ? (zh + " / " + th) : zh; }
   return (
-    '<div id="sp_quote_wrap" style="position:sticky;top:0;z-index:30;margin:0 0 12px;background:#fff;">' +
-      '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,0.06);">' +
-        '<button type="button" id="sp_quote_toggle" style="width:100%;text-align:left;border:none;background:transparent;color:#92400e;font-weight:700;cursor:pointer;padding:0;">报价单对照 ▸</button>' +
-        '<div id="sp_quote_body" style="display:none;margin-top:8px;">' +
-          '<div style="font-size:12px;color:#92400e;margin-bottom:6px;">贴报价单文字，或拍一张。往下改计划时它会停在上面。</div>' +
-          '<textarea id="sp_quote_text" rows="5" placeholder="把报价单文字粘在这里" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #fcd34d;border-radius:8px;font-size:13px;"></textarea>' +
-          '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-            '<label style="padding:6px 10px;border:1px solid #f59e0b;border-radius:8px;background:#fff;color:#92400e;cursor:pointer;font-size:13px;">拍/选报价单<input id="sp_quote_file" type="file" accept="image/*" style="display:none;"></label>' +
-            '<button type="button" id="sp_quote_clear" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#64748b;cursor:pointer;font-size:13px;">清除</button>' +
-          '</div>' +
-          '<div id="sp_quote_img_box" style="display:none;margin-top:8px;max-height:42vh;overflow:auto;background:#fff;border-radius:8px;">' +
-            '<img id="sp_quote_img" style="width:100%;display:block;">' +
-          '</div>' +
+    '<div id="sp_quote_wrap" style="position:sticky;top:0;z-index:30;margin:0 0 10px;">' +
+      '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:8px 10px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-weight:700;color:#92400e;font-size:14px;">报价单</span>' +
+          '<label style="margin-left:auto;padding:6px 10px;border:1px solid #f59e0b;border-radius:8px;background:#fff;color:#92400e;cursor:pointer;font-size:13px;">选图<input id="sp_quote_file" type="file" accept="image/*" style="display:none;"></label>' +
+          '<button type="button" id="sp_quote_clear" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#64748b;cursor:pointer;font-size:13px;">清除</button>' +
         '</div>' +
+        '<img id="sp_quote_img" alt="" style="display:none;margin-top:8px;width:100%;height:92px;object-fit:cover;object-position:top;border-radius:8px;background:#fff;cursor:zoom-in;">' +
+      '</div>' +
+    '</div>' +
+    '<div id="sp_quote_viewer" style="display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,0.92);">' +
+      '<button type="button" id="sp_quote_close" style="position:absolute;top:12px;right:12px;z-index:2;padding:8px 12px;border:none;border-radius:8px;background:#fff;color:#111;font-weight:700;">关闭</button>' +
+      '<div style="height:100%;overflow:auto;-webkit-overflow-scrolling:touch;padding:52px 8px 16px;">' +
+        '<img id="sp_quote_full" alt="" style="width:100%;display:block;">' +
       '</div>' +
     '</div>' +
     '<p style="font-size:13px;color:#666;margin:0 0 14px;line-height:1.5;">' + L("搜索与库存查询共用本地缓存（约 8 小时）。显示可售 / 留货 / 可出。只生成文本，不扣库存。", "ค้นหาสต็อก แสดงพร้อมขาย / จอง สร้างข้อความอย่างเดียว ไม่หักสต็อก") + '</p>' +
@@ -462,36 +462,39 @@ function bindShipPlanButtons(){
   if(btnCopy) btnCopy.onclick = function(){ window.spCopy(); };
   var btnClear = $("sp_btn_clear");
   if(btnClear) btnClear.onclick = function(){ window.spClearPlan(); };
-  var quoteToggle = $("sp_quote_toggle");
-  if(quoteToggle) quoteToggle.onclick = function(){
-    var body = $("sp_quote_body");
-    if(!body) return;
-    var open = body.style.display === "none";
-    body.style.display = open ? "block" : "none";
-    quoteToggle.textContent = open ? "报价单对照 ▾" : "报价单对照 ▸";
-  };
   var quoteFile = $("sp_quote_file");
   if(quoteFile) quoteFile.onchange = function(){
     var f = quoteFile.files && quoteFile.files[0];
     if(!f) return;
-    var img = $("sp_quote_img");
-    var box = $("sp_quote_img_box");
     var reader = new FileReader();
     reader.onload = function(){
-      if(img) img.src = reader.result;
-      if(box) box.style.display = "block";
-      var body = $("sp_quote_body");
-      if(body) body.style.display = "block";
-      if(quoteToggle) quoteToggle.textContent = "报价单对照 ▾";
+      var img = $("sp_quote_img");
+      var full = $("sp_quote_full");
+      if(img){ img.src = reader.result; img.style.display = "block"; }
+      if(full) full.src = reader.result;
     };
     reader.readAsDataURL(f);
   };
+  var quoteImg = $("sp_quote_img");
+  if(quoteImg) quoteImg.onclick = function(){
+    if(!quoteImg.src) return;
+    var viewer = $("sp_quote_viewer");
+    if(viewer) viewer.style.display = "block";
+  };
+  var quoteClose = $("sp_quote_close");
+  if(quoteClose) quoteClose.onclick = function(){
+    var viewer = $("sp_quote_viewer");
+    if(viewer) viewer.style.display = "none";
+  };
   var quoteClear = $("sp_quote_clear");
   if(quoteClear) quoteClear.onclick = function(){
-    var t = $("sp_quote_text"); if(t) t.value = "";
-    var img = $("sp_quote_img"); if(img) img.src = "";
-    var box = $("sp_quote_img_box"); if(box) box.style.display = "none";
+    var img = $("sp_quote_img");
+    var full = $("sp_quote_full");
+    if(img){ img.src = ""; img.style.display = "none"; }
+    if(full) full.src = "";
     if(quoteFile) quoteFile.value = "";
+    var viewer = $("sp_quote_viewer");
+    if(viewer) viewer.style.display = "none";
   };
   renderPlanLines();
 }
