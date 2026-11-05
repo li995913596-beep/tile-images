@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>库存查询</title>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f8fafc;color:#0f172a;}
+.wrap{max-width:720px;margin:0 auto;padding:16px;}
+h1{font-size:20px;margin:0 0 4px;}
+.sub{color:#64748b;font-size:13px;margin-bottom:12px;}
+.search{display:flex;gap:8px;margin-bottom:12px;}
+input{flex:1;min-width:0;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px;}
+button{padding:12px 16px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;}
+.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.code{font-weight:700;font-size:16px;}
+.meta{color:#475569;font-size:13px;margin-top:4px;}
+.qty{margin-top:8px;font-size:14px;}
+.ok{color:#15803d;font-weight:700;}
+.warn{color:#b45309;font-weight:700;}
+.empty{color:#94a3b8;padding:20px 4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>库存查询</h1>
+  <div id="sub" class="sub">正在读取当天库存…</div>
+  <div class="search">
+    <input id="q" placeholder="编号 / 规格 / 色号" autofocus>
+    <button type="button" id="btn">查询</button>
+  </div>
+  <div id="out" class="empty">输入编号后查询</div>
+</div>
+<script type="module">
+import { db } from "./js/firebase.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+var DATA = [];
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g, function(c){ return {"&":"&","<":"<",">":">"}[c]; }); }
+function run(){
+  var k = document.getElementById("q").value.trim().toLowerCase();
+  var out = document.getElementById("out");
+  if(!DATA.length){ out.className="empty"; out.textContent="还没有库存数据"; return; }
+  if(!k){ out.className="empty"; out.textContent="输入编号后查询"; return; }
+  var hits = DATA.filter(function(r){
+    return String(r.code||"").toLowerCase().indexOf(k)>=0 || String(r.spec||"").toLowerCase().indexOf(k)>=0 || String(r.color||"").toLowerCase().indexOf(k)>=0;
+  });
+  if(!hits.length){ out.className="empty"; out.textContent="没有这款"; return; }
+  out.className="";
+  out.innerHTML = hits.map(function(r){
+    return '<div class="card"><div class="code">'+esc(r.code)+'</div>'+
+      '<div class="meta">'+esc(r.spec||"-")+' · 色号 '+esc(r.color||"-")+' · 仓库 '+esc(r.warehouse||"-")+'</div>'+
+      '<div class="qty">可售 <span class="ok">'+esc(r.stock)+'</span> · 留货 <span class="warn">'+esc(r.reserved)+'</span></div></div>';
+  }).join("");
+}
+document.getElementById("btn").onclick = run;
+document.getElementById("q").addEventListener("keydown", function(e){ if(e.key==="Enter") run(); });
+try {
+  var snap = await getDoc(doc(db, "salesSnapshot", "current"));
+  if(!snap.exists()){
+    document.getElementById("sub").textContent = "还没有生成。请先在后台点「更新业务员查询」。";
+  } else {
+    var d = snap.data() || {};
+    DATA = Array.isArray(d.items) ? d.items : [];
+    var when = d.updatedAt || "";
+    document.getElementById("sub").textContent = "库存时间 " + when + " · " + DATA.length + " 条 · 只查询，不是实时库存";
+  }
+} catch(e) {
+  document.getElementById("sub").textContent = "读取失败，请稍后再打开";
+}
+</script>
+</body>
+</html>
