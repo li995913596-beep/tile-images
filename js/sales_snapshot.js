@@ -38,14 +38,22 @@ async function updateSalesSnapshot(){
     var rows = await loadInventory();
     var items = rows.map(function(i){
       var stock = Number(i.stock || 0);
-      var reserved = reservedQty(i.reservedList);
+      var list = Array.isArray(i.reservedList) ? i.reservedList : [];
+      var reserved = reservedQty(list);
+      var detail = list.filter(function(r){ return r && (r.customer || r.qty); }).map(function(r){
+        return (r.customer || "未填客户") + "(" + Number(r.qty || 0) + ")";
+      }).join("、");
       return {
         code: i.code || "",
         spec: i.spec || "",
         color: i.color || "",
         warehouse: i.warehouse || "",
         stock: stock,
-        reserved: reserved
+        reserved: reserved,
+        reserveDetail: detail,
+        piecesPerBox: Number(i.piecesPerBox || 0),
+        boxWeight: Number(i.boxWeight || 0),
+        packaging: i.packaging || ""
       };
     }).filter(function(i){ return i.code && (i.stock > 0 || i.reserved > 0); });
     items.sort(function(a, b){ return String(a.code).localeCompare(String(b.code), "zh-CN"); });
