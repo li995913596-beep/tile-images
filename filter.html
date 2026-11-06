@@ -50,6 +50,15 @@
         <option value="c9">c9</option>
         <option value="my">my</option>
       </select>
+      <select id="f_r" style="flex:1;min-width:140px;padding:10px;border:1px solid #e3e8ef;border-radius:10px;font-size:14px;">
+        <option value="">全部R系列</option>
+        <option value="60R9">600x600 R9</option>
+        <option value="60R10">600x600 R10</option>
+        <option value="60R11">600x600 R11</option>
+        <option value="612R9">600x1200 R9</option>
+        <option value="612R10">600x1200 R10</option>
+        <option value="612R11">600x1200 R11</option>
+      </select>
       <select id="f_sort" style="flex:1;min-width:120px;padding:10px;border:1px solid #e3e8ef;border-radius:10px;font-size:14px;">
         <option value="stock_desc">库存多到少</option>
         <option value="stock_asc">库存少到多</option>
@@ -61,7 +70,7 @@
   <div id="result"></div>
 </div>
 <div id="imgModal" class="modal"><img id="modalImg"></div>
-<script type="module" src="js/filter.js?v=20261106b"></script>
+<script type="module" src="js/filter.js?v=20261106c"></script>
 <script>
 window.openModal=function(src){var m=document.getElementById("imgModal");document.getElementById("modalImg").src=src;m.style.display="flex";};
 document.getElementById("imgModal").onclick=function(){this.style.display="none";};
