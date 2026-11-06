@@ -61,7 +61,7 @@ async function updateSalesSnapshot(){
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
     var link = location.origin + "/sales.html";
     try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已更新 " + items.length + " 条。链接已复制，发到微信即可：\n" + link);
+    alert("已提交 " + items.length + " 条。业务员页面大约几分钟后更新，请让他们关掉旧页面再打开：\n" + link);
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));

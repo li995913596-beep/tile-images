@@ -1,0 +1,73 @@
+name: sync-sales-query
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull snapshot and update sales page
+        run: |
+          python3 << 'PY'
+          import json, urllib.request, datetime, pathlib, re
+          url = "https://firestore.googleapis.com/v1/projects/kucunguanli-13d73/databases/(default)/documents/salesSnapshot/current"
+          try:
+              raw = urllib.request.urlopen(url, timeout=60).read().decode()
+          except Exception as e:
+              print("no snapshot", e)
+              raise SystemExit(0)
+          doc = json.loads(raw)
+          fields = doc.get("fields") or {}
+          def val(v):
+              if not v: return None
+              for k in ("stringValue", "integerValue", "doubleValue"):
+                  if k in v: return v[k]
+              return None
+          updated = val(fields.get("updatedAt")) or ""
+          values = ((fields.get("items") or {}).get("arrayValue") or {}).get("values") or []
+          items = []
+          for item in values:
+              f = ((item.get("mapValue") or {}).get("fields") or {})
+              items.append({
+                  "code": val(f.get("code")) or "",
+                  "spec": val(f.get("spec")) or "",
+                  "color": val(f.get("color")) or "",
+                  "warehouse": val(f.get("warehouse")) or "",
+                  "stock": float(val(f.get("stock")) or 0),
+                  "reserved": float(val(f.get("reserved")) or 0),
+                  "reserveDetail": val(f.get("reserveDetail")) or "",
+                  "piecesPerBox": float(val(f.get("piecesPerBox")) or 0),
+                  "boxWeight": float(val(f.get("boxWeight")) or 0),
+                  "packaging": val(f.get("packaging")) or "",
+              })
+          js_path = pathlib.Path("js/sales_data.js")
+          old = js_path.read_text(encoding="utf-8") if js_path.exists() else ""
+          if updated and updated in old:
+              print("unchanged", updated)
+              raise SystemExit(0)
+          stamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M")
+          payload = json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+          js_path.write_text("window.SALES_UPDATED_AT=" + json.dumps(updated) + ";\nvar DATA=" + payload + ";\n", encoding="utf-8")
+          html_path = pathlib.Path("sales.html")
+          html = html_path.read_text(encoding="utf-8")
+          html = re.sub(r"js/sales_data\.js\?v=\d+", "js/sales_data.js?v=" + stamp, html)
+          html_path.write_text(html, encoding="utf-8")
+          pathlib.Path("sales_changed.txt").write_text(updated)
+          print("updated", updated, "rows", len(items))
+          PY
+      - name: Commit if changed
+        run: |
+          if [ ! -f sales_changed.txt ]; then
+            echo "no change"
+            exit 0
+          fi
+          git config user.name "sales-sync"
+          git config user.email "sales-sync@users.noreply.github.com"
+          git add js/sales_data.js sales.html
+          git commit -m "同步业务员查询库存"
+          git push
+          rm -f sales_changed.txt
