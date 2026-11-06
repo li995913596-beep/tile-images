@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>筛选</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/style.css?v=20261106b">
+</head>
+<body>
+<header class="app-nav">
+  <a class="nav-item nav-stock" href="index.html">
+    <svg viewBox="0 0 24 24"><path d="M12 3L3 9v11a1 1 0 0 0 1 1h5v-7h6v7h5a1 1 0 0 0 1-1V9l-9-6z"/></svg>
+    <span>库存</span>
+  </a>
+  <a class="nav-item nav-filter active" href="filter.html">
+    <svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5z"/></svg>
+    <span>筛选</span>
+  </a>
+  <a class="nav-item nav-ship" href="ship.html">
+    <svg viewBox="0 0 24 24"><path d="M3 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v8H3V7zm13 3h2.6a1 1 0 0 1 .8.4l1.9 2.5a1 1 0 0 1 .2.6V15h-5.5V10zM6.5 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zm11 0a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z"/></svg>
+    <span>出货</span>
+  </a>
+  <a class="nav-item nav-admin" href="admin.html">
+    <svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zm0-6a1 1 0 0 1 1 1v1.1a7.5 7.5 0 0 1 2.3.95l.78-.78a1 1 0 1 1 1.41 1.41l-.78.78c.4.7.7 1.48.95 2.3H19a1 1 0 1 1 0 2h-1.1a7.5 7.5 0 0 1-.95 2.3l.78.78a1 1 0 1 1-1.41 1.41l-.78-.78a7.5 7.5 0 0 1-2.3.95V20a1 1 0 1 1-2 0v-1.1a7.5 7.5 0 0 1-2.3-.95l-.78.78a1 1 0 1 1-1.41-1.41l.78-.78A7.5 7.5 0 0 1 6.1 13.5H5a1 1 0 1 1 0-2h1.1a7.5 7.5 0 0 1 .95-2.3l-.78-.78A1 1 0 1 1 7.68 5.01l.78.78A7.5 7.5 0 0 1 10.76 4.8V3.7a1 1 0 0 1 1-1.2z"/></svg>
+    <span>设置</span>
+  </a>
+</header>
+<div class="container">
+  <div class="search-box">
+    <div class="search-row">
+      <input id="f_kw" placeholder="编号，可空">
+      <button type="button" id="f_btn"><span>筛选</span></button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <select id="f_spec" style="flex:1;min-width:120px;padding:10px;border:1px solid #e3e8ef;border-radius:10px;font-size:14px;">
+        <option value="">全部规格</option>
+        <option>600x600</option>
+        <option>600x1200</option>
+        <option>300x600</option>
+        <option>800x800</option>
+        <option>300x300</option>
+        <option>750x1500</option>
+        <option>200x1200</option>
+      </select>
+      <select id="f_wh" style="flex:1;min-width:100px;padding:10px;border:1px solid #e3e8ef;border-radius:10px;font-size:14px;">
+        <option value="">全部仓库</option>
+        <option value="1">1</option>
+        <option value="k38">k38</option>
+        <option value="k39">k39</option>
+        <option value="c9">c9</option>
+        <option value="my">my</option>
+      </select>
+      <select id="f_sort" style="flex:1;min-width:120px;padding:10px;border:1px solid #e3e8ef;border-radius:10px;font-size:14px;">
+        <option value="stock_desc">库存多到少</option>
+        <option value="stock_asc">库存少到多</option>
+        <option value="code">按编号</option>
+      </select>
+    </div>
+  </div>
+  <div id="f_sub" style="font-size:12px;color:#94a3b8;margin:-4px 2px 10px;"></div>
+  <div id="result"></div>
+</div>
+<div id="imgModal" class="modal"><img id="modalImg"></div>
+<script type="module" src="js/filter.js?v=20261106a"></script>
+<script>
+window.openModal=function(src){var m=document.getElementById("imgModal");document.getElementById("modalImg").src=src;m.style.display="flex";};
+document.getElementById("imgModal").onclick=function(){this.style.display="none";};
+</script>
+</body>
+</html>
