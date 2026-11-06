@@ -99,7 +99,10 @@ async function run(){
   var spec = (document.getElementById("f_spec").value || "").toLowerCase();
   var wh = (document.getElementById("f_wh").value || "").toLowerCase();
   var sort = document.getElementById("f_sort").value;
+  var r = (document.getElementById("f_r").value || "").toUpperCase();
   var list = cached.filter(function(item){
+    var code = String(item.code || "").toUpperCase();
+    if(r && code.indexOf(r) < 0) return false;
     if(spec && normalizeSpec(item.spec || "").toLowerCase() !== spec) return false;
     if(wh && String(item.warehouse || "").toLowerCase() !== wh) return false;
     if(kw && String(item.code || "").toLowerCase().indexOf(kw) < 0 && String(item.color || "").toLowerCase().indexOf(kw) < 0) return false;
