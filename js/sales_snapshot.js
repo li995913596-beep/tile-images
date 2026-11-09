@@ -30,6 +30,46 @@ async function loadInventory(){
   return out;
 }
 
+var TOKEN_KEY = "tile_gh_token";
+function getToken(){
+  try { return (localStorage.getItem(TOKEN_KEY) || "").trim(); } catch(e){ return ""; }
+}
+function b64(text){
+  return btoa(unescape(encodeURIComponent(text)));
+}
+async function ghGet(path, token){
+  var res = await fetch("https://api.github.com/repos/li995913596-beep/tile-images/contents/" + path + "?ref=main", {
+    headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + token }
+  });
+  if(!res.ok) throw new Error("读取网页失败 " + res.status);
+  return await res.json();
+}
+async function ghPut(path, content, token, sha, message){
+  var res = await fetch("https://api.github.com/repos/li995913596-beep/tile-images/contents/" + path, {
+    method: "PUT",
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message: message, content: b64(content), branch: "main", sha: sha })
+  });
+  if(!res.ok){
+    var t = await res.text();
+    throw new Error("写入失败 " + res.status + " " + t.slice(0, 180));
+  }
+}
+async function publishSalesPage(items, updatedAt, token){
+  var js = "window.SALES_UPDATED_AT=" + JSON.stringify(updatedAt) + ";\nvar DATA=" + JSON.stringify(items) + ";\n";
+  var dataFile = await ghGet("js/sales_data.js", token);
+  await ghPut("js/sales_data.js", js, token, dataFile.sha, "更新业务员查询 " + updatedAt);
+  var page = await ghGet("sales.html", token);
+  var html = decodeURIComponent(escape(atob(page.content.replace(/\n/g, ""))));
+  var stamp = updatedAt.replace(/[-: ]/g, "");
+  html = html.replace(/js\/sales_data\.js\?v=\d+/, "js/sales_data.js?v=" + stamp);
+  await ghPut("sales.html", html, token, page.sha, "更新业务员查询页时间 " + updatedAt);
+}
+
 async function updateSalesSnapshot(){
   if(!confirm("用现在的库存更新业务员查询页？")) return;
   var btn = document.getElementById("btnSalesSnapshot");
@@ -59,9 +99,16 @@ async function updateSalesSnapshot(){
     items.sort(function(a, b){ return String(a.code).localeCompare(String(b.code), "zh-CN"); });
     var updatedAt = nowText();
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
+    var token = getToken();
+    if(!token){
+      alert("库存已记下，但网页没更新。请先在后台保存 GitHub Token，再点一次。");
+      return;
+    }
+    if(btn) btn.textContent = "正在更新网页…";
+    await publishSalesPage(items, updatedAt, token);
     var link = location.origin + "/sales.html";
     try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已提交 " + items.length + " 条。业务员页面大约几分钟后更新，请让他们关掉旧页面再打开：\n" + link);
+    alert("已更新 " + items.length + " 条。一两分钟后让业务员关掉旧页面再打开：\n" + link);
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));
