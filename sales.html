@@ -14,13 +14,19 @@
       <button type="button" id="btnSearch"><span>查询</span></button>
     </div>
   </div>
-  <div id="sub" style="font-size:12px;color:#94a3b8;margin:-4px 2px 10px;">库存时间 <span id="when">—</span> · 只查询，不是实时库存</div>
+  <div id="sub" style="font-size:12px;color:#94a3b8;margin:-4px 2px 10px;">正在打开当天库存…</div>
   <div id="result"></div>
 </div>
 <div id="imgModal" class="modal"><img id="modalImg"></div>
-<script src="js/sales_data.js?v=202611090323"></script>
 <script>
-document.getElementById("when").textContent = window.SALES_UPDATED_AT || "—";
+var DATA=[];
+function val(v){
+  if(!v) return "";
+  if(v.stringValue!=null) return v.stringValue;
+  if(v.integerValue!=null) return v.integerValue;
+  if(v.doubleValue!=null) return v.doubleValue;
+  return "";
+}
 function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&","<":"<",">":">"}[c];});}
 function normalizeSpec(s){
   s=String(s==null?"":s).trim();
@@ -96,6 +102,31 @@ document.getElementById("btnSearch").onclick=run;
 document.getElementById("searchInput").addEventListener("keydown",function(e){if(e.key==="Enter")run();});
 window.openModal=function(src){var m=document.getElementById("imgModal");document.getElementById("modalImg").src=src;m.style.display="flex";};
 document.getElementById("imgModal").onclick=function(){this.style.display="none";};
+fetch("https://firestore.googleapis.com/v1/projects/kucunguanli-13d73/databases/(default)/documents/salesSnapshot/current")
+  .then(function(r){ if(!r.ok) throw new Error("读取失败"); return r.json(); })
+  .then(function(doc){
+    var fields=doc.fields||{};
+    var values=((fields.items||{}).arrayValue||{}).values||[];
+    DATA=values.map(function(item){
+      var f=(item.mapValue||{}).fields||{};
+      return {
+        code: val(f.code),
+        spec: val(f.spec),
+        color: val(f.color),
+        warehouse: val(f.warehouse),
+        stock: Number(val(f.stock)||0),
+        reserved: Number(val(f.reserved)||0),
+        reserveDetail: val(f.reserveDetail),
+        piecesPerBox: Number(val(f.piecesPerBox)||0),
+        boxWeight: Number(val(f.boxWeight)||0),
+        packaging: val(f.packaging)
+      };
+    });
+    document.getElementById("sub").textContent="库存时间 "+(val(fields.updatedAt)||"—")+" · 只查询，不是实时库存";
+  })
+  .catch(function(){
+    document.getElementById("sub").textContent="库存读取失败，请关掉页面再打开";
+  });
 </script>
 </body>
 </html>
