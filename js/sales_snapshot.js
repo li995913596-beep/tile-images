@@ -41,7 +41,10 @@ async function ghGet(path, token){
   var res = await fetch("https://api.github.com/repos/li995913596-beep/tile-images/contents/" + path + "?ref=main", {
     headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + token }
   });
-  if(!res.ok) throw new Error("读取网页失败 " + res.status);
+  if(!res.ok){
+    if(res.status === 401) throw new Error("GitHub Token 过期或无效，请在后台重新保存");
+    throw new Error("读取网页失败 " + res.status);
+  }
   return await res.json();
 }
 async function ghPut(path, content, token, sha, message){
