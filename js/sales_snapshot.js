@@ -104,7 +104,7 @@ async function updateSalesSnapshot(){
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
     var link = location.origin + "/sales.html";
     try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已更新 " + items.length + " 条。让业务员关掉旧页面再打开：\n" + link);
+    alert("已更新 " + items.length + " 条。几分钟后让业务员关掉旧页面再打开：\n" + link);
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));
