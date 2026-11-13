@@ -1,5 +1,5 @@
 /**
- * 后台一键更新业务员查询页。只写一份快照，不改库存。
+ * 后台一键更新业务员查询。只读库存，只写一份快照，不改主库存，不用 Token。
  */
 import { db } from "./firebase.js";
 import { collection, doc, getDocs, limit, query, setDoc, startAfter } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -30,51 +30,8 @@ async function loadInventory(){
   return out;
 }
 
-var TOKEN_KEY = "tile_gh_token";
-function getToken(){
-  try { return (localStorage.getItem(TOKEN_KEY) || "").trim(); } catch(e){ return ""; }
-}
-function b64(text){
-  return btoa(unescape(encodeURIComponent(text)));
-}
-async function ghGet(path, token){
-  var res = await fetch("https://api.github.com/repos/li995913596-beep/tile-images/contents/" + path + "?ref=main", {
-    headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + token }
-  });
-  if(!res.ok){
-    if(res.status === 401) throw new Error("GitHub Token 过期或无效，请在后台重新保存");
-    throw new Error("读取网页失败 " + res.status);
-  }
-  return await res.json();
-}
-async function ghPut(path, content, token, sha, message){
-  var res = await fetch("https://api.github.com/repos/li995913596-beep/tile-images/contents/" + path, {
-    method: "PUT",
-    headers: {
-      "Accept": "application/vnd.github+json",
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ message: message, content: b64(content), branch: "main", sha: sha })
-  });
-  if(!res.ok){
-    var t = await res.text();
-    throw new Error("写入失败 " + res.status + " " + t.slice(0, 180));
-  }
-}
-async function publishSalesPage(items, updatedAt, token){
-  var js = "window.SALES_UPDATED_AT=" + JSON.stringify(updatedAt) + ";\nvar DATA=" + JSON.stringify(items) + ";\n";
-  var dataFile = await ghGet("js/sales_data.js", token);
-  await ghPut("js/sales_data.js", js, token, dataFile.sha, "更新业务员查询 " + updatedAt);
-  var page = await ghGet("sales.html", token);
-  var html = decodeURIComponent(escape(atob(page.content.replace(/\n/g, ""))));
-  var stamp = updatedAt.replace(/[-: ]/g, "");
-  html = html.replace(/js\/sales_data\.js\?v=\d+/, "js/sales_data.js?v=" + stamp);
-  await ghPut("sales.html", html, token, page.sha, "更新业务员查询页时间 " + updatedAt);
-}
-
 async function updateSalesSnapshot(){
-  if(!confirm("用现在的库存更新业务员查询页？")) return;
+  if(!confirm("用现在的库存更新业务员查询？不会改主库存。")) return;
   var btn = document.getElementById("btnSalesSnapshot");
   if(btn){ btn.disabled = true; btn.textContent = "更新中…"; }
   try {
@@ -102,16 +59,7 @@ async function updateSalesSnapshot(){
     items.sort(function(a, b){ return String(a.code).localeCompare(String(b.code), "zh-CN"); });
     var updatedAt = nowText();
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
-    var token = getToken();
-    var link = location.origin + "/sales.html";
-    if(!token){
-      alert("库存已记下，但网页还是旧的。请先在后台保存上传图片用的钥匙，再点一次「更新业务员查询」。");
-      return;
-    }
-    if(btn) btn.textContent = "正在更新网页…";
-    await publishSalesPage(items, updatedAt, token);
-    try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已更新 " + items.length + " 条。一两分钟后让业务员关掉旧页面，再打开原来的链接：\n" + link);
+    alert("已更新业务员查询 " + items.length + " 条，时间 " + updatedAt + "。主库存没动。让业务员关掉旧页面再打开原来的链接。");
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));
@@ -135,4 +83,4 @@ function boot(){
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
 setInterval(boot, 1500);
-console.log("sales_snapshot.js ready v20261105a");
+console.log("sales_snapshot.js ready v20261113c");
