@@ -102,9 +102,16 @@ async function updateSalesSnapshot(){
     items.sort(function(a, b){ return String(a.code).localeCompare(String(b.code), "zh-CN"); });
     var updatedAt = nowText();
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
-    var link = location.origin + "/s.html";
+    var token = getToken();
+    var link = location.origin + "/sales.html";
+    if(!token){
+      alert("库存已记下，但网页还是旧的。请先在后台保存上传图片用的钥匙，再点一次「更新业务员查询」。");
+      return;
+    }
+    if(btn) btn.textContent = "正在更新网页…";
+    await publishSalesPage(items, updatedAt, token);
     try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已更新 " + items.length + " 条。请把这个新链接发给业务员，让他们关掉旧页面再打开：\n" + link);
+    alert("已更新 " + items.length + " 条。一两分钟后让业务员关掉旧页面，再打开原来的链接：\n" + link);
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));
