@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>库存查询</title>
+<meta http-equiv="Cache-Control" content="no-cache">
 <link rel="stylesheet" href="css/style.css?v=20261106a">
 </head>
 <body>
@@ -18,7 +19,7 @@
   <div id="result"></div>
 </div>
 <div id="imgModal" class="modal"><img id="modalImg"></div>
-<script src="js/sales_data.js?v=202611130759"></script>
+<script src="js/sales_data.js?v=202611131634"></script>
 <script>
 document.getElementById("when").textContent = window.SALES_UPDATED_AT || "—";
 function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&","<":"<",">":">"}[c];});}
@@ -47,7 +48,7 @@ function render(list){
       var stockColor=item.stock>10?"#2ecc71":item.stock>0?"#f39c12":"#e74c3c";
       var pack=packLine(item);
       var reserveHtml=item.reserved>0?(item.reserved+(item.reserveDetail?"<br><span style=\"font-size:12px;color:#c0392b;\">"+esc(item.reserveDetail)+"</span>":"")):"0";
-      html+='<div class="result-row"><div onclick="openModal(\''+imageUrl+'\')"><img src="'+imageUrl+'" style="width:50px;height:50px;border-radius:6px;object-fit:cover;" onerror="this.style.display=\'none\'"></div>'+
+      html+='<div class="result-row"><div onclick="openModal(\''+imageUrl+'\')"><img src="'+imageUrl+'" loading="lazy" style="width:50px;height:50px;border-radius:6px;object-fit:cover;" onerror="this.style.display=\'none\'"></div>'+
         '<div>'+esc(item.code)+(pack?'<div style="font-size:11px;color:#64748b;margin-top:2px;">'+esc(pack)+'</div>':'')+'</div>'+
         '<div>'+esc(normalizeSpec(item.spec)||item.spec||"-")+'</div><div>'+esc(item.color||"-")+'</div>'+
         '<div style="font-weight:700;color:'+stockColor+'">'+esc(item.stock)+'</div><div>'+reserveHtml+'</div><div>'+esc(item.warehouse||"-")+'</div></div>';
@@ -65,7 +66,7 @@ function render(list){
       reserveHtml='<div style="margin-top:2px;"><span style="font-size:11px;padding:3px 8px;border-radius:999px;background:#ef4444;color:#fff;">留货 '+esc(item.reserved)+'</span>'+(item.reserveDetail?'<div style="margin-top:4px;font-size:12px;color:#c0392b;line-height:1.4;">客户：'+esc(item.reserveDetail)+'</div>':'')+'</div>';
     }
     mobile+='<div class="card" style="display:flex;align-items:center;gap:12px;">'+
-      '<div onclick="openModal(\''+imageUrl+'\')"><img src="'+imageUrl+'" style="width:58px;height:58px;border-radius:8px;object-fit:cover;" onerror="this.style.display=\'none\'"></div>'+
+      '<div onclick="openModal(\''+imageUrl+'\')"><img src="'+imageUrl+'" loading="lazy" style="width:58px;height:58px;border-radius:8px;object-fit:cover;" onerror="this.style.display=\'none\'"></div>'+
       '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:15px;">'+esc(item.code)+'</div>'+
       '<div style="font-size:13px;color:#555;margin-top:2px;">'+esc(normalizeSpec(item.spec)||item.spec||"-")+' | 色号 '+esc(item.color||"-")+'</div>'+
       (pack?'<div style="font-size:12px;color:#64748b;margin-top:3px;">'+esc(pack)+'</div>':'')+
@@ -79,7 +80,7 @@ function run(){
   var raw=document.getElementById("searchInput").value.trim();
   var k=raw.toLowerCase();
   var spec=normalizeSpec(raw).toLowerCase();
-  if(typeof DATA==="undefined"||!DATA.length){document.getElementById("result").innerHTML="<div style='padding:16px;color:#94a3b8;'>还没有库存数据</div>";return;}
+  if(typeof DATA==="undefined"||!DATA.length){document.getElementById("result").innerHTML="<div style='padding:16px;color:#94a3b8;'>库存还没加载好，请关掉页面再打开</div>";return;}
   if(!k){document.getElementById("result").innerHTML="<div style='padding:16px;color:#94a3b8;'>请输入编号或规格</div>";return;}
   var hits=DATA.filter(function(r){
     return String(r.code||"").toLowerCase().indexOf(k)>=0||String(r.spec||"").toLowerCase().indexOf(k)>=0||(spec&&String(r.spec||"").toLowerCase().indexOf(spec)>=0)||String(r.color||"").toLowerCase().indexOf(k)>=0;

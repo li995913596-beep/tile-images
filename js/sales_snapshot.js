@@ -102,9 +102,9 @@ async function updateSalesSnapshot(){
     items.sort(function(a, b){ return String(a.code).localeCompare(String(b.code), "zh-CN"); });
     var updatedAt = nowText();
     await setDoc(doc(db, "salesSnapshot", "current"), { updatedAt: updatedAt, count: items.length, items: items });
-    var link = location.origin + "/sales.html";
+    var link = location.origin + "/s.html";
     try { await navigator.clipboard.writeText(link); } catch(e){}
-    alert("已更新 " + items.length + " 条。几分钟后让业务员关掉旧页面再打开：\n" + link);
+    alert("已更新 " + items.length + " 条。请把这个新链接发给业务员，让他们关掉旧页面再打开：\n" + link);
   } catch(e){
     console.error(e);
     alert("更新失败：" + (e.message || e));
