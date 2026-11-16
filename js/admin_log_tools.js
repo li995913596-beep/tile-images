@@ -467,19 +467,29 @@ function boot(){
         if(!groups[key]) groups[key] = [];
         groups[key].push(row);
       });
+      function freeImpact(l){
+        var type = l.type || "";
+        var qty = Number(l.qty || 0);
+        var source = String(l.source || "");
+        if(type === "出库"){
+          if(l.fromFree != null && l.fromFree !== "") return Number(l.fromFree) || 0;
+          if(source.indexOf("留货出库") >= 0) return 0;
+          return qty;
+        }
+        if(type === "留货") return qty;
+        if(type === "入库" || type === "取消留货") return -qty;
+        return 0;
+      }
       Object.keys(groups).forEach(function(key){
         var arr = groups[key].slice().sort(function(a, b){ return msOf(b.data) - msOf(a.data); });
         var running = stockMap.hasOwnProperty(key) ? stockMap[key] : 0;
         arr.forEach(function(row){
           var l = row.data;
-          var qty = Number(l.qty || 0);
           row.after = running;
-          var type = l.type || "";
-          if(type === "出库" || type === "留货") running = Number((running + qty).toFixed(4));
-          else if(type === "入库" || type === "取消留货") running = Number((running - qty).toFixed(4));
+          running = Number((running + freeImpact(l)).toFixed(4));
         });
       });
-      var rows = [["时间","类型","编号","规格","色号","数量","操作后剩余","仓库","客户","来源","柜号"]];
+      var rows = [["时间","类型","编号","规格","色号","数量","扣可售","扣留货","操作后可售","仓库","客户","来源","柜号"]];
       logs.sort(function(a, b){ return msOf(b.data) - msOf(a.data); });
       logs.forEach(function(row){
         var l = row.data;
@@ -488,6 +498,8 @@ function boot(){
         rows.push([
           time, l.type || "", l.code || "", l.spec || "", l.color || "",
           l.qty == null ? "" : l.qty,
+          l.fromFree == null ? "" : l.fromFree,
+          l.fromReserve == null ? "" : l.fromReserve,
           row.after == null ? "" : row.after,
           l.warehouse || "", l.customer || "", l.source || "", l.containerNo || ""
         ]);
@@ -503,7 +515,7 @@ function boot(){
       a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
       a.download = "logs.csv";
       a.click();
-      alert("已导出 " + (rows.length - 1) + " 行。操作后剩余 = 这笔出/入库之后，该编号在该仓库的可售剩余。");
+      alert("已导出 " + (rows.length - 1) + " 行。操作后可售只按实际扣的可售计算，留货出库不再重复减可售。");
     } catch(e){
       console.error(e);
       alert("导出失败：" + (e.message || e));
