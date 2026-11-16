@@ -401,6 +401,60 @@ function hookShowTab(){
 function boot(){
   hookShowTab();
   setInterval(hookShowTab, 1000);
+  window.checkReserveShips = async function(){
+    if(!confirm("检查所有留货出库，看可售有没有被多扣？只读日志，不改库存。")) return;
+    var logs = [];
+    var last = null;
+    while(logs.length < 20000){
+      var q = last
+        ? query(collection(db, "logs"), orderBy("timestamp", "desc"), startAfter(last), limit(500))
+        : query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(500));
+      var snap = await getDocs(q);
+      if(snap.empty) break;
+      snap.forEach(function(d){ logs.push(d.data() || {}); });
+      last = snap.docs[snap.docs.length - 1];
+      if(snap.size < 500) break;
+    }
+    var lines = ["时间,编号,色号,仓库,出库数,扣可售,扣留货,来源,客户,判断"];
+    var bad = 0, ok = 0;
+    logs.forEach(function(l){
+      var source = String(l.source || "");
+      if(source.indexOf("留货出库") < 0) return;
+      var qty = Number(l.qty || 0);
+      var free = l.fromFree == null || l.fromFree === "" ? null : Number(l.fromFree);
+      var res = l.fromReserve == null || l.fromReserve === "" ? null : Number(l.fromReserve);
+      var time = "";
+      try { time = l.timestamp && l.timestamp.toDate ? l.timestamp.toDate().toLocaleString() : ""; } catch(e){}
+      var judge = "只扣留货，可售正常";
+      if(free == null){ judge = "老记录没有拆分，导出可能算错，可售不一定被扣"; }
+      else if(free > 0){ judge = "这笔扣了可售 " + free; bad++; }
+      else ok++;
+      lines.push([time, l.code || "", l.color || "", l.warehouse || "", qty, free == null ? "" : free, res == null ? "" : res, source, l.customer || "", judge].map(function(c){
+        var s = String(c == null ? "" : c);
+        if(/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(","));
+    });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+    a.download = "留货出库检查.csv";
+    a.click();
+    alert("留货出库共 " + (lines.length - 1) + " 笔。其中明确扣了可售的 " + bad + " 笔，只扣留货的 " + ok + " 笔。明细已下载。");
+  };
+  function addCheckButton(){
+    var box = document.getElementById("tab_log");
+    if(!box || box.querySelector("#btnCheckReserve")) return;
+    var btn = document.createElement("button");
+    btn.id = "btnCheckReserve";
+    btn.type = "button";
+    btn.textContent = "检查留货出库";
+    btn.style.marginLeft = "8px";
+    btn.onclick = function(){ window.checkReserveShips().catch(function(e){ alert("检查失败：" + (e.message || e)); }); };
+    var dl = box.querySelector("button");
+    if(dl && dl.parentNode) dl.parentNode.insertBefore(btn, dl.nextSibling);
+    else box.insertBefore(btn, box.firstChild);
+  }
+  setInterval(addCheckButton, 1000);
   window.downloadLogs = async function(){
     try {
       alert("正在导出全部日志，并计算出库后剩余…");
